@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { addMoveMedia, createMove, getMove, updateMove } from "../../api/moves.js";
@@ -38,6 +38,8 @@ export default function MoveFormPage() {
   const [caption, setCaption] = useState("");
   const [mediaError, setMediaError] = useState(null);
   const [isAddingMedia, setIsAddingMedia] = useState(false);
+
+  const nameInputRef = useRef(null);
 
   useEffect(() => {
     if (!isEditMode) return;
@@ -123,6 +125,26 @@ export default function MoveFormPage() {
     }
   }
 
+  // Back to a blank step 1, without leaving /moves/new — bulk-adding moves
+  // means never round-tripping through the library between each one.
+  function handleAddAnother() {
+    setMove(null);
+    setName("");
+    setAlias("");
+    setDescription("");
+    setCategory("");
+    setDifficulty("");
+    setError(null);
+    setSaved(false);
+    setMediaItems([]);
+    setMediaType("image");
+    setFile(null);
+    setExternalUrl("");
+    setCaption("");
+    setMediaError(null);
+    requestAnimationFrame(() => nameInputRef.current?.focus());
+  }
+
   if (isLoading) return <p className="muted">در حال بارگذاری…</p>;
   if (loadError) return <p className="error-text">{loadError}</p>;
 
@@ -144,6 +166,7 @@ export default function MoveFormPage() {
             <label className="field">
               <span className="label">نام حرکت*</span>
               <input
+                ref={nameInputRef}
                 className="input"
                 dir="auto"
                 value={name}
@@ -297,7 +320,10 @@ export default function MoveFormPage() {
 
           {!isEditMode && (
             <div className="form-actions">
-              <button className="btn btn-primary" onClick={() => navigate("/moves")}>
+              <button type="button" className="btn btn-ghost" onClick={handleAddAnother}>
+                افزودن حرکت بعدی
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => navigate("/moves")}>
                 پایان — رفتن به کتابخانه
               </button>
             </div>

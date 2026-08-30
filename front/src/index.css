@@ -319,7 +319,7 @@
     @apply bg-neutral-soft text-ink;
   }
   .form-actions {
-    @apply mt-2 flex justify-end;
+    @apply mt-2 flex flex-wrap justify-end gap-2;
   }
   .error-text {
     @apply my-1 mb-4 rounded-lg bg-danger-soft px-3 py-2 text-[13px] font-semibold text-danger;
