@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { listUsers } from "../../api/users.js";
+import AddMemberModal from "../../components/users/AddMemberModal.jsx";
 import UserListItem from "../../components/users/UserListItem.jsx";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -15,6 +16,9 @@ const ROLE_FILTER_OPTIONS = [
 export default function DashboardPage() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
+  // Member intake is a front-desk/billing job — trainers get read-only
+  // access here. Flip this to include "trainer" if your gym works differently.
+  const canAddMember = isAdmin || role === "accounting";
 
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
@@ -25,6 +29,7 @@ export default function DashboardPage() {
   const [hasPrev, setHasPrev] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -63,6 +68,11 @@ export default function DashboardPage() {
           <h1 className="page-title">داشبورد</h1>
           <p className="page-subtitle">{isAdmin ? "فهرست همهٔ کاربران باشگاه." : "فهرست اعضای باشگاه."}</p>
         </div>
+        {canAddMember && (
+          <button className="btn btn-primary" onClick={() => setIsAddOpen(true)}>
+            + افزودن عضو
+          </button>
+        )}
       </div>
 
       <div className="filter-bar">
@@ -97,7 +107,7 @@ export default function DashboardPage() {
         <>
           <div className="user-list">
             {users.map((u) => (
-              <UserListItem key={u.id} user={u}>
+              <UserListItem key={u.id} user={u} to={`/users/${u.id}`}>
                 {u.role === "member" && u.membership_end_date && (
                   <span className={`badge ${u.is_membership_active ? "badge-success" : "badge-danger"}`}>
                     {u.is_membership_active ? "فعال" : "غیرفعال"}
@@ -119,6 +129,16 @@ export default function DashboardPage() {
             </div>
           )}
         </>
+      )}
+
+      {isAddOpen && (
+        <AddMemberModal
+          onClose={() => setIsAddOpen(false)}
+          onCreated={() => {
+            setIsAddOpen(false);
+            load();
+          }}
+        />
       )}
     </div>
   );

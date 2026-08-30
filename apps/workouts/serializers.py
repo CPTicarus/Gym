@@ -89,6 +89,29 @@ class WorkoutPlanSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
 
 
+class WorkoutAssignmentListSerializer(serializers.ModelSerializer):
+    """Staff-facing view of an assignment — light on purpose. The full
+    nested plan (warmup/days/daily) is only needed on the member's own
+    screen; here we just want to know who has what, so this stays flat
+    enough to list dozens of rows without a heavy payload."""
+
+    plan_name = serializers.CharField(source="plan.name", read_only=True)
+    user_full_name = serializers.SerializerMethodField()
+    user_username = serializers.CharField(source="user.username", read_only=True)
+    assigned_by = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = WorkoutAssignment
+        fields = [
+            "id", "plan", "plan_name", "user", "user_full_name", "user_username",
+            "assigned_by", "status", "assigned_at",
+        ]
+        read_only_fields = ["id", "plan", "user", "assigned_by", "assigned_at"]
+
+    def get_user_full_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
+
+
 class WorkoutAssignmentSerializer(serializers.ModelSerializer):
     """Used both to assign a plan (POST {"user": <id>}) and to list a
     member's assigned plans in full detail via /api/my-workout-plans/."""

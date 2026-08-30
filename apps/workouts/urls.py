@@ -5,6 +5,7 @@ from .views import (
     DailyExerciseViewSet,
     MyWorkoutPlansView,
     WarmupExerciseViewSet,
+    WorkoutAssignmentViewSet,
     WorkoutDayExerciseViewSet,
     WorkoutDayViewSet,
     WorkoutPlanViewSet,
@@ -12,6 +13,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register("workout-plans", WorkoutPlanViewSet, basename="workout-plan")
+router.register("workout-assignments", WorkoutAssignmentViewSet, basename="workout-assignment")
 # router also auto-generates POST /workout-plans/{id}/assign/ from the @action
 
 warmup_list = WarmupExerciseViewSet.as_view({"get": "list", "post": "create"})

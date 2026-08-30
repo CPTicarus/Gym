@@ -4,12 +4,15 @@ from rest_framework import generics, permissions, viewsets
 from rest_framework.filters import SearchFilter
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .permissions import IsAdmin, IsStaff
+from .permissions import IsAdmin, IsAdminOrAccounting, IsStaff
 from .serializers import (
     CustomTokenObtainPairSerializer,
+    MemberCreateSerializer,
+    MembershipUpdateSerializer,
     MeSerializer,
     RegisterSerializer,
     StaffCreateSerializer,
+    UserAdminSerializer,
     UserSerializer,
 )
 
@@ -48,25 +51,48 @@ class MeView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     """
-    The staff dashboard's user directory — every staff role can reach this,
-    but sees a different slice of it:
-      - admin: every user, any role
-      - trainer / accounting: members only (their clients / billing scope)
+    The staff dashboard's user directory. Every staff role can reach it,
+    but sees and can do different things:
+
+      READ   admin: every user, any role
+             trainer / accounting: members only (their clients / billing scope)
+      CREATE admin, accounting — front-desk member intake (always creates a
+             MEMBER; staff accounts go through POST /auth/staff/ instead)
+      UPDATE admin: full profile, role, membership, active flag
+             accounting: membership dates only (see MembershipUpdateSerializer)
+             trainer: not allowed — read-only
 
       GET /api/users/?role=trainer   meaningful for admin; others are already scoped to members
       GET /api/users/?search=jane
+
+    Deliberately no DELETE: removing a user would cascade into their workout
+    and diet assignments and lose history. Deactivate via `is_active` instead.
     """
 
-    serializer_class = UserSerializer
     permission_classes = [IsStaff]
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ["role"]
+    filterset_fields = ["role", "is_active"]
     search_fields = ["username", "email", "first_name", "last_name", "phone_number"]
+    http_method_names = ["get", "post", "patch", "head", "options"]
 
     def get_queryset(self):
         user = self.request.user
         if user.is_gym_admin:
             return User.objects.all()
         return User.objects.filter(role=User.Role.MEMBER)
+
+    def get_permissions(self):
+        if self.action in ("create", "partial_update", "update"):
+            return [IsAdminOrAccounting()]
+        return [IsStaff()]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return MemberCreateSerializer
+        if self.action in ("partial_update", "update"):
+            # Accounting gets the narrow membership-only serializer, so it
+            # can renew someone without being able to edit profiles or roles.
+            return UserAdminSerializer if self.request.user.is_gym_admin else MembershipUpdateSerializer
+        return UserSerializer

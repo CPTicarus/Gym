@@ -15,6 +15,7 @@ import MyWorkoutPlansPage from "../pages/my/MyWorkoutPlansPage.jsx";
 import PlanBuilderPage from "../pages/plans/PlanBuilderPage.jsx";
 import PlanListPage from "../pages/plans/PlanListPage.jsx";
 import SettingsPage from "../pages/settings/SettingsPage.jsx";
+import UserDetailPage from "../pages/users/UserDetailPage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
 // Index route ("/") sends each role to its own home instead of a fixed
@@ -36,6 +37,7 @@ export default function AppRoutes() {
           {/* Staff-only: user dashboard */}
           <Route element={<ProtectedRoute allowedRoles={["trainer", "admin", "accounting"]} />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/users/:userId" element={<UserDetailPage />} />
           </Route>
 
           {/* Trainer/admin: plan + diet builders */}

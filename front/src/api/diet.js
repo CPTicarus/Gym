@@ -55,3 +55,18 @@ export async function listMyDietPlans(params = {}) {
   const { data } = await axiosClient.get("/my-diet-plans/", { params });
   return data;
 }
+
+// ---- Staff-facing assignments (who has which plan) ----
+export async function listDietAssignments(params = {}) {
+  const { data } = await axiosClient.get("/diet-assignments/", { params });
+  return data;
+}
+
+export async function updateDietAssignment(assignmentId, payload) {
+  const { data } = await axiosClient.patch(`/diet-assignments/${assignmentId}/`, payload);
+  return data;
+}
+
+export async function deleteDietAssignment(assignmentId) {
+  await axiosClient.delete(`/diet-assignments/${assignmentId}/`);
+}

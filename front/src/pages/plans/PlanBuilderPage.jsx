@@ -11,12 +11,16 @@ import {
   deleteDailyExercise,
   deleteDayExercise,
   deleteWarmupExercise,
+  deleteWorkoutAssignment,
   deleteWorkoutDay,
   getWorkoutPlan,
+  listWorkoutAssignments,
+  updateWorkoutAssignment,
 } from "../../api/workouts.js";
 import { TrashIcon } from "../../components/common/icons.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
 import ExerciseSection from "../../components/plans/ExerciseSection.jsx";
+import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { WORKOUT_GOAL_LABELS } from "../../constants/planOptions.js";
 
 export default function PlanBuilderPage() {
@@ -30,6 +34,7 @@ export default function PlanBuilderPage() {
   const [isAddingDay, setIsAddingDay] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [assignments, setAssignments] = useState(null);
 
   // Nested writes (add/remove an exercise) change data several levels deep,
   // so we refetch the whole plan afterwards rather than trying to splice
@@ -37,6 +42,11 @@ export default function PlanBuilderPage() {
   const reload = useCallback(async () => {
     const data = await getWorkoutPlan(planId);
     setPlan(data);
+  }, [planId]);
+
+  const loadAssignments = useCallback(async () => {
+    const data = await listWorkoutAssignments({ plan: planId });
+    setAssignments(data.results ?? data);
   }, [planId]);
 
   useEffect(() => {
@@ -49,6 +59,7 @@ export default function PlanBuilderPage() {
         if (cancelled) return;
         setPlan(planData);
         setMoves(movesData);
+        await loadAssignments();
       } catch {
         if (!cancelled) setError("بارگذاری برنامه با مشکل مواجه شد.");
       } finally {
@@ -59,7 +70,7 @@ export default function PlanBuilderPage() {
     return () => {
       cancelled = true;
     };
-  }, [planId]);
+  }, [planId, loadAssignments]);
 
   async function handleAddDay(e) {
     e.preventDefault();
@@ -88,6 +99,7 @@ export default function PlanBuilderPage() {
   async function handleAssign(userId) {
     await assignWorkoutPlan(planId, userId);
     setToast("برنامه با موفقیت اختصاص داده شد.");
+    await loadAssignments();
   }
 
   if (isLoading) return <p className="muted">در حال بارگذاری…</p>;
@@ -199,6 +211,22 @@ export default function PlanBuilderPage() {
           onDelete={async (ex) => {
             await deleteDailyExercise(planId, ex.id);
             await reload();
+          }}
+        />
+      </section>
+
+      {/* Who currently has this plan */}
+      <section className="card plan-section">
+        <h2 className="plan-section-title">اختصاص داده شده به</h2>
+        <PlanAssignments
+          assignments={assignments}
+          onStatusChange={async (a, status) => {
+            await updateWorkoutAssignment(a.id, { status });
+            await loadAssignments();
+          }}
+          onRemove={async (a) => {
+            await deleteWorkoutAssignment(a.id);
+            await loadAssignments();
           }}
         />
       </section>

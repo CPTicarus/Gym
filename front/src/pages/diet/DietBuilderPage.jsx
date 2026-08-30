@@ -5,12 +5,16 @@ import {
   addDietItem,
   addMeal,
   assignDietPlan,
+  deleteDietAssignment,
   deleteDietItem,
   deleteMeal,
   getDietPlan,
+  listDietAssignments,
+  updateDietAssignment,
 } from "../../api/diet.js";
 import { TrashIcon } from "../../components/common/icons.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
+import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { DIET_GOAL_LABELS } from "../../constants/planOptions.js";
 import { formatItemMacros } from "../../utils/planFormat.js";
 
@@ -143,10 +147,16 @@ export default function DietBuilderPage() {
   const [isAddingMeal, setIsAddingMeal] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [assignments, setAssignments] = useState(null);
 
   const reload = useCallback(async () => {
     const data = await getDietPlan(planId);
     setPlan(data);
+  }, [planId]);
+
+  const loadAssignments = useCallback(async () => {
+    const data = await listDietAssignments({ plan: planId });
+    setAssignments(data.results ?? data);
   }, [planId]);
 
   useEffect(() => {
@@ -156,7 +166,9 @@ export default function DietBuilderPage() {
       setError(null);
       try {
         const data = await getDietPlan(planId);
-        if (!cancelled) setPlan(data);
+        if (cancelled) return;
+        setPlan(data);
+        await loadAssignments();
       } catch {
         if (!cancelled) setError("بارگذاری برنامه با مشکل مواجه شد.");
       } finally {
@@ -167,7 +179,7 @@ export default function DietBuilderPage() {
     return () => {
       cancelled = true;
     };
-  }, [planId]);
+  }, [planId, loadAssignments]);
 
   async function handleAddMeal(e) {
     e.preventDefault();
@@ -192,6 +204,7 @@ export default function DietBuilderPage() {
   async function handleAssign(userId) {
     await assignDietPlan(planId, userId);
     setToast("برنامه غذایی با موفقیت اختصاص داده شد.");
+    await loadAssignments();
   }
 
   if (isLoading) return <p className="muted">در حال بارگذاری…</p>;
@@ -304,6 +317,22 @@ export default function DietBuilderPage() {
             {isAddingMeal ? "…" : "+ افزودن وعده"}
           </button>
         </form>
+      </section>
+
+      {/* Who currently has this plan */}
+      <section className="card plan-section">
+        <h2 className="plan-section-title">اختصاص داده شده به</h2>
+        <PlanAssignments
+          assignments={assignments}
+          onStatusChange={async (a, status) => {
+            await updateDietAssignment(a.id, { status });
+            await loadAssignments();
+          }}
+          onRemove={async (a) => {
+            await deleteDietAssignment(a.id);
+            await loadAssignments();
+          }}
+        />
       </section>
 
       {isAssignOpen && (

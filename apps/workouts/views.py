@@ -5,7 +5,7 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsTrainerOrAdmin
+from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
 
 from .models import (
     DailyExercise,
@@ -18,6 +18,7 @@ from .models import (
 from .serializers import (
     DailyExerciseSerializer,
     WarmupExerciseSerializer,
+    WorkoutAssignmentListSerializer,
     WorkoutAssignmentSerializer,
     WorkoutDayExerciseSerializer,
     WorkoutDaySerializer,
@@ -112,6 +113,33 @@ class DailyExerciseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         plan = get_object_or_404(WorkoutPlan, pk=self.kwargs["plan_pk"])
         serializer.save(plan=plan)
+
+
+class WorkoutAssignmentViewSet(viewsets.ModelViewSet):
+    """
+    Staff view of who has which plan — the other direction from the
+    /my-workout-plans/ endpoint members use.
+
+      GET    /api/workout-assignments/?plan=3     who has this plan
+      GET    /api/workout-assignments/?user=12    what this member is doing
+      GET    /api/workout-assignments/?status=active
+      PATCH  /api/workout-assignments/{id}/       {"status": "paused"}
+      DELETE /api/workout-assignments/{id}/       unassign
+
+    Read is open to any staff role (accounting may want to see what a
+    member is on); changing or removing an assignment is trainer/admin.
+    """
+
+    queryset = WorkoutAssignment.objects.all().select_related("plan", "user", "assigned_by")
+    serializer_class = WorkoutAssignmentListSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["plan", "user", "status"]
+    http_method_names = ["get", "patch", "delete", "head", "options"]
+
+    def get_permissions(self):
+        if self.request.method in ("PATCH", "DELETE"):
+            return [IsTrainerOrAdmin()]
+        return [IsStaff()]
 
 
 class MyWorkoutPlansView(generics.ListAPIView):

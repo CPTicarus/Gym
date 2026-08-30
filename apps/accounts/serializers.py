@@ -23,6 +23,85 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "role", "created_at", "is_membership_active"]
 
 
+class UserAdminSerializer(serializers.ModelSerializer):
+    """Admin's full edit view of another user — profile, role, membership
+    window, and active flag. Password is deliberately absent: resetting
+    someone else's password is a separate concern with its own risks, not
+    something to fold into a general profile PATCH."""
+
+    is_membership_active = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id", "username", "email", "first_name", "last_name",
+            "role", "phone_number", "date_of_birth", "gender",
+            "profile_picture", "membership_start_date", "membership_end_date",
+            "is_membership_active", "is_active", "created_at",
+        ]
+        read_only_fields = ["id", "username", "created_at", "is_membership_active"]
+
+
+class MembershipUpdateSerializer(serializers.ModelSerializer):
+    """What accounting is allowed to change: the membership window only.
+    Everything else stays read-only, so billing staff can renew or expire
+    someone without being able to edit profiles or change roles."""
+
+    is_membership_active = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id", "username", "first_name", "last_name", "role",
+            "membership_start_date", "membership_end_date", "is_membership_active",
+        ]
+        read_only_fields = ["id", "username", "first_name", "last_name", "role", "is_membership_active"]
+
+    def validate(self, attrs):
+        start = attrs.get("membership_start_date", getattr(self.instance, "membership_start_date", None))
+        end = attrs.get("membership_end_date", getattr(self.instance, "membership_end_date", None))
+        if start and end and end < start:
+            raise serializers.ValidationError(
+                {"membership_end_date": "End date cannot be earlier than the start date."}
+            )
+        return attrs
+
+
+class MemberCreateSerializer(serializers.ModelSerializer):
+    """Staff-side member intake — creating an account on someone's behalf
+    at the front desk, with their membership window set at the same time.
+    Always creates a MEMBER; staff accounts still go through
+    StaffCreateSerializer."""
+
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+
+    class Meta:
+        model = User
+        fields = [
+            "id", "username", "email", "password", "first_name", "last_name",
+            "phone_number", "date_of_birth", "gender",
+            "membership_start_date", "membership_end_date",
+        ]
+        read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        start = attrs.get("membership_start_date")
+        end = attrs.get("membership_end_date")
+        if start and end and end < start:
+            raise serializers.ValidationError(
+                {"membership_end_date": "End date cannot be earlier than the start date."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        validated_data["role"] = User.Role.MEMBER
+        password = validated_data.pop("password")
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     """Public self sign-up. Always creates a MEMBER — trainer/admin/accounting
     accounts are created by an admin via StaffCreateSerializer instead."""

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import { ROLE_LABELS } from "../../constants/roles.js";
 
 function initials(user) {
@@ -11,12 +13,16 @@ function initials(user) {
  * A single row: avatar initials, name + username, role badge, and a slot
  * (children) for whatever trailing info the page needs — a membership
  * badge on the dashboard, a membership badge + expiry date on Accounting.
+ *
+ * Pass `to` to make the row a link into that user's detail page. It stays
+ * optional so a context without a detail view (or without permission to
+ * reach one) can still render the same row as plain markup.
  */
-export default function UserListItem({ user, children }) {
+export default function UserListItem({ user, to, children }) {
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username;
 
-  return (
-    <div className="user-row">
+  const inner = (
+    <>
       <div className="user-avatar">{initials(user)}</div>
       <div className="user-row-main">
         <span className="user-row-name">{fullName}</span>
@@ -26,6 +32,16 @@ export default function UserListItem({ user, children }) {
         <span className="badge badge-neutral">{ROLE_LABELS[user.role] ?? user.role}</span>
         {children}
       </div>
-    </div>
+    </>
   );
+
+  if (to) {
+    return (
+      <Link to={to} className="user-row user-row-link">
+        {inner}
+      </Link>
+    );
+  }
+
+  return <div className="user-row">{inner}</div>;
 }

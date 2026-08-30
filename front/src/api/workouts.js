@@ -74,3 +74,18 @@ export async function listMyWorkoutPlans(params = {}) {
   const { data } = await axiosClient.get("/my-workout-plans/", { params });
   return data;
 }
+
+// ---- Staff-facing assignments (who has which plan) ----
+export async function listWorkoutAssignments(params = {}) {
+  const { data } = await axiosClient.get("/workout-assignments/", { params });
+  return data;
+}
+
+export async function updateWorkoutAssignment(assignmentId, payload) {
+  const { data } = await axiosClient.patch(`/workout-assignments/${assignmentId}/`, payload);
+  return data;
+}
+
+export async function deleteWorkoutAssignment(assignmentId) {
+  await axiosClient.delete(`/workout-assignments/${assignmentId}/`);
+}

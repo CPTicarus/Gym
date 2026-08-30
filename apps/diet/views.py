@@ -5,10 +5,11 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsTrainerOrAdmin
+from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
 
 from .models import DietAssignment, DietItem, DietPlan, Meal
 from .serializers import (
+    DietAssignmentListSerializer,
     DietAssignmentSerializer,
     DietItemSerializer,
     DietPlanListSerializer,
@@ -76,6 +77,28 @@ class DietItemViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         meal = get_object_or_404(Meal, pk=self.kwargs["meal_pk"], plan_id=self.kwargs["plan_pk"])
         serializer.save(meal=meal)
+
+
+class DietAssignmentViewSet(viewsets.ModelViewSet):
+    """Staff view of who has which diet plan — mirrors
+    WorkoutAssignmentViewSet.
+
+      GET    /api/diet-assignments/?plan=3
+      GET    /api/diet-assignments/?user=12
+      PATCH  /api/diet-assignments/{id}/   {"status": "completed"}
+      DELETE /api/diet-assignments/{id}/   unassign
+    """
+
+    queryset = DietAssignment.objects.all().select_related("plan", "user", "assigned_by")
+    serializer_class = DietAssignmentListSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["plan", "user", "status"]
+    http_method_names = ["get", "patch", "delete", "head", "options"]
+
+    def get_permissions(self):
+        if self.request.method in ("PATCH", "DELETE"):
+            return [IsTrainerOrAdmin()]
+        return [IsStaff()]
 
 
 class MyDietPlansView(generics.ListAPIView):

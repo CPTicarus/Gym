@@ -1,10 +1,17 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import DietItemViewSet, DietPlanViewSet, MealViewSet, MyDietPlansView
+from .views import (
+    DietAssignmentViewSet,
+    DietItemViewSet,
+    DietPlanViewSet,
+    MealViewSet,
+    MyDietPlansView,
+)
 
 router = DefaultRouter()
 router.register("diet-plans", DietPlanViewSet, basename="diet-plan")
+router.register("diet-assignments", DietAssignmentViewSet, basename="diet-assignment")
 # router also auto-generates POST /diet-plans/{id}/assign/ from the @action
 
 meal_list = MealViewSet.as_view({"get": "list", "post": "create"})

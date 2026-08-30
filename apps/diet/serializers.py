@@ -53,6 +53,27 @@ class DietPlanSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
 
 
+class DietAssignmentListSerializer(serializers.ModelSerializer):
+    """Staff-facing, flat counterpart to the member's nested view — same
+    reasoning as WorkoutAssignmentListSerializer."""
+
+    plan_name = serializers.CharField(source="plan.name", read_only=True)
+    user_full_name = serializers.SerializerMethodField()
+    user_username = serializers.CharField(source="user.username", read_only=True)
+    assigned_by = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = DietAssignment
+        fields = [
+            "id", "plan", "plan_name", "user", "user_full_name", "user_username",
+            "assigned_by", "status", "assigned_at",
+        ]
+        read_only_fields = ["id", "plan", "user", "assigned_by", "assigned_at"]
+
+    def get_user_full_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
+
+
 class DietAssignmentSerializer(serializers.ModelSerializer):
     """Used both to assign a plan (POST {"user": <id>}) and to list a
     member's assigned diet plans in full detail via /api/my-diet-plans/."""

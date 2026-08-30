@@ -2,21 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { listAccountingMembers } from "../../api/accounting.js";
 import UserListItem from "../../components/users/UserListItem.jsx";
-
-// Plain Gregorian YYYY/MM/DD with Western digits — matches the numeral
-// convention already used elsewhere in the app. Most Persian apps show
-// dates in the Jalali/Shamsi calendar instead; switching to that is a
-// separate, deliberate decision (needs a small conversion library), not
-// something to slip in silently here.
-function formatDate(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}/${m}/${day}`;
-}
+import { formatDate } from "../../utils/format.js";
 
 export default function AccountingPage() {
   const [members, setMembers] = useState([]);
@@ -88,7 +74,7 @@ export default function AccountingPage() {
         <>
           <div className="user-list">
             {members.map((m) => (
-              <UserListItem key={m.id} user={m}>
+              <UserListItem key={m.id} user={m} to={`/users/${m.id}`}>
                 <span className={`badge ${m.is_membership_active ? "badge-success" : "badge-danger"}`}>
                   {m.is_membership_active ? "فعال" : "غیرفعال"}
                 </span>

@@ -547,6 +547,49 @@
     @apply mb-4 flex items-center gap-2 text-sm;
   }
 
+  /* ---- User detail ---- */
+  .user-row-link {
+    @apply no-underline transition-colors;
+  }
+  .user-row-link:hover {
+    @apply bg-neutral-soft;
+  }
+  .detail-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
+  }
+  .detail-item {
+    @apply flex flex-col gap-0.5;
+  }
+  .detail-value {
+    @apply m-0 text-sm font-semibold;
+  }
+
+  /* ---- Assignment rows (user detail + plan builders) ---- */
+  .assignment-list {
+    @apply flex list-none flex-col gap-2 p-0;
+  }
+  .assignment-row {
+    @apply flex flex-col gap-2 rounded-lg bg-neutral-soft px-3 py-2 sm:flex-row sm:items-center sm:justify-between;
+  }
+  .assignment-row-main {
+    @apply flex min-w-0 flex-col gap-0.5;
+  }
+  .assignment-name {
+    @apply text-sm font-semibold no-underline;
+  }
+  .assignment-name:hover {
+    @apply underline;
+  }
+  .assignment-meta {
+    @apply text-xs;
+  }
+  .assignment-row-end {
+    @apply flex flex-none items-center gap-2;
+  }
+  .select-sm {
+    @apply px-2 py-1 text-[13px];
+  }
+
   /* ---- Auth screen ---- */
   .auth-screen {
     @apply flex min-h-screen flex-col;
