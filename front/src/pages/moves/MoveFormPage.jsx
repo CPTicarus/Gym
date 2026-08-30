@@ -17,6 +17,7 @@ export default function MoveFormPage() {
 
   // Step 1 in create mode, always-visible "info" form in edit mode
   const [name, setName] = useState("");
+  const [alias, setAlias] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [difficulty, setDifficulty] = useState("");
@@ -49,7 +50,8 @@ export default function MoveFormPage() {
         if (cancelled) return;
         setMove(data);
         setName(data.name);
-        setDescription(data.description);
+        setAlias(data.alias ?? "");
+        setDescription(data.description ?? "");
         setCategory(data.category ?? "");
         setDifficulty(data.difficulty ?? "");
         setMediaItems(data.media ?? []);
@@ -76,11 +78,11 @@ export default function MoveFormPage() {
     setIsSubmitting(true);
     try {
       if (isEditMode) {
-        const updated = await updateMove(moveId, { name, description, category, difficulty });
+        const updated = await updateMove(moveId, { name, alias, description, category, difficulty });
         setMove(updated);
         setSaved(true);
       } else {
-        const created = await createMove({ name, description, category, difficulty });
+        const created = await createMove({ name, alias, description, category, difficulty });
         setMove(created);
       }
     } catch (err) {
@@ -140,19 +142,30 @@ export default function MoveFormPage() {
 
           <form className="card form-card" onSubmit={handleSaveInfo} noValidate>
             <label className="field">
-              <span className="label">نام حرکت</span>
+              <span className="label">نام حرکت*</span>
               <input
                 className="input"
                 dir="auto"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="مثلاً پرس سینه"
+                placeholder="پرس سینه"
                 required
               />
             </label>
 
             <label className="field">
-              <span className="label">توضیحات (اختیاری)</span>
+              <span className="label">نام مستعار</span>
+              <input
+                className="input"
+                dir="auto"
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                placeholder=""
+              />
+            </label>
+
+            <label className="field">
+              <span className="label">توضیحات</span>
               <textarea
                 className="textarea"
                 dir="auto"
@@ -165,7 +178,7 @@ export default function MoveFormPage() {
 
             <div className="field-row">
               <label className="field">
-                <span className="label">دسته‌بندی</span>
+                <span className="label">دسته‌بندی*</span>
                 <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
                   <option value="">—</option>
                   {CATEGORIES.map(([value, label]) => (
@@ -177,7 +190,7 @@ export default function MoveFormPage() {
               </label>
 
               <label className="field">
-                <span className="label">سطح دشواری</span>
+                <span className="label">سطح دشواری*</span>
                 <select className="select" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                   <option value="">—</option>
                   {DIFFICULTIES.map(([value, label]) => (

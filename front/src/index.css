@@ -398,6 +398,12 @@
   .move-card-title {
     @apply my-0.5 mb-2.5 text-[17px];
   }
+  /* Pulls up into the title's own mb-2.5 so name+alias read as one tight
+     group; when alias is absent, that mb-2.5 is untouched, so spacing
+     before the badge doesn't change. */
+  .move-card-alias {
+    @apply -mt-2 mb-1 block text-xs text-muted;
+  }
   .media-list {
     @apply mb-5 flex list-none flex-col gap-2 p-0;
   }

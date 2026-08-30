@@ -26,7 +26,7 @@ class MoveViewSet(viewsets.ModelViewSet):
     permission_classes = [IsTrainerOrAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["category", "difficulty"]
-    search_fields = ["name", "description"]
+    search_fields = ["name", "alias", "description"]
 
     def get_serializer_class(self):
         return MoveListSerializer if self.action == "list" else MoveSerializer

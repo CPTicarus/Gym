@@ -27,7 +27,7 @@ class MoveListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Move
-        fields = ["id", "name", "category", "difficulty"]
+        fields = ["id", "name", "alias", "category", "difficulty"]
 
 
 class MoveSerializer(serializers.ModelSerializer):
@@ -39,7 +39,7 @@ class MoveSerializer(serializers.ModelSerializer):
     class Meta:
         model = Move
         fields = [
-            "id", "name", "description", "category", "difficulty",
+            "id", "name", "alias", "description", "category", "difficulty",
             "created_by", "media", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]

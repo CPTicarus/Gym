@@ -100,7 +100,7 @@ export default function ExerciseSection({
             <option value="">— انتخاب حرکت —</option>
             {moves.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.name}
+                {m.alias ? `${m.name} (${m.alias})` : m.name}
               </option>
             ))}
           </select>

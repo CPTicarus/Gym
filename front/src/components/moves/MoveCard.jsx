@@ -20,6 +20,7 @@ export default function MoveCard({ move, editable }) {
     >
       {move.category && <span className="eyebrow">{CATEGORY_LABELS[move.category] ?? move.category}</span>}
       <h3 className="move-card-title">{move.name}</h3>
+      {move.alias && <span className="move-card-alias">{move.alias}</span>}
       {move.difficulty && (
         <span className={`badge badge-${variant}`}>{DIFFICULTY_LABELS[move.difficulty] ?? move.difficulty}</span>
       )}
