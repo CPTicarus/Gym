@@ -97,7 +97,7 @@ export default function MoveListPage() {
       ) : (
         <div className="move-grid">
           {moves.map((move) => (
-            <MoveCard key={move.id} move={move} />
+            <MoveCard key={move.id} move={move} editable={canManageMoves} />
           ))}
         </div>
       )}

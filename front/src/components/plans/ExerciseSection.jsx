@@ -110,7 +110,7 @@ export default function ExerciseSection({
               className="input"
               type="number"
               min="0"
-              dir="ltr"
+              dir="auto"
               placeholder="ست"
               aria-label="تعداد ست"
               value={sets}
@@ -120,7 +120,7 @@ export default function ExerciseSection({
               className="input"
               type="number"
               min="0"
-              dir="ltr"
+              dir="auto"
               placeholder="تکرار"
               aria-label="تعداد تکرار"
               value={reps}
@@ -130,7 +130,7 @@ export default function ExerciseSection({
               className="input"
               type="number"
               min="0"
-              dir="ltr"
+              dir="auto"
               placeholder="ثانیه"
               aria-label="مدت به ثانیه"
               value={duration}
@@ -141,7 +141,7 @@ export default function ExerciseSection({
                 className="input"
                 type="number"
                 min="0"
-                dir="ltr"
+                dir="auto"
                 placeholder="استراحت"
                 aria-label="استراحت به ثانیه"
                 value={rest}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { createMember } from "../../api/users.js";
+import JalaliDateInput from "../common/JalaliDateInput.jsx";
 import Modal from "../common/Modal.jsx";
 
 function formatApiError(data) {
@@ -8,6 +9,25 @@ function formatApiError(data) {
   const [field, value] = Object.entries(data)[0];
   const message = Array.isArray(value) ? value[0] : String(value);
   return field === "username" ? `نام کاربری: ${message}` : message;
+}
+
+function isoFromDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// New members are overwhelmingly month-long memberships starting today —
+// prefilling that saves the front desk two taps on the common case, and
+// both fields stay editable for the exceptions.
+const MEMBERSHIP_LENGTH_DAYS = 30;
+
+function defaultMembershipDates() {
+  const start = new Date();
+  const end = new Date();
+  end.setDate(end.getDate() + MEMBERSHIP_LENGTH_DAYS);
+  return { membership_start_date: isoFromDate(start), membership_end_date: isoFromDate(end) };
 }
 
 export default function AddMemberModal({ onClose, onCreated }) {
@@ -18,8 +38,7 @@ export default function AddMemberModal({ onClose, onCreated }) {
     last_name: "",
     email: "",
     phone_number: "",
-    membership_start_date: "",
-    membership_end_date: "",
+    ...defaultMembershipDates(),
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -126,22 +145,16 @@ export default function AddMemberModal({ onClose, onCreated }) {
         <div className="field-row">
           <label className="field">
             <span className="label">شروع عضویت</span>
-            <input
-              className="input"
-              type="date"
-              dir="ltr"
+            <JalaliDateInput
               value={form.membership_start_date}
-              onChange={(e) => set("membership_start_date", e.target.value)}
+              onChange={(value) => set("membership_start_date", value)}
             />
           </label>
           <label className="field">
             <span className="label">معتبر تا</span>
-            <input
-              className="input"
-              type="date"
-              dir="ltr"
+            <JalaliDateInput
               value={form.membership_end_date}
-              onChange={(e) => set("membership_end_date", e.target.value)}
+              onChange={(value) => set("membership_end_date", value)}
             />
           </label>
         </div>

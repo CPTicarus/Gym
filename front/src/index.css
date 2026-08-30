@@ -298,6 +298,26 @@
   .textarea {
     @apply resize-y font-sans;
   }
+  /* react-multi-date-picker's popover trigger — the input itself already
+     gets our .input look via inputClass; these just make the (otherwise
+     inline-block) wrapper spans fill the field width like every other
+     control, and give the clear button (below) something to anchor to. */
+  .jalali-date-input {
+    @apply relative block w-full;
+  }
+  .jalali-date-input-trigger {
+    @apply block w-full;
+  }
+  .jalali-date-input-trigger .input {
+    @apply w-full cursor-pointer;
+  }
+  .jalali-date-clear {
+    @apply absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-base leading-none text-muted;
+    inset-inline-end: 0.5rem;
+  }
+  .jalali-date-clear:hover {
+    @apply bg-neutral-soft text-ink;
+  }
   .form-actions {
     @apply mt-2 flex justify-end;
   }
@@ -366,6 +386,15 @@
     @apply rounded-lg border border-line bg-surface p-4 shadow-card;
     border-inline-start: 4px solid var(--color-ink);
   }
+  /* touch-manipulation drops the ~300ms tap delay and (crucially) the
+     double-tap-to-zoom gesture, so a real double-tap reaches onDoubleClick
+     instead of being eaten by the browser. */
+  .move-card-editable {
+    @apply touch-manipulation cursor-pointer transition-colors;
+  }
+  .move-card-editable:hover {
+    @apply bg-neutral-soft;
+  }
   .move-card-title {
     @apply my-0.5 mb-2.5 text-[17px];
   }
@@ -381,22 +410,28 @@
     @apply flex flex-col gap-2;
   }
   .user-row {
-    @apply flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 shadow-card sm:flex-row sm:items-center;
+    @apply flex items-center gap-3 rounded-lg border border-line bg-surface p-4 shadow-card;
   }
   .user-avatar {
     @apply flex h-10 w-10 flex-none items-center justify-center rounded-full bg-neutral-soft text-sm font-bold text-ink;
   }
+  /* Wraps main + end so they stay next to the avatar at every width — end
+     drops to its own line under main when space is tight, instead of the
+     avatar getting a full-width line to itself (see UserListItem.jsx). */
+  .user-row-body {
+    @apply flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5;
+  }
   .user-row-main {
-    @apply flex flex-1 flex-col gap-0.5;
+    @apply flex min-w-0 flex-col gap-0.5;
   }
   .user-row-name {
-    @apply text-[15px] font-semibold;
+    @apply truncate text-[15px] font-semibold;
   }
   .user-row-sub {
-    @apply text-xs;
+    @apply truncate text-xs;
   }
   .user-row-end {
-    @apply flex flex-wrap items-center gap-2;
+    @apply flex flex-none flex-wrap items-center gap-2;
   }
   .user-row-date {
     @apply text-xs;

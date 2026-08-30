@@ -9,6 +9,7 @@ import {
   updateWorkoutAssignment,
 } from "../../api/workouts.js";
 import { TrashIcon } from "../../components/common/icons.jsx";
+import JalaliDateInput from "../../components/common/JalaliDateInput.jsx";
 import {
   ASSIGNMENT_STATUSES,
   ASSIGNMENT_STATUS_VARIANT,
@@ -204,23 +205,11 @@ export default function UserDetailPage() {
               <div className="field-row">
                 <label className="field">
                   <span className="label">تاریخ شروع</span>
-                  <input
-                    className="input"
-                    type="date"
-                    dir="ltr"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
+                  <JalaliDateInput value={startDate} onChange={setStartDate} />
                 </label>
                 <label className="field">
                   <span className="label">معتبر تا</span>
-                  <input
-                    className="input"
-                    type="date"
-                    dir="ltr"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
+                  <JalaliDateInput value={endDate} onChange={setEndDate} />
                 </label>
               </div>
 

@@ -86,7 +86,7 @@ function ItemForm({ onAdd, itemCount }) {
           className="input"
           type="number"
           min="0"
-          dir="ltr"
+          dir="auto"
           placeholder="کالری"
           aria-label="کالری"
           value={calories}
@@ -97,7 +97,7 @@ function ItemForm({ onAdd, itemCount }) {
           type="number"
           min="0"
           step="0.1"
-          dir="ltr"
+          dir="auto"
           placeholder="پروتئین"
           aria-label="پروتئین به گرم"
           value={protein}
@@ -108,7 +108,7 @@ function ItemForm({ onAdd, itemCount }) {
           type="number"
           min="0"
           step="0.1"
-          dir="ltr"
+          dir="auto"
           placeholder="کربو"
           aria-label="کربوهیدرات به گرم"
           value={carbs}
@@ -119,7 +119,7 @@ function ItemForm({ onAdd, itemCount }) {
           type="number"
           min="0"
           step="0.1"
-          dir="ltr"
+          dir="auto"
           placeholder="چربی"
           aria-label="چربی به گرم"
           value={fat}

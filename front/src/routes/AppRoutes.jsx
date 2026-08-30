@@ -47,6 +47,7 @@ export default function AppRoutes() {
             <Route path="/diet" element={<DietListPage />} />
             <Route path="/diet/:planId" element={<DietBuilderPage />} />
             <Route path="/moves/new" element={<MoveFormPage />} />
+            <Route path="/moves/:moveId/edit" element={<MoveFormPage />} />
           </Route>
 
           {/* Admin + accounting only */}

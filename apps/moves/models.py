@@ -28,7 +28,7 @@ class Move(models.Model):
         ADVANCED = "advanced", "Advanced"
 
     name = models.CharField(max_length=100)
-    description = models.TextField()
+    description = models.TextField(blank=True)
     category = models.CharField(max_length=20, choices=Category.choices, blank=True)
     difficulty = models.CharField(max_length=20, choices=Difficulty.choices, blank=True)
 

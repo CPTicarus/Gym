@@ -25,8 +25,18 @@ export async function fetchAllMoves() {
   return all;
 }
 
+export async function getMove(moveId) {
+  const { data } = await axiosClient.get(`/moves/${moveId}/`);
+  return data;
+}
+
 export async function createMove(payload) {
   const { data } = await axiosClient.post("/moves/", payload);
+  return data;
+}
+
+export async function updateMove(moveId, payload) {
+  const { data } = await axiosClient.patch(`/moves/${moveId}/`, payload);
   return data;
 }
 
