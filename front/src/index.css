@@ -1,0 +1,656 @@
+/* =======================================================================
+   REBRAND THIS FILE TO REUSE THE APP FOR A DIFFERENT GYM
+   ---------------------------------------------------------------------
+   Everything below the @theme block is component styling built from
+   these tokens via Tailwind's @apply — change a color here and every
+   button/card/badge/nav that uses it updates automatically, in both
+   light and dark mode, with no other file touching a color value.
+
+   Why this works with Tailwind specifically: in Tailwind v4, @theme
+   doesn't bake colors into the generated utility CSS the way v3's
+   tailwind.config.js did. `bg-accent` compiles to
+   `background-color: var(--color-accent)` — a *reference*, not a
+   literal value — so the exact same compiled CSS can be re-themed at
+   runtime just by changing what --color-accent resolves to. That's
+   also exactly how the light/dark split below works: same variable
+   name, different value depending on [data-theme].
+======================================================================= */
+
+@import "tailwindcss";
+
+/* Tailwind's dark: variant follows our ThemeContext's data-theme
+   attribute (see src/context/ThemeContext.jsx) rather than
+   prefers-color-scheme directly — the in-app toggle and the
+   system-preference default both flow through the same attribute. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-sans: "Vazirmatn", "Segoe UI", sans-serif;
+  --font-brand: "Lalezar", "Vazirmatn", sans-serif;
+
+  /* ---- Light theme (default) ---- */
+  --color-canvas: #f5f6f3;
+  --color-surface: #ffffff;
+  --color-ink: #15181b;
+  --color-muted: #6b7280;
+  --color-line: #e4e6e1;
+
+  --color-accent: #ff4b2b;
+  --color-accent-ink: #ffffff;
+  --color-accent-dark: #c7371c;
+  --color-accent-soft: #ff4b2b1f;
+
+  --color-success: #1f9d55;
+  --color-success-soft: #e8f6ee;
+  --color-danger: #d92d20;
+  --color-danger-soft: #fdecea;
+  --color-neutral-soft: #eef0ec;
+
+  /* Sidebar / bottom-nav / auth panel — a constant dark "frame" that
+     does NOT flip with the theme (see [data-theme="dark"] below: these
+     two are deliberately absent from that override). */
+  --color-chrome: #15181b;
+  --color-chrome-ink: #f5f6f3;
+
+  --shadow-card: 0 1px 2px rgba(15, 18, 20, 0.06), 0 8px 24px -14px rgba(15, 18, 20, 0.18);
+}
+
+[data-theme="dark"] {
+  --color-canvas: #111214;
+  --color-surface: #1a1c1f;
+  --color-ink: #f2f3f1;
+  --color-muted: #9aa0a6;
+  --color-line: #2b2e32;
+
+  --color-accent: #ff6a4d;
+  --color-accent-ink: #16110e;
+  --color-accent-dark: #e14f32;
+  --color-accent-soft: #ff6a4d29;
+
+  --color-success: #34d399;
+  --color-success-soft: #34d39924;
+  --color-danger: #f87171;
+  --color-danger-soft: #f8717124;
+  --color-neutral-soft: #24262a;
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 26px -18px rgba(0, 0, 0, 0.6);
+}
+
+/* =======================================================================
+   Base
+======================================================================= */
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink;
+    line-height: 1.7; /* Persian script wants more breathing room than Latin's usual 1.5 */
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-sans font-extrabold;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* A bidi-isolated span for inherently left-to-right content (URLs, etc.)
+   embedded in RTL text, so it doesn't visually reorder. */
+@utility ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+}
+
+/* The app is RTL-only (dir="rtl" on <html>), so the drawer attaches at
+   the inline-start edge (the right side) and this is a fixed direction —
+   translateX(100%) pushes it off-screen toward the right. Supporting LTR
+   later would mean flipping the sign, not just swapping inset-inline-start. */
+@keyframes drawer-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* =======================================================================
+   Components — composed from the tokens above via @apply. JSX className
+   values are unchanged from the plain-CSS version; only how these
+   classes are authored changed. New pages (workout/diet builder,
+   accounting) should reach for Tailwind utilities directly in JSX
+   instead of adding more classes here, unless a pattern repeats 3+ times.
+======================================================================= */
+
+@layer components {
+  /* ---- App shell ---- */
+  .app-shell {
+    @apply flex min-h-screen flex-col;
+  }
+  .main {
+    @apply flex min-w-0 flex-1 flex-col;
+  }
+  .sidebar {
+    @apply hidden;
+  }
+  .nav {
+    @apply flex flex-col gap-1;
+  }
+  .nav-link {
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-white/85 no-underline;
+  }
+  .nav-link:hover {
+    @apply bg-white/10 text-white;
+  }
+  .nav-link.is-active {
+    @apply bg-accent text-white;
+  }
+  .sidebar-footer {
+    @apply mt-auto text-xs;
+  }
+  .muted {
+    @apply text-muted;
+  }
+  .topbar {
+    @apply sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface px-4 py-3;
+  }
+  .topbar-start {
+    @apply flex items-center gap-2;
+  }
+  .topbar-menu-btn {
+    @apply inline-flex;
+  }
+  .topbar-brand {
+    @apply inline-flex;
+  }
+  .user-chip {
+    @apply flex items-center gap-2;
+  }
+  .topbar-secondary {
+    @apply flex items-center gap-2;
+  }
+  .user-name {
+    @apply text-sm font-semibold;
+  }
+  .content {
+    @apply flex-1 px-4 py-4;
+  }
+  .page-loading {
+    @apply px-4 py-12 text-center text-muted;
+  }
+
+  /* Mobile nav drawer — replaces a bottom tab bar, since the nav now has
+     enough sections (users, moves, plans, diet, accounting, settings)
+     that a bottom bar would be too cramped on a small screen. */
+  .drawer-backdrop {
+    @apply fixed inset-0 z-30 bg-black/50;
+  }
+  .drawer-panel {
+    @apply fixed inset-y-0 z-40 flex w-72 max-w-[80vw] flex-col gap-6 overflow-y-auto bg-chrome px-5 py-5 text-chrome-ink shadow-2xl;
+    inset-inline-start: 0;
+    animation: drawer-slide-in 0.18s ease-out;
+  }
+  .drawer-header {
+    @apply mb-1 flex items-center justify-between;
+  }
+  .drawer-footer {
+    @apply mt-auto flex items-center justify-between gap-2 border-t border-white/10 pt-4;
+  }
+
+  /* ---- Brand ---- */
+  .brand-mark {
+    @apply font-brand text-lg font-normal text-chrome-ink;
+  }
+  .brand-mark-lg {
+    @apply text-2xl;
+  }
+
+  /* ---- Buttons ---- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-bold no-underline transition-colors;
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+  .btn-primary {
+    @apply bg-accent text-accent-ink;
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply bg-accent-dark;
+  }
+  .btn-secondary {
+    @apply bg-ink text-canvas;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    @apply opacity-85;
+  }
+  .btn-ghost {
+    @apply border border-line bg-transparent text-ink;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply bg-neutral-soft;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-[13px];
+  }
+  .btn-block {
+    @apply w-full;
+  }
+  .btn-label {
+    @apply inline;
+  }
+  .icon-btn {
+    @apply inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line bg-transparent text-ink;
+  }
+  .icon-btn:hover {
+    @apply bg-neutral-soft;
+  }
+  .icon-btn-inverse {
+    @apply border-white/25 text-white;
+  }
+  .icon-btn-inverse:hover {
+    @apply bg-white/10;
+  }
+
+  /* ---- Forms ---- */
+  .field {
+    @apply mb-4 flex flex-col gap-1.5;
+  }
+  .field-row {
+    @apply grid grid-cols-1 gap-3;
+  }
+  .field-divider {
+    @apply -mt-1 mb-3 text-center text-xs text-muted;
+  }
+  .label {
+    @apply text-[13px] font-semibold text-muted;
+  }
+  .input,
+  .select,
+  .textarea {
+    @apply rounded-lg border border-line bg-surface px-3 py-2.5 text-ink;
+  }
+  .input:disabled,
+  .select:disabled,
+  .textarea:disabled {
+    @apply cursor-not-allowed bg-neutral-soft text-muted;
+  }
+  .textarea {
+    @apply resize-y font-sans;
+  }
+  .form-actions {
+    @apply mt-2 flex justify-end;
+  }
+  .error-text {
+    @apply my-1 mb-4 rounded-lg bg-danger-soft px-3 py-2 text-[13px] font-semibold text-danger;
+  }
+
+  /* ---- Cards / badges ---- */
+  .card {
+    @apply rounded-[10px] border border-line bg-surface p-5 shadow-card;
+  }
+  .form-card {
+    @apply max-w-[480px];
+  }
+  .badge {
+    @apply inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)];
+  }
+  .badge-neutral {
+    @apply bg-neutral-soft text-ink;
+  }
+  .badge-success {
+    @apply bg-success-soft text-success;
+  }
+  .badge-accent {
+    @apply bg-accent-soft text-accent-dark;
+  }
+  .badge-danger {
+    @apply bg-danger-soft text-danger;
+  }
+  .badge-role {
+    @apply bg-chrome text-chrome-ink shadow-none;
+  }
+  .eyebrow {
+    @apply mb-1.5 block text-xs font-bold text-muted;
+  }
+
+  /* ---- Page layout helpers ---- */
+  .page-header {
+    @apply mb-5 flex flex-col items-start gap-3;
+  }
+  .page-header .btn {
+    @apply w-full justify-center;
+  }
+  .page-title {
+    @apply text-[22px];
+  }
+  .page-subtitle {
+    @apply mt-1.5 text-sm text-muted;
+  }
+  .form-page .page-title {
+    @apply mb-1;
+  }
+  .form-page .page-subtitle {
+    @apply mb-5;
+  }
+  .filter-bar {
+    @apply mb-5 flex flex-col gap-2.5;
+  }
+  .empty-state {
+    @apply flex flex-col items-center gap-4 rounded-[10px] border border-dashed border-line px-5 py-10 text-center text-muted;
+  }
+  .move-grid {
+    @apply grid grid-cols-1 gap-3;
+  }
+  .move-card {
+    @apply rounded-lg border border-line bg-surface p-4 shadow-card;
+    border-inline-start: 4px solid var(--color-ink);
+  }
+  .move-card-title {
+    @apply my-0.5 mb-2.5 text-[17px];
+  }
+  .media-list {
+    @apply mb-5 flex list-none flex-col gap-2 p-0;
+  }
+  .media-list-item {
+    @apply flex items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-[13px];
+  }
+
+  /* ---- User lists (dashboard, accounting) ---- */
+  .user-list {
+    @apply flex flex-col gap-2;
+  }
+  .user-row {
+    @apply flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 shadow-card sm:flex-row sm:items-center;
+  }
+  .user-avatar {
+    @apply flex h-10 w-10 flex-none items-center justify-center rounded-full bg-neutral-soft text-sm font-bold text-ink;
+  }
+  .user-row-main {
+    @apply flex flex-1 flex-col gap-0.5;
+  }
+  .user-row-name {
+    @apply text-[15px] font-semibold;
+  }
+  .user-row-sub {
+    @apply text-xs;
+  }
+  .user-row-end {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  .user-row-date {
+    @apply text-xs;
+  }
+  .pagination {
+    @apply mt-4 flex items-center justify-between gap-3;
+  }
+  .pagination-count {
+    @apply text-xs;
+  }
+  .success-text {
+    @apply my-1 mb-4 rounded-lg bg-success-soft px-3 py-2 text-[13px] font-semibold text-success;
+  }
+
+  /* ---- Modal ---- */
+  .modal-backdrop {
+    @apply fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6;
+  }
+  .modal-panel {
+    @apply flex max-h-[85vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-2xl bg-surface shadow-2xl sm:rounded-2xl;
+  }
+  .modal-header {
+    @apply flex flex-none items-center justify-between border-b border-line px-5 py-4;
+  }
+  .modal-title {
+    @apply text-[17px] font-extrabold;
+  }
+  .modal-body {
+    @apply flex-1 overflow-y-auto px-5 py-4;
+  }
+
+  /* ---- Plan list ---- */
+  .plan-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3;
+  }
+  .plan-card {
+    @apply flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 no-underline shadow-card transition-colors;
+    border-inline-start: 4px solid var(--color-accent);
+  }
+  .plan-card:hover {
+    @apply bg-neutral-soft;
+  }
+  .plan-card-head {
+    @apply flex items-start justify-between gap-2;
+  }
+  .plan-card-title {
+    @apply text-[17px];
+  }
+  .back-link {
+    @apply mb-2 inline-block text-[13px] no-underline;
+  }
+
+  /* ---- Plan builder sections ---- */
+  .plan-section {
+    @apply mb-4;
+  }
+  .plan-section-title {
+    @apply mb-1 text-[18px];
+  }
+  .plan-section-hint {
+    @apply mb-3 text-[13px];
+  }
+  .plan-description {
+    @apply mb-3 text-sm;
+  }
+  .section-heading {
+    @apply mt-5 mb-2 text-[15px];
+  }
+  .day-block {
+    @apply mt-3 rounded-lg border border-line p-3;
+  }
+  .day-block-head {
+    @apply mb-2 flex items-center justify-between gap-2;
+  }
+  .day-block-title {
+    @apply text-[15px] font-bold;
+  }
+  .meal-time {
+    @apply text-xs font-normal;
+  }
+  .add-day-form {
+    @apply mt-4 flex flex-col gap-2 border-t border-line pt-4 sm:flex-row;
+  }
+  .add-day-form .input {
+    @apply flex-1;
+  }
+  .meal-time-input {
+    @apply sm:w-32;
+  }
+
+  /* ---- Exercise / food item rows ---- */
+  .exercise-list {
+    @apply flex list-none flex-col gap-2 p-0;
+  }
+  .exercise-row {
+    @apply flex items-start justify-between gap-2 rounded-lg bg-neutral-soft px-3 py-2;
+  }
+  .exercise-row-main {
+    @apply flex min-w-0 flex-col gap-0.5;
+  }
+  .exercise-name {
+    @apply text-sm font-semibold;
+  }
+  .exercise-detail {
+    @apply text-xs;
+  }
+  .exercise-notes {
+    @apply text-xs italic;
+  }
+  .exercise-empty {
+    @apply py-2 text-[13px];
+  }
+  .exercise-add-form {
+    @apply mt-3 flex flex-col gap-2 border-t border-line pt-3;
+  }
+  .exercise-add-numbers {
+    @apply grid grid-cols-2 gap-2 sm:grid-cols-4;
+  }
+  .item-add-top {
+    @apply grid grid-cols-1 gap-2 sm:grid-cols-2;
+  }
+  .icon-btn-sm {
+    @apply h-8 w-8;
+  }
+
+  /* ---- Assign modal ---- */
+  .assign-search {
+    @apply mb-3 w-full;
+  }
+  .assign-list {
+    @apply flex list-none flex-col gap-2 p-0;
+  }
+  .assign-row {
+    @apply flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2;
+  }
+  .assign-row-main {
+    @apply flex min-w-0 flex-col;
+  }
+  .assign-name {
+    @apply text-sm font-semibold;
+  }
+  .assign-username {
+    @apply text-xs;
+  }
+
+  /* ---- Checkbox ---- */
+  .checkbox-field {
+    @apply mb-4 flex items-center gap-2 text-sm;
+  }
+
+  /* ---- Auth screen ---- */
+  .auth-screen {
+    @apply flex min-h-screen flex-col;
+  }
+  .auth-brand {
+    @apply bg-chrome px-5 py-6 text-chrome-ink;
+  }
+  .auth-brand-inner {
+    @apply mx-auto max-w-[420px];
+  }
+  .auth-brand-header {
+    @apply flex items-center justify-between;
+  }
+  .auth-tagline {
+    @apply mt-2.5 text-base font-semibold text-chrome-ink;
+  }
+  .auth-rule {
+    @apply my-4 h-1 w-12 rounded-sm bg-accent;
+  }
+  .auth-note {
+    @apply text-[13px] leading-8 text-white/70;
+  }
+  .auth-form-panel {
+    @apply flex flex-1 items-start justify-center bg-canvas px-5 pb-10 pt-7;
+  }
+  .auth-form {
+    @apply w-full max-w-[360px];
+  }
+  .form-title {
+    @apply mb-1.5 text-[22px];
+  }
+  .form-subtitle {
+    @apply mb-6 text-sm text-muted;
+  }
+
+  /* =====================================================================
+     Desktop upgrade (min-width: 860px) — sidebar + persistent topbar
+     replace the bottom tab bar; auth screen becomes a true split panel.
+  ===================================================================== */
+  @media (min-width: 860px) {
+    .app-shell {
+      @apply grid grid-cols-[240px_1fr];
+    }
+    .sidebar {
+      @apply flex flex-col gap-8 bg-chrome px-5 py-6 text-chrome-ink;
+    }
+    .topbar-brand {
+      @apply hidden;
+    }
+    .topbar-menu-btn {
+      @apply hidden;
+    }
+    .drawer-backdrop,
+    .drawer-panel {
+      @apply hidden;
+    }
+    .topbar {
+      @apply px-8 py-4;
+    }
+    .content {
+      @apply px-8 pb-8;
+    }
+    .page-header {
+      @apply flex-row items-start justify-between;
+    }
+    .page-header .btn {
+      @apply w-auto;
+    }
+    .page-title {
+      @apply text-[26px];
+    }
+    .filter-bar {
+      @apply flex-row;
+    }
+    .filter-bar .input {
+      @apply flex-1;
+    }
+    .field-row {
+      @apply grid-cols-2;
+    }
+    .move-grid {
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .brand-mark-lg {
+      @apply text-4xl;
+    }
+    .auth-screen {
+      @apply flex-row;
+    }
+    .auth-brand {
+      @apply flex flex-1 items-center justify-center p-12;
+    }
+    .auth-form-panel {
+      @apply flex-1 items-center p-12;
+    }
+  }
+
+  /* Very small phones: hide secondary text so the top bar doesn't crowd */
+  @media (max-width: 380px) {
+    .user-name {
+      @apply hidden;
+    }
+    .btn-label {
+      @apply hidden;
+    }
+  }
+}
