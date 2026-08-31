@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { listMyWorkoutPlans } from "../../api/workouts.js";
 import {
@@ -83,6 +84,12 @@ export default function MyWorkoutPlansPage() {
                 <p className="muted plan-section-hint">{WORKOUT_GOAL_LABELS[plan.goal] ?? plan.goal}</p>
               )}
               {plan.description && <p className="plan-description">{plan.description}</p>}
+
+              {a.status === "active" && (
+                <Link to={`/my-plans/session/${a.id}`} className="btn btn-primary btn-block">
+                  من در باشگاهم
+                </Link>
+              )}
 
               <h3 className="day-block-title section-heading">گرم کردن</h3>
               <ExerciseReadOnlyList

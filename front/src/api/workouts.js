@@ -75,6 +75,12 @@ export async function listMyWorkoutPlans(params = {}) {
   return data;
 }
 
+// Ends today's gym session — advances which day comes up next time.
+export async function finishWorkoutDay(assignmentId) {
+  const { data } = await axiosClient.post(`/my-workout-plans/${assignmentId}/finish-day/`);
+  return data;
+}
+
 // ---- Staff-facing assignments (who has which plan) ----
 export async function listWorkoutAssignments(params = {}) {
   const { data } = await axiosClient.get("/workout-assignments/", { params });

@@ -70,6 +70,13 @@ class WorkoutAssignment(models.Model):
         settings.AUTH_USER_MODEL, related_name="+", on_delete=models.SET_NULL, null=True
     )
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    # Which split day is "up next" in the gym-session flow (warmup -> current_day
+    # -> daily items). Advances when the member finishes a session; wraps back
+    # to the first day after the last. Null means "not set yet" (no days on the
+    # plan when assigned) — the API falls back to the plan's first day.
+    current_day = models.ForeignKey(
+        "WorkoutDay", related_name="+", on_delete=models.SET_NULL, null=True, blank=True
+    )
     assigned_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -77,6 +84,29 @@ class WorkoutAssignment(models.Model):
 
     def __str__(self):
         return f"{self.plan.name} -> {self.user} ({self.status})"
+
+    def active_day(self):
+        """The day to show right now: current_day if it still belongs to
+        this plan, else the plan's first day, else None (no days at all)."""
+        days = list(self.plan.days.all())
+        if not days:
+            return None
+        if self.current_day_id and any(d.id == self.current_day_id for d in days):
+            return self.current_day
+        return days[0]
+
+    def advance_day(self):
+        """Move current_day to the next day in order, wrapping to the first
+        after the last. No-op (returns None) if the plan has no days."""
+        days = list(self.plan.days.all())
+        if not days:
+            return None
+        active = self.active_day()
+        idx = next(i for i, d in enumerate(days) if d.id == active.id)
+        next_day = days[(idx + 1) % len(days)]
+        self.current_day = next_day
+        self.save(update_fields=["current_day"])
+        return next_day
 
 
 class WarmupExercise(_RepsOrDurationMixin, models.Model):

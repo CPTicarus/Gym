@@ -574,6 +574,23 @@
   .exercise-empty {
     @apply py-2 text-[13px];
   }
+  /* ---- Gym-session checklist (member "I'm at the gym" view) ---- */
+  .session-exercise-row {
+    @apply flex w-full touch-manipulation items-center gap-3 rounded-lg bg-neutral-soft px-3 py-2 text-start transition-colors;
+  }
+  .session-exercise-row:hover {
+    @apply bg-line;
+  }
+  .session-exercise-checkbox {
+    @apply flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 border-line text-transparent transition-colors;
+  }
+  .session-exercise-row.is-checked .session-exercise-checkbox {
+    @apply border-success bg-success text-white;
+  }
+  .session-exercise-row.is-checked .exercise-name,
+  .session-exercise-row.is-checked .exercise-detail {
+    @apply text-muted line-through;
+  }
   .exercise-add-form {
     @apply mt-3 flex flex-col gap-2 border-t border-line pt-3;
   }

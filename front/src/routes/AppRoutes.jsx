@@ -10,6 +10,7 @@ import DietBuilderPage from "../pages/diet/DietBuilderPage.jsx";
 import DietListPage from "../pages/diet/DietListPage.jsx";
 import MoveFormPage from "../pages/moves/MoveFormPage.jsx";
 import MoveListPage from "../pages/moves/MoveListPage.jsx";
+import GymSessionPage from "../pages/my/GymSessionPage.jsx";
 import MyDietPlansPage from "../pages/my/MyDietPlansPage.jsx";
 import MyWorkoutPlansPage from "../pages/my/MyWorkoutPlansPage.jsx";
 import PlanBuilderPage from "../pages/plans/PlanBuilderPage.jsx";
@@ -58,6 +59,7 @@ export default function AppRoutes() {
           {/* Member-facing read-only views of what's assigned to them */}
           <Route element={<ProtectedRoute allowedRoles={["member"]} />}>
             <Route path="/my-plans" element={<MyWorkoutPlansPage />} />
+            <Route path="/my-plans/session/:assignmentId" element={<GymSessionPage />} />
             <Route path="/my-diet" element={<MyDietPlansPage />} />
           </Route>
 

@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
 
@@ -160,3 +161,18 @@ class MyWorkoutPlansView(generics.ListAPIView):
         ).prefetch_related(
             "plan__warmup_exercises__move", "plan__days__exercises__move", "plan__daily_exercises__move"
         )
+
+
+class FinishWorkoutDayView(APIView):
+    """A member finishes today's gym session — advances which day the
+    session view shows next time (wraps to the first day after the last).
+
+      POST /api/my-workout-plans/{assignment_id}/finish-day/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, assignment_pk):
+        assignment = get_object_or_404(WorkoutAssignment, pk=assignment_pk, user=request.user)
+        assignment.advance_day()
+        return Response(WorkoutAssignmentSerializer(assignment).data)

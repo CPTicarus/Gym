@@ -139,8 +139,16 @@ class WorkoutAssignmentSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role=User.Role.MEMBER))
     assigned_by = serializers.StringRelatedField(read_only=True)
     plan_detail = WorkoutPlanSerializer(source="plan", read_only=True)
+    # Which day the gym-session view should show right now — resolved
+    # server-side (see WorkoutAssignment.active_day) so the frontend never
+    # has to guess at "current_day is null" or "current_day got deleted".
+    active_day = serializers.SerializerMethodField()
 
     class Meta:
         model = WorkoutAssignment
-        fields = ["id", "plan_detail", "user", "assigned_by", "status", "assigned_at"]
-        read_only_fields = ["id", "assigned_by", "assigned_at", "plan_detail"]
+        fields = ["id", "plan_detail", "user", "assigned_by", "status", "active_day", "assigned_at"]
+        read_only_fields = ["id", "assigned_by", "assigned_at", "plan_detail", "active_day"]
+
+    def get_active_day(self, obj):
+        day = obj.active_day()
+        return WorkoutDaySerializer(day).data if day else None
