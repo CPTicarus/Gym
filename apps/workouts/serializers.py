@@ -16,22 +16,42 @@ from .models import (
 User = get_user_model()
 
 
-class _MoveFieldsMixin:
+class _MoveFieldsMixin(serializers.Serializer):
     """Shared by every exercise-item serializer below: write with a move id,
-    read back a lightweight nested move (name/category/difficulty)."""
+    read back a lightweight nested move (name/category/difficulty).
+
+    Must subclass Serializer (not just `object`) — DRF's metaclass only
+    pulls declared fields from bases that carry their own `_declared_fields`
+    (i.e. bases that went through SerializerMetaclass themselves), so a
+    plain mixin class silently contributes no fields at all.
+    """
 
     move_detail = MoveListSerializer(source="move", read_only=True)
     move = serializers.PrimaryKeyRelatedField(queryset=Move.objects.all())
 
 
-class WarmupExerciseSerializer(_MoveFieldsMixin, serializers.ModelSerializer):
+class _RepsOrDurationValidationMixin:
+    """A move is measured one way or the other — counted reps, or held for
+    a duration (e.g. a plank) — never both. Mirrors MoveMediaSerializer's
+    file-vs-external_url pattern: falls back to the existing instance's
+    values on a PATCH so a partial update can't sneak past this."""
+
+    def validate(self, attrs):
+        reps = attrs.get("reps", getattr(self.instance, "reps", None))
+        duration = attrs.get("duration_seconds", getattr(self.instance, "duration_seconds", None))
+        if reps is not None and duration is not None:
+            raise serializers.ValidationError("Provide either reps or a duration, not both.")
+        return attrs
+
+
+class WarmupExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = WarmupExercise
         fields = ["id", "move", "move_detail", "sets", "reps", "duration_seconds", "order", "notes"]
         read_only_fields = ["id"]
 
 
-class WorkoutDayExerciseSerializer(_MoveFieldsMixin, serializers.ModelSerializer):
+class WorkoutDayExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = WorkoutDayExercise
         fields = [
@@ -41,7 +61,7 @@ class WorkoutDayExerciseSerializer(_MoveFieldsMixin, serializers.ModelSerializer
         read_only_fields = ["id"]
 
 
-class DailyExerciseSerializer(_MoveFieldsMixin, serializers.ModelSerializer):
+class DailyExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = DailyExercise
         fields = ["id", "move", "move_detail", "sets", "reps", "duration_seconds", "order", "notes"]

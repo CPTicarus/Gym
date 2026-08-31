@@ -16,9 +16,11 @@ import {
   getWorkoutPlan,
   listWorkoutAssignments,
   updateWorkoutAssignment,
+  updateWorkoutPlan,
 } from "../../api/workouts.js";
 import { TrashIcon } from "../../components/common/icons.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
+import EditableTitle from "../../components/plans/EditableTitle.jsx";
 import ExerciseSection from "../../components/plans/ExerciseSection.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { WORKOUT_GOAL_LABELS } from "../../constants/planOptions.js";
@@ -113,7 +115,13 @@ export default function PlanBuilderPage() {
           <Link to="/plans" className="muted back-link">
             ← بازگشت به برنامه‌ها
           </Link>
-          <h1 className="page-title">{plan.name}</h1>
+          <EditableTitle
+            value={plan.name}
+            onSave={async (name) => {
+              await updateWorkoutPlan(planId, { name });
+              await reload();
+            }}
+          />
           <p className="page-subtitle">
             {plan.goal ? WORKOUT_GOAL_LABELS[plan.goal] ?? plan.goal : "بدون هدف مشخص"}
             {plan.is_template ? " • الگو" : ""}

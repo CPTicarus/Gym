@@ -364,6 +364,24 @@
   .page-title {
     @apply text-[22px];
   }
+  .editable-title {
+    @apply flex items-center gap-1.5;
+  }
+  .editable-title .page-title {
+    @apply m-0;
+  }
+  .editable-title .icon-btn {
+    @apply text-muted;
+  }
+  .editable-title:hover .icon-btn {
+    @apply text-ink;
+  }
+  .editable-title-form {
+    @apply flex items-center gap-1.5;
+  }
+  .editable-title-form .input {
+    @apply py-1.5 text-[22px] font-extrabold;
+  }
   .page-subtitle {
     @apply mt-1.5 text-sm text-muted;
   }
@@ -555,6 +573,16 @@
   }
   .exercise-add-numbers {
     @apply grid grid-cols-2 gap-2 sm:grid-cols-4;
+  }
+  /* One grid cell holding a value + its unit (reps/seconds) side by side. */
+  .exercise-amount-field {
+    @apply flex gap-1;
+  }
+  .exercise-amount-field .input {
+    @apply min-w-0 flex-1;
+  }
+  .exercise-amount-field .select {
+    @apply w-auto flex-none px-2;
   }
   .item-add-top {
     @apply grid grid-cols-1 gap-2 sm:grid-cols-2;

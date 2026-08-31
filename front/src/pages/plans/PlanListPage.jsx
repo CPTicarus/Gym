@@ -159,10 +159,27 @@ export default function PlanListPage() {
               />
             </label>
 
-            <label className="checkbox-field">
-              <input type="checkbox" checked={isTemplate} onChange={(e) => setIsTemplate(e.target.checked)} />
-              <span>ذخیره به‌عنوان الگوی قابل استفاده مجدد</span>
-            </label>
+            <div className="field">
+              <span className="label">نوع برنامه</span>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="plan-scope"
+                  checked={!isTemplate}
+                  onChange={() => setIsTemplate(false)}
+                />
+                <span>یک‌باره — برای یک عضو خاص</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="plan-scope"
+                  checked={isTemplate}
+                  onChange={() => setIsTemplate(true)}
+                />
+                <span>الگو — قابل استفاده و اختصاص به چند عضو</span>
+              </label>
+            </div>
 
             {createError && (
               <p className="error-text" role="alert">

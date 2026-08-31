@@ -21,8 +21,11 @@ export default function ExerciseSection({
 }) {
   const [moveId, setMoveId] = useState("");
   const [sets, setSets] = useState("");
-  const [reps, setReps] = useState("");
-  const [duration, setDuration] = useState("");
+  // A move is measured one way or the other — counted reps, or held for a
+  // duration (e.g. a plank) — never both, so this is one value plus a type
+  // picker instead of two separate reps/duration inputs.
+  const [amount, setAmount] = useState("");
+  const [amountType, setAmountType] = useState("reps");
   const [rest, setRest] = useState("");
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -39,19 +42,20 @@ export default function ExerciseSection({
     try {
       // Empty strings must become null, not "" — DRF rejects "" for
       // nullable integer fields.
+      const amountValue = amount === "" ? null : Number(amount);
       await onAdd({
         move: Number(moveId),
         sets: sets === "" ? null : Number(sets),
-        reps: reps === "" ? null : Number(reps),
-        duration_seconds: duration === "" ? null : Number(duration),
+        reps: amountType === "reps" ? amountValue : null,
+        duration_seconds: amountType === "duration" ? amountValue : null,
         ...(withRest ? { rest_seconds: rest === "" ? null : Number(rest) } : {}),
         notes: notes.trim(),
         order: exercises.length,
       });
       setMoveId("");
       setSets("");
-      setReps("");
-      setDuration("");
+      setAmount("");
+      setAmountType("reps");
       setRest("");
       setNotes("");
     } catch {
@@ -116,26 +120,27 @@ export default function ExerciseSection({
               value={sets}
               onChange={(e) => setSets(e.target.value)}
             />
-            <input
-              className="input"
-              type="number"
-              min="0"
-              dir="auto"
-              placeholder="تکرار"
-              aria-label="تعداد تکرار"
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-            />
-            <input
-              className="input"
-              type="number"
-              min="0"
-              dir="auto"
-              placeholder="ثانیه"
-              aria-label="مدت به ثانیه"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-            />
+            <div className="exercise-amount-field">
+              <input
+                className="input"
+                type="number"
+                min="0"
+                dir="auto"
+                placeholder="مقدار"
+                aria-label="مقدار"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <select
+                className="select"
+                aria-label="نوع مقدار"
+                value={amountType}
+                onChange={(e) => setAmountType(e.target.value)}
+              >
+                <option value="reps">تکرار</option>
+                <option value="duration">ثانیه</option>
+              </select>
+            </div>
             {withRest && (
               <input
                 className="input"

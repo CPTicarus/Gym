@@ -11,9 +11,11 @@ import {
   getDietPlan,
   listDietAssignments,
   updateDietAssignment,
+  updateDietPlan,
 } from "../../api/diet.js";
 import { TrashIcon } from "../../components/common/icons.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
+import EditableTitle from "../../components/plans/EditableTitle.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { DIET_GOAL_LABELS } from "../../constants/planOptions.js";
 import { formatItemMacros } from "../../utils/planFormat.js";
@@ -218,7 +220,13 @@ export default function DietBuilderPage() {
           <Link to="/diet" className="muted back-link">
             ← بازگشت به برنامه‌های غذایی
           </Link>
-          <h1 className="page-title">{plan.name}</h1>
+          <EditableTitle
+            value={plan.name}
+            onSave={async (name) => {
+              await updateDietPlan(planId, { name });
+              await reload();
+            }}
+          />
           <p className="page-subtitle">
             {plan.goal ? DIET_GOAL_LABELS[plan.goal] ?? plan.goal : "بدون هدف مشخص"}
           </p>

@@ -161,3 +161,20 @@ export function XIcon(props) {
     </IconBase>
   );
 }
+
+export function PencilIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 20l.9-4.2L15.2 5.5a1.8 1.8 0 0 1 2.5 0l.8.8a1.8 1.8 0 0 1 0 2.5L8.2 19.1z" />
+      <path d="M13.5 7.5l3 3" />
+    </IconBase>
+  );
+}
+
+export function CheckIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 12.5l4.5 4.5L19 7" />
+    </IconBase>
+  );
+}

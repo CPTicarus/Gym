@@ -1,7 +1,17 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.moves.models import Move
+
+
+class _RepsOrDurationMixin:
+    """A move is measured one way or the other — counted reps, or held for
+    a duration (e.g. a plank) — never both at once."""
+
+    def clean(self):
+        if self.reps is not None and self.duration_seconds is not None:
+            raise ValidationError("Provide either reps or a duration, not both.")
 
 
 class WorkoutPlan(models.Model):
@@ -69,7 +79,7 @@ class WorkoutAssignment(models.Model):
         return f"{self.plan.name} -> {self.user} ({self.status})"
 
 
-class WarmupExercise(models.Model):
+class WarmupExercise(_RepsOrDurationMixin, models.Model):
     """Section 1: warmup — a flat, ordered list of moves for this plan."""
 
     plan = models.ForeignKey(WorkoutPlan, related_name="warmup_exercises", on_delete=models.CASCADE)
@@ -101,7 +111,7 @@ class WorkoutDay(models.Model):
         return f"{self.plan.name} - {self.name}"
 
 
-class WorkoutDayExercise(models.Model):
+class WorkoutDayExercise(_RepsOrDurationMixin, models.Model):
     """A single move within a specific day, with its own sets/reps/rest."""
 
     day = models.ForeignKey(WorkoutDay, related_name="exercises", on_delete=models.CASCADE)
@@ -120,7 +130,7 @@ class WorkoutDayExercise(models.Model):
         return f"{self.day}: {self.move.name}"
 
 
-class DailyExercise(models.Model):
+class DailyExercise(_RepsOrDurationMixin, models.Model):
     """Section 3: things done every day regardless of the day split
     (e.g. planks). Attached straight to the plan, not to any one day."""
 
