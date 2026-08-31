@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { fetchAllMoves } from "../../api/moves.js";
 import {
@@ -13,6 +13,7 @@ import {
   deleteWarmupExercise,
   deleteWorkoutAssignment,
   deleteWorkoutDay,
+  deleteWorkoutPlan,
   getWorkoutPlan,
   listWorkoutAssignments,
   updateWorkoutAssignment,
@@ -27,6 +28,7 @@ import { WORKOUT_GOAL_LABELS } from "../../constants/planOptions.js";
 
 export default function PlanBuilderPage() {
   const { planId } = useParams();
+  const navigate = useNavigate();
 
   const [plan, setPlan] = useState(null);
   const [moves, setMoves] = useState([]);
@@ -35,6 +37,7 @@ export default function PlanBuilderPage() {
   const [newDayName, setNewDayName] = useState("");
   const [isAddingDay, setIsAddingDay] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
   const [assignments, setAssignments] = useState(null);
 
@@ -104,6 +107,23 @@ export default function PlanBuilderPage() {
     await loadAssignments();
   }
 
+  async function handleDeletePlan() {
+    const activeCount = assignments?.length ?? 0;
+    const warning =
+      activeCount > 0
+        ? `این برنامه به ${activeCount} عضو اختصاص داده شده. با حذف برنامه، این اختصاص‌ها هم حذف می‌شوند.\n\nبرنامه «${plan.name}» برای همیشه حذف شود؟`
+        : `برنامه «${plan.name}» برای همیشه حذف شود؟ این کار قابل بازگشت نیست.`;
+    if (!window.confirm(warning)) return;
+    setIsDeleting(true);
+    try {
+      await deleteWorkoutPlan(planId);
+      navigate("/plans");
+    } catch {
+      setError("حذف برنامه با مشکل مواجه شد.");
+      setIsDeleting(false);
+    }
+  }
+
   if (isLoading) return <p className="muted">در حال بارگذاری…</p>;
   if (error && !plan) return <p className="error-text">{error}</p>;
   if (!plan) return null;
@@ -127,9 +147,14 @@ export default function PlanBuilderPage() {
             {plan.is_template ? " • الگو" : ""}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
-          اختصاص به عضو
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
+            اختصاص به عضو
+          </button>
+          <button className="btn btn-danger" onClick={handleDeletePlan} disabled={isDeleting}>
+            {isDeleting ? "در حال حذف…" : "حذف برنامه"}
+          </button>
+        </div>
       </div>
 
       {error && <p className="error-text">{error}</p>}

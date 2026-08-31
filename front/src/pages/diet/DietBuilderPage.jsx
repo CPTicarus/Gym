@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import {
   addDietItem,
@@ -7,6 +7,7 @@ import {
   assignDietPlan,
   deleteDietAssignment,
   deleteDietItem,
+  deleteDietPlan,
   deleteMeal,
   getDietPlan,
   listDietAssignments,
@@ -140,6 +141,7 @@ function ItemForm({ onAdd, itemCount }) {
 
 export default function DietBuilderPage() {
   const { planId } = useParams();
+  const navigate = useNavigate();
 
   const [plan, setPlan] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,6 +150,7 @@ export default function DietBuilderPage() {
   const [newMealTime, setNewMealTime] = useState("");
   const [isAddingMeal, setIsAddingMeal] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
   const [assignments, setAssignments] = useState(null);
 
@@ -209,6 +212,23 @@ export default function DietBuilderPage() {
     await loadAssignments();
   }
 
+  async function handleDeletePlan() {
+    const activeCount = assignments?.length ?? 0;
+    const warning =
+      activeCount > 0
+        ? `این برنامه به ${activeCount} عضو اختصاص داده شده. با حذف برنامه، این اختصاص‌ها هم حذف می‌شوند.\n\nبرنامه «${plan.name}» برای همیشه حذف شود؟`
+        : `برنامه «${plan.name}» برای همیشه حذف شود؟ این کار قابل بازگشت نیست.`;
+    if (!window.confirm(warning)) return;
+    setIsDeleting(true);
+    try {
+      await deleteDietPlan(planId);
+      navigate("/diet");
+    } catch {
+      setError("حذف برنامه با مشکل مواجه شد.");
+      setIsDeleting(false);
+    }
+  }
+
   if (isLoading) return <p className="muted">در حال بارگذاری…</p>;
   if (error && !plan) return <p className="error-text">{error}</p>;
   if (!plan) return null;
@@ -231,9 +251,14 @@ export default function DietBuilderPage() {
             {plan.goal ? DIET_GOAL_LABELS[plan.goal] ?? plan.goal : "بدون هدف مشخص"}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
-          اختصاص به عضو
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
+            اختصاص به عضو
+          </button>
+          <button className="btn btn-danger" onClick={handleDeletePlan} disabled={isDeleting}>
+            {isDeleting ? "در حال حذف…" : "حذف برنامه"}
+          </button>
+        </div>
       </div>
 
       {error && <p className="error-text">{error}</p>}

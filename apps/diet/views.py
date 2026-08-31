@@ -28,6 +28,15 @@ class DietPlanViewSet(viewsets.ModelViewSet):
       POST             /api/diet-plans/{id}/assign/   {"user": <member_id>}
     """
 
+    # Most plans use these three, so every new plan starts with them
+    # pre-filled — trainers building the common case skip straight to
+    # adding food items, and just delete/rename/add to what doesn't fit.
+    DEFAULT_MEALS = [
+        ("صبحانه", "08:00", 0),
+        ("ناهار", "13:00", 1),
+        ("شام", "20:00", 2),
+    ]
+
     queryset = DietPlan.objects.all().select_related("created_by").prefetch_related("meals__items")
     permission_classes = [IsTrainerOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter]
@@ -38,7 +47,10 @@ class DietPlanViewSet(viewsets.ModelViewSet):
         return DietPlanListSerializer if self.action == "list" else DietPlanSerializer
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        plan = serializer.save(created_by=self.request.user)
+        Meal.objects.bulk_create(
+            Meal(plan=plan, name=name, time=time, order=order) for name, time, order in self.DEFAULT_MEALS
+        )
 
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, pk=None):

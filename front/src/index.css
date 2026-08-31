@@ -250,6 +250,12 @@
   .btn-ghost:hover:not(:disabled) {
     @apply bg-neutral-soft;
   }
+  .btn-danger {
+    @apply border border-danger/40 bg-transparent text-danger;
+  }
+  .btn-danger:hover:not(:disabled) {
+    @apply bg-danger-soft;
+  }
   .btn-sm {
     @apply px-3 py-1.5 text-[13px];
   }
