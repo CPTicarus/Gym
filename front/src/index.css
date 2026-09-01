@@ -743,6 +743,11 @@
     @apply px-2 py-1 text-[13px];
   }
 
+  /* ---- Weight tracker (settings page) ---- */
+  .weight-chart {
+    @apply mb-4 h-[72px] w-full;
+  }
+
   /* ---- Auth screen ---- */
   .auth-screen {
     @apply flex min-h-screen flex-col;

@@ -16,6 +16,7 @@ import {
 } from "../../constants/planOptions.js";
 import { ROLE_LABELS } from "../../constants/roles.js";
 import { useAuth } from "../../hooks/useAuth.js";
+import { getBmiCategory } from "../../utils/bmi.js";
 import { formatDate } from "../../utils/format.js";
 
 function formatApiError(data) {
@@ -187,6 +188,27 @@ export default function UserDetailPage() {
             <dt className="label">تاریخ عضویت</dt>
             <dd className="detail-value ltr">{formatDate(user.created_at)}</dd>
           </div>
+          <div className="detail-item">
+            <dt className="label">قد</dt>
+            <dd className="detail-value ltr">{user.height_cm ? `${user.height_cm} cm` : "—"}</dd>
+          </div>
+          <div className="detail-item">
+            <dt className="label">آخرین وزن ثبت‌شده</dt>
+            <dd className="detail-value ltr">{user.latest_weight_kg ? `${user.latest_weight_kg} kg` : "—"}</dd>
+          </div>
+          {user.bmi != null && (
+            <div className="detail-item">
+              <dt className="label">BMI</dt>
+              <dd className="detail-value">
+                {user.bmi}
+                {getBmiCategory(user.bmi) && (
+                  <span className={`badge badge-${getBmiCategory(user.bmi).variant} mr-2`}>
+                    {getBmiCategory(user.bmi).label}
+                  </span>
+                )}
+              </dd>
+            </div>
+          )}
         </dl>
       </section>
 

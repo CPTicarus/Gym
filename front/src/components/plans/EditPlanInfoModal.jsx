@@ -7,10 +7,12 @@ import Modal from "../common/Modal.jsx";
  * description in one place. `goalOptions` is WORKOUT_GOALS or DIET_GOALS
  * (they differ per plan type); `onSave(payload)` PATCHes and reloads.
  */
-export default function EditPlanInfoModal({ plan, goalOptions, onSave, onClose }) {
+export default function EditPlanInfoModal({ plan, goalOptions, showBmiRange, onSave, onClose }) {
   const [name, setName] = useState(plan.name);
   const [goal, setGoal] = useState(plan.goal ?? "");
   const [description, setDescription] = useState(plan.description ?? "");
+  const [minBmi, setMinBmi] = useState(plan.min_bmi ?? "");
+  const [maxBmi, setMaxBmi] = useState(plan.max_bmi ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -22,9 +24,21 @@ export default function EditPlanInfoModal({ plan, goalOptions, onSave, onClose }
       setError("نام الزامی است.");
       return;
     }
+    if (minBmi !== "" && maxBmi !== "" && Number(minBmi) > Number(maxBmi)) {
+      setError("حداقل BMI نمی‌تواند بیشتر از حداکثر باشد.");
+      return;
+    }
     setIsSaving(true);
     try {
-      await onSave({ name: trimmedName, goal, description: description.trim() });
+      await onSave({
+        name: trimmedName,
+        goal,
+        description: description.trim(),
+        ...(showBmiRange && {
+          min_bmi: minBmi === "" ? null : Number(minBmi),
+          max_bmi: maxBmi === "" ? null : Number(maxBmi),
+        }),
+      });
       onClose();
     } catch {
       setError("ذخیره تغییرات با مشکل مواجه شد.");
@@ -62,6 +76,41 @@ export default function EditPlanInfoModal({ plan, goalOptions, onSave, onClose }
             onChange={(e) => setDescription(e.target.value)}
           />
         </label>
+
+        {showBmiRange && (
+          <div className="field">
+            <span className="label">محدوده ایمن BMI (اختیاری)</span>
+            <p className="muted plan-section-hint">
+              هنگام اختصاص این برنامه، اگر BMI عضو خارج از این محدوده باشد هشدار داده می‌شود.
+            </p>
+            <div className="field-row">
+              <label className="field">
+                <span className="label">حداقل</span>
+                <input
+                  className="input"
+                  dir="ltr"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={minBmi}
+                  onChange={(e) => setMinBmi(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span className="label">حداکثر</span>
+                <input
+                  className="input"
+                  dir="ltr"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={maxBmi}
+                  onChange={(e) => setMaxBmi(e.target.value)}
+                />
+              </label>
+            </div>
+          </div>
+        )}
 
         {error && (
           <p className="error-text" role="alert">

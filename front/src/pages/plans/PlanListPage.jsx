@@ -19,6 +19,8 @@ export default function PlanListPage() {
   const [newGoal, setNewGoal] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [isTemplate, setIsTemplate] = useState(false);
+  const [newMinBmi, setNewMinBmi] = useState("");
+  const [newMaxBmi, setNewMaxBmi] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [createError, setCreateError] = useState(null);
 
@@ -50,6 +52,10 @@ export default function PlanListPage() {
       setCreateError("نام برنامه الزامی است.");
       return;
     }
+    if (newMinBmi !== "" && newMaxBmi !== "" && Number(newMinBmi) > Number(newMaxBmi)) {
+      setCreateError("حداقل BMI نمی‌تواند بیشتر از حداکثر باشد.");
+      return;
+    }
     setIsSaving(true);
     try {
       const created = await createWorkoutPlan({
@@ -57,6 +63,8 @@ export default function PlanListPage() {
         description: newDescription.trim(),
         goal: newGoal,
         is_template: isTemplate,
+        min_bmi: newMinBmi === "" ? null : Number(newMinBmi),
+        max_bmi: newMaxBmi === "" ? null : Number(newMaxBmi),
       });
       navigate(`/plans/${created.id}`); // straight into the builder
     } catch {
@@ -116,6 +124,11 @@ export default function PlanListPage() {
                 {p.is_template && <span className="badge badge-accent">الگو</span>}
               </div>
               {p.goal && <span className="badge badge-neutral">{WORKOUT_GOAL_LABELS[p.goal] ?? p.goal}</span>}
+              {(p.min_bmi != null || p.max_bmi != null) && (
+                <span className="badge badge-neutral">
+                  BMI: {p.min_bmi ?? "—"}–{p.max_bmi ?? "—"}
+                </span>
+              )}
             </Link>
           ))}
         </div>
@@ -179,6 +192,39 @@ export default function PlanListPage() {
                 />
                 <span>الگو — قابل استفاده و اختصاص به چند عضو</span>
               </label>
+            </div>
+
+            <div className="field">
+              <span className="label">محدوده ایمن BMI (اختیاری)</span>
+              <p className="muted plan-section-hint">
+                هنگام اختصاص این برنامه، اگر BMI عضو خارج از این محدوده باشد هشدار داده می‌شود.
+              </p>
+              <div className="field-row">
+                <label className="field">
+                  <span className="label">حداقل</span>
+                  <input
+                    className="input"
+                    dir="ltr"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={newMinBmi}
+                    onChange={(e) => setNewMinBmi(e.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">حداکثر</span>
+                  <input
+                    className="input"
+                    dir="ltr"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={newMaxBmi}
+                    onChange={(e) => setNewMaxBmi(e.target.value)}
+                  />
+                </label>
+              </div>
             </div>
 
             {createError && (

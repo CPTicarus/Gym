@@ -65,6 +65,16 @@ export function AuthProvider({ children }) {
     return profile;
   }, []);
 
+  // Re-pulls /auth/me/ without changing anything — used after an action on
+  // a *different* endpoint (e.g. logging a weight entry) changes something
+  // derived on the user object (latest_weight_kg, bmi) that a plain PATCH
+  // wouldn't touch.
+  const refreshProfile = useCallback(async () => {
+    const profile = await fetchMe();
+    setUser(profile);
+    return profile;
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -74,8 +84,9 @@ export function AuthProvider({ children }) {
       login,
       logout,
       updateProfile,
+      refreshProfile,
     }),
-    [user, role, isLoading, login, logout, updateProfile]
+    [user, role, isLoading, login, logout, updateProfile, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

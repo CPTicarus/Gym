@@ -42,6 +42,13 @@ class WorkoutPlan(models.Model):
         null=True,
     )
     is_template = models.BooleanField(default=False)
+    # Advisory safe range for this plan, in BMI rather than raw weight —
+    # BMI accounts for height, which matters since a template plan gets
+    # assigned to many members of different heights. Checked (as a warning,
+    # not a hard block — see WorkoutPlanViewSet.assign) when a trainer/admin
+    # assigns the plan to a member.
+    min_bmi = models.FloatField(null=True, blank=True)
+    max_bmi = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

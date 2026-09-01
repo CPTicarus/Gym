@@ -4,6 +4,7 @@ from rest_framework import generics, permissions, viewsets
 from rest_framework.filters import SearchFilter
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from .models import WeightLog
 from .permissions import IsAdmin, IsAdminOrAccounting, IsStaff
 from .serializers import (
     CustomTokenObtainPairSerializer,
@@ -14,6 +15,7 @@ from .serializers import (
     StaffCreateSerializer,
     UserAdminSerializer,
     UserSerializer,
+    WeightLogSerializer,
 )
 
 User = get_user_model()
@@ -96,3 +98,23 @@ class UserViewSet(viewsets.ModelViewSet):
             # can renew someone without being able to edit profiles or roles.
             return UserAdminSerializer if self.request.user.is_gym_admin else MembershipUpdateSerializer
         return UserSerializer
+
+
+class WeightLogViewSet(viewsets.ModelViewSet):
+    """A member's own weight-tracking log — self-service only, so weight
+    always reflects what the person themselves reported.
+
+      GET    /api/me/weight-logs/            (most recent first)
+      POST   /api/me/weight-logs/             {"weight_kg": 82.5, "recorded_at": "2026-09-01"}
+      PATCH  /api/me/weight-logs/{id}/
+      DELETE /api/me/weight-logs/{id}/
+    """
+
+    serializer_class = WeightLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return WeightLog.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

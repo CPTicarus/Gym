@@ -25,6 +25,7 @@ import EditPlanInfoModal from "../../components/plans/EditPlanInfoModal.jsx";
 import ExerciseSection from "../../components/plans/ExerciseSection.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { WORKOUT_GOAL_LABELS, WORKOUT_GOALS } from "../../constants/planOptions.js";
+import { formatBmiWarning } from "../../utils/bmi.js";
 
 export default function PlanBuilderPage() {
   const { planId } = useParams();
@@ -40,6 +41,7 @@ export default function PlanBuilderPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
+  const [bmiWarning, setBmiWarning] = useState(null);
   const [assignments, setAssignments] = useState(null);
 
   // Nested writes (add/remove an exercise) change data several levels deep,
@@ -109,6 +111,7 @@ export default function PlanBuilderPage() {
         ? `برنامه اختصاص داده شد؛ برنامه قبلی این عضو («${result.previous_plan_archived}») به‌عنوان آرشیو ثبت شد.`
         : "برنامه با موفقیت اختصاص داده شد."
     );
+    setBmiWarning(formatBmiWarning(result.bmi_warning));
     await loadAssignments();
   }
 
@@ -155,6 +158,11 @@ export default function PlanBuilderPage() {
             {plan.goal ? WORKOUT_GOAL_LABELS[plan.goal] ?? plan.goal : "بدون هدف مشخص"}
             {plan.is_template ? " • الگو" : ""}
           </p>
+          {(plan.min_bmi != null || plan.max_bmi != null) && (
+            <span className="badge badge-neutral">
+              محدوده ایمن BMI: {plan.min_bmi ?? "—"} تا {plan.max_bmi ?? "—"}
+            </span>
+          )}
           {plan.description && <p className="plan-description">{plan.description}</p>}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -169,6 +177,7 @@ export default function PlanBuilderPage() {
 
       {error && <p className="error-text">{error}</p>}
       {toast && <p className="success-text">{toast}</p>}
+      {bmiWarning && <p className="error-text">{bmiWarning}</p>}
 
       {/* Section 1 — warmup */}
       <section className="card plan-section">
@@ -277,6 +286,8 @@ export default function PlanBuilderPage() {
       {isAssignOpen && (
         <AssignMemberModal
           planName={plan.name}
+          minBmi={plan.min_bmi}
+          maxBmi={plan.max_bmi}
           onAssign={handleAssign}
           onClose={() => setIsAssignOpen(false)}
         />
@@ -286,6 +297,7 @@ export default function PlanBuilderPage() {
         <EditPlanInfoModal
           plan={plan}
           goalOptions={WORKOUT_GOALS}
+          showBmiRange
           onSave={async (payload) => {
             await updateWorkoutPlan(planId, payload);
             await reload();

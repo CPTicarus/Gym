@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import WeightTracker from "../../components/settings/WeightTracker.jsx";
 import { ROLE_LABELS } from "../../constants/roles.js";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -10,12 +11,13 @@ function formatApiError(data) {
 }
 
 export default function SettingsPage() {
-  const { user, role, updateProfile } = useAuth();
+  const { user, role, updateProfile, refreshProfile } = useAuth();
 
   const [firstName, setFirstName] = useState(user?.first_name ?? "");
   const [lastName, setLastName] = useState(user?.last_name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phoneNumber, setPhoneNumber] = useState(user?.phone_number ?? "");
+  const [heightCm, setHeightCm] = useState(user?.height_cm ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [savedMessage, setSavedMessage] = useState(null);
@@ -31,6 +33,7 @@ export default function SettingsPage() {
         last_name: lastName,
         email,
         phone_number: phoneNumber,
+        height_cm: heightCm === "" ? null : Number(heightCm),
       });
       setSavedMessage("تغییرات ذخیره شد.");
     } catch (err) {
@@ -78,6 +81,19 @@ export default function SettingsPage() {
           <input className="input" dir="ltr" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
         </label>
 
+        <label className="field">
+          <span className="label">قد (سانتی‌متر) — اختیاری</span>
+          <input
+            className="input"
+            dir="ltr"
+            type="number"
+            step="0.1"
+            min="0"
+            value={heightCm}
+            onChange={(e) => setHeightCm(e.target.value)}
+          />
+        </label>
+
         {error && (
           <p className="error-text" role="alert">
             {error}
@@ -91,6 +107,8 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <WeightTracker heightCm={user?.height_cm} bmi={user?.bmi} onWeightChange={refreshProfile} />
     </div>
   );
 }

@@ -8,10 +8,12 @@ from .views import (
     RegisterView,
     StaffCreateView,
     UserViewSet,
+    WeightLogViewSet,
 )
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
+router.register("me/weight-logs", WeightLogViewSet, basename="weight-log")
 
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="auth-register"),

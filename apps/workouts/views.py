@@ -68,7 +68,25 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
         serializer.save(plan=plan, assigned_by=request.user)
         data = dict(serializer.data)
         data["previous_plan_archived"] = replaced.plan.name if replaced else None
+        data["bmi_warning"] = self._bmi_warning(plan, serializer.validated_data["user"])
         return Response(data, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _bmi_warning(plan, member):
+        """Advisory only (see WorkoutPlan.min_bmi/max_bmi) — the trainer can
+        still assign the plan; this just flags it in the response (as data,
+        not display text — the frontend renders it, same as
+        `previous_plan_archived` above) instead of silently doing nothing."""
+        if plan.min_bmi is None and plan.max_bmi is None:
+            return None
+        bmi = member.bmi
+        if bmi is None:
+            return {"reason": "missing_data"}
+        if plan.min_bmi is not None and bmi < plan.min_bmi:
+            return {"reason": "below_range", "bmi": bmi, "min_bmi": plan.min_bmi}
+        if plan.max_bmi is not None and bmi > plan.max_bmi:
+            return {"reason": "above_range", "bmi": bmi, "max_bmi": plan.max_bmi}
+        return None
 
 
 # --- Section 1: warmup, nested under a plan ---

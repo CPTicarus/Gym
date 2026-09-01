@@ -87,7 +87,7 @@ class WorkoutPlanListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WorkoutPlan
-        fields = ["id", "name", "goal", "is_template", "created_by", "created_at"]
+        fields = ["id", "name", "goal", "is_template", "min_bmi", "max_bmi", "created_by", "created_at"]
 
 
 class WorkoutPlanSerializer(serializers.ModelSerializer):
@@ -102,11 +102,18 @@ class WorkoutPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutPlan
         fields = [
-            "id", "name", "description", "goal", "is_template", "created_by",
+            "id", "name", "description", "goal", "is_template", "min_bmi", "max_bmi", "created_by",
             "warmup_exercises", "days", "daily_exercises",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        min_bmi = attrs.get("min_bmi", getattr(self.instance, "min_bmi", None))
+        max_bmi = attrs.get("max_bmi", getattr(self.instance, "max_bmi", None))
+        if min_bmi is not None and max_bmi is not None and min_bmi > max_bmi:
+            raise serializers.ValidationError({"max_bmi": "max_bmi cannot be less than min_bmi."})
+        return attrs
 
 
 class WorkoutAssignmentListSerializer(serializers.ModelSerializer):
