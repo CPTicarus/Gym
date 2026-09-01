@@ -57,8 +57,18 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
         plan = self.get_object()
         serializer = WorkoutAssignmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # A member has one active workout plan at a time (WorkoutAssignment.save
+        # enforces this by auto-completing the rest) — captured here just so
+        # the response can tell the caller a previous plan was archived.
+        replaced = WorkoutAssignment.objects.filter(
+            user=serializer.validated_data["user"], status=WorkoutAssignment.Status.ACTIVE
+        ).select_related("plan").first()
+
         serializer.save(plan=plan, assigned_by=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        data = dict(serializer.data)
+        data["previous_plan_archived"] = replaced.plan.name if replaced else None
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 # --- Section 1: warmup, nested under a plan ---

@@ -406,17 +406,15 @@
   .move-grid {
     @apply grid grid-cols-1 gap-3;
   }
-  .move-card {
-    @apply rounded-lg border border-line bg-surface p-4 shadow-card;
-    border-inline-start: 4px solid var(--color-ink);
-  }
   /* touch-manipulation drops the ~300ms tap delay and (crucially) the
      double-tap-to-zoom gesture, so a real double-tap reaches onDoubleClick
-     instead of being eaten by the browser. */
-  .move-card-editable {
-    @apply touch-manipulation cursor-pointer transition-colors;
+     instead of being eaten by the browser — every card is clickable now
+     (view for everyone, plus edit via double-click for trainer/admin). */
+  .move-card {
+    @apply touch-manipulation cursor-pointer rounded-lg border border-line bg-surface p-4 shadow-card transition-colors;
+    border-inline-start: 4px solid var(--color-ink);
   }
-  .move-card-editable:hover {
+  .move-card:hover {
     @apply bg-neutral-soft;
   }
   .move-card-title {
@@ -433,6 +431,30 @@
   }
   .media-list-item {
     @apply flex items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-[13px];
+  }
+
+  /* ---- Move detail modal (member-facing: description + images/clips) ---- */
+  .move-detail-alias {
+    @apply -mt-3 mb-3 text-sm;
+  }
+  .move-detail-badges {
+    @apply mb-3 flex flex-wrap gap-2;
+  }
+  .move-detail-description {
+    @apply mb-4 whitespace-pre-line text-sm leading-7;
+  }
+  .move-media-list {
+    @apply flex list-none flex-col gap-3 p-0;
+  }
+  .move-media-item {
+    @apply flex flex-col gap-1.5;
+  }
+  .move-media-image,
+  .move-media-video {
+    @apply w-full rounded-lg border border-line bg-neutral-soft;
+  }
+  .move-media-caption {
+    @apply text-xs;
   }
 
   /* ---- User lists (dashboard, accounting) ---- */
@@ -524,6 +546,12 @@
   .plan-section-hint {
     @apply mb-3 text-[13px];
   }
+  .plan-history-toggle {
+    @apply flex w-full items-center justify-between text-[18px] font-extrabold;
+  }
+  .plan-history-toggle[aria-expanded="true"] {
+    @apply mb-3;
+  }
   .plan-description {
     @apply mb-3 text-sm;
   }
@@ -562,6 +590,14 @@
   .exercise-row-main {
     @apply flex min-w-0 flex-col gap-0.5;
   }
+  /* Same layout as .exercise-row-main, but a real button (member read-only
+     plan view) so tapping an exercise opens its move detail/media. */
+  .exercise-row-view-btn {
+    @apply flex w-full min-w-0 touch-manipulation flex-col gap-0.5 rounded-md text-start transition-colors;
+  }
+  .exercise-row-view-btn:hover {
+    @apply bg-line;
+  }
   .exercise-name {
     @apply text-sm font-semibold;
   }
@@ -574,12 +610,15 @@
   .exercise-empty {
     @apply py-2 text-[13px];
   }
-  /* ---- Gym-session checklist (member "I'm at the gym" view) ---- */
+  /* ---- Gym-session checklist (member "I'm at the gym" view) ----
+     Checkbox and name/details are separate buttons side by side (not one
+     nested in the other) so tapping the name opens move details without
+     also toggling the checkmark. */
   .session-exercise-row {
-    @apply flex w-full touch-manipulation items-center gap-3 rounded-lg bg-neutral-soft px-3 py-2 text-start transition-colors;
+    @apply flex touch-manipulation items-center gap-2 rounded-lg bg-neutral-soft p-2 transition-colors;
   }
-  .session-exercise-row:hover {
-    @apply bg-line;
+  .session-exercise-checkbox-btn {
+    @apply flex flex-none items-center justify-center p-1;
   }
   .session-exercise-checkbox {
     @apply flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 border-line text-transparent transition-colors;
@@ -587,12 +626,34 @@
   .session-exercise-row.is-checked .session-exercise-checkbox {
     @apply border-success bg-success text-white;
   }
+  .session-exercise-info {
+    @apply flex min-w-0 flex-1 touch-manipulation flex-col gap-0.5 rounded-md px-2 py-1 text-start transition-colors;
+  }
+  .session-exercise-info:hover {
+    @apply bg-line;
+  }
   .session-exercise-row.is-checked .exercise-name,
   .session-exercise-row.is-checked .exercise-detail {
     @apply text-muted line-through;
   }
   .exercise-add-form {
     @apply mt-3 flex flex-col gap-2 border-t border-line pt-3;
+  }
+  .move-combobox {
+    @apply relative;
+  }
+  .move-combobox-list {
+    @apply absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-line bg-surface p-1 shadow-card;
+  }
+  .move-combobox-option {
+    @apply cursor-pointer rounded-md px-3 py-2 text-sm transition-colors;
+  }
+  .move-combobox-option:hover,
+  .move-combobox-option.is-active {
+    @apply bg-neutral-soft;
+  }
+  .move-combobox-empty {
+    @apply px-3 py-2 text-[13px] text-muted;
   }
   .exercise-add-numbers {
     @apply grid grid-cols-2 gap-2 sm:grid-cols-4;

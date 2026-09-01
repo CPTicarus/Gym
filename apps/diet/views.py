@@ -57,8 +57,18 @@ class DietPlanViewSet(viewsets.ModelViewSet):
         plan = self.get_object()
         serializer = DietAssignmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # A member has one active diet plan at a time (DietAssignment.save
+        # enforces this by auto-completing the rest) — captured here just so
+        # the response can tell the caller a previous plan was archived.
+        replaced = DietAssignment.objects.filter(
+            user=serializer.validated_data["user"], status=DietAssignment.Status.ACTIVE
+        ).select_related("plan").first()
+
         serializer.save(plan=plan, assigned_by=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        data = dict(serializer.data)
+        data["previous_plan_archived"] = replaced.plan.name if replaced else None
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class MealViewSet(viewsets.ModelViewSet):

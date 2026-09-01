@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { finishWorkoutDay, listMyWorkoutPlans } from "../../api/workouts.js";
 import { CheckIcon } from "../../components/common/icons.jsx";
+import MoveDetailModal from "../../components/moves/MoveDetailModal.jsx";
 import { formatExerciseDetail } from "../../utils/planFormat.js";
 
 /**
@@ -10,8 +11,12 @@ import { formatExerciseDetail } from "../../utils/planFormat.js";
  * are three separate Django models with independent id sequences, so a
  * warmup exercise #5 and a daily exercise #5 can both exist; keying by raw
  * id alone would check both together.
+ *
+ * The checkbox and the name/details are two separate buttons (not one
+ * nested inside the other — invalid HTML) so tapping the move name opens
+ * its description/media without also toggling the checkmark.
  */
-function SessionExerciseList({ exercises, emptyText, section, checkedKeys, onToggle }) {
+function SessionExerciseList({ exercises, emptyText, section, checkedKeys, onToggle, onViewMove }) {
   if (!exercises || exercises.length === 0) {
     return <p className="muted exercise-empty">{emptyText}</p>;
   }
@@ -21,21 +26,22 @@ function SessionExerciseList({ exercises, emptyText, section, checkedKeys, onTog
         const key = `${section}-${ex.id}`;
         const isChecked = checkedKeys.has(key);
         return (
-          <li key={key}>
+          <li key={key} className={`session-exercise-row${isChecked ? " is-checked" : ""}`}>
             <button
               type="button"
-              className={`session-exercise-row${isChecked ? " is-checked" : ""}`}
+              className="session-exercise-checkbox-btn"
               onClick={() => onToggle(key)}
               aria-pressed={isChecked}
+              aria-label={`علامت زدن ${ex.move_detail?.name ?? "حرکت"}`}
             >
               <span className="session-exercise-checkbox">
                 <CheckIcon size={14} />
               </span>
-              <span className="exercise-row-main">
-                <span className="exercise-name">{ex.move_detail?.name ?? "—"}</span>
-                <span className="muted exercise-detail">{formatExerciseDetail(ex)}</span>
-                {ex.notes && <span className="muted exercise-notes">{ex.notes}</span>}
-              </span>
+            </button>
+            <button type="button" className="session-exercise-info" onClick={() => onViewMove(ex.move)}>
+              <span className="exercise-name">{ex.move_detail?.name ?? "—"}</span>
+              <span className="muted exercise-detail">{formatExerciseDetail(ex)}</span>
+              {ex.notes && <span className="muted exercise-notes">{ex.notes}</span>}
             </button>
           </li>
         );
@@ -53,6 +59,7 @@ export default function GymSessionPage() {
   const [error, setError] = useState(null);
   const [checkedKeys, setCheckedKeys] = useState(() => new Set());
   const [isFinishing, setIsFinishing] = useState(false);
+  const [viewMoveId, setViewMoveId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +138,7 @@ export default function GymSessionPage() {
           section="warmup"
           checkedKeys={checkedKeys}
           onToggle={toggle}
+          onViewMove={setViewMoveId}
         />
       </section>
 
@@ -143,6 +151,7 @@ export default function GymSessionPage() {
             section="day"
             checkedKeys={checkedKeys}
             onToggle={toggle}
+            onViewMove={setViewMoveId}
           />
         </section>
       )}
@@ -155,6 +164,7 @@ export default function GymSessionPage() {
           section="daily"
           checkedKeys={checkedKeys}
           onToggle={toggle}
+          onViewMove={setViewMoveId}
         />
       </section>
 
@@ -163,6 +173,8 @@ export default function GymSessionPage() {
           {isFinishing ? "در حال ثبت…" : "پایان تمرین"}
         </button>
       </div>
+
+      {viewMoveId && <MoveDetailModal moveId={viewMoveId} onClose={() => setViewMoveId(null)} />}
     </div>
   );
 }

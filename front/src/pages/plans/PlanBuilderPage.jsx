@@ -19,12 +19,12 @@ import {
   updateWorkoutAssignment,
   updateWorkoutPlan,
 } from "../../api/workouts.js";
-import { TrashIcon } from "../../components/common/icons.jsx";
+import { PencilIcon, TrashIcon } from "../../components/common/icons.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
-import EditableTitle from "../../components/plans/EditableTitle.jsx";
+import EditPlanInfoModal from "../../components/plans/EditPlanInfoModal.jsx";
 import ExerciseSection from "../../components/plans/ExerciseSection.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
-import { WORKOUT_GOAL_LABELS } from "../../constants/planOptions.js";
+import { WORKOUT_GOAL_LABELS, WORKOUT_GOALS } from "../../constants/planOptions.js";
 
 export default function PlanBuilderPage() {
   const { planId } = useParams();
@@ -37,6 +37,7 @@ export default function PlanBuilderPage() {
   const [newDayName, setNewDayName] = useState("");
   const [isAddingDay, setIsAddingDay] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
   const [assignments, setAssignments] = useState(null);
@@ -102,8 +103,12 @@ export default function PlanBuilderPage() {
   }
 
   async function handleAssign(userId) {
-    await assignWorkoutPlan(planId, userId);
-    setToast("برنامه با موفقیت اختصاص داده شد.");
+    const result = await assignWorkoutPlan(planId, userId);
+    setToast(
+      result.previous_plan_archived
+        ? `برنامه اختصاص داده شد؛ برنامه قبلی این عضو («${result.previous_plan_archived}») به‌عنوان آرشیو ثبت شد.`
+        : "برنامه با موفقیت اختصاص داده شد."
+    );
     await loadAssignments();
   }
 
@@ -135,17 +140,22 @@ export default function PlanBuilderPage() {
           <Link to="/plans" className="muted back-link">
             ← بازگشت به برنامه‌ها
           </Link>
-          <EditableTitle
-            value={plan.name}
-            onSave={async (name) => {
-              await updateWorkoutPlan(planId, { name });
-              await reload();
-            }}
-          />
+          <div className="editable-title">
+            <h1 className="page-title">{plan.name}</h1>
+            <button
+              type="button"
+              className="icon-btn icon-btn-sm"
+              onClick={() => setIsEditOpen(true)}
+              aria-label="ویرایش برنامه"
+            >
+              <PencilIcon size={16} />
+            </button>
+          </div>
           <p className="page-subtitle">
             {plan.goal ? WORKOUT_GOAL_LABELS[plan.goal] ?? plan.goal : "بدون هدف مشخص"}
             {plan.is_template ? " • الگو" : ""}
           </p>
+          {plan.description && <p className="plan-description">{plan.description}</p>}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
@@ -269,6 +279,18 @@ export default function PlanBuilderPage() {
           planName={plan.name}
           onAssign={handleAssign}
           onClose={() => setIsAssignOpen(false)}
+        />
+      )}
+
+      {isEditOpen && (
+        <EditPlanInfoModal
+          plan={plan}
+          goalOptions={WORKOUT_GOALS}
+          onSave={async (payload) => {
+            await updateWorkoutPlan(planId, payload);
+            await reload();
+          }}
+          onClose={() => setIsEditOpen(false)}
         />
       )}
     </div>

@@ -58,6 +58,17 @@ class DietAssignment(models.Model):
     def __str__(self):
         return f"{self.plan.name} -> {self.user} ({self.status})"
 
+    def save(self, *args, **kwargs):
+        # A member has at most one active diet plan at a time — anything
+        # else is history (paused/completed). Enforced here rather than
+        # only in the assign view so it also covers reactivating an old
+        # assignment (PATCH status back to "active") through any path.
+        if self.status == self.Status.ACTIVE:
+            DietAssignment.objects.filter(user_id=self.user_id, status=self.Status.ACTIVE).exclude(
+                pk=self.pk
+            ).update(status=self.Status.COMPLETED)
+        super().save(*args, **kwargs)
+
 
 class Meal(models.Model):
     """One meal slot within a plan (Breakfast, Lunch, pre-workout snack...).

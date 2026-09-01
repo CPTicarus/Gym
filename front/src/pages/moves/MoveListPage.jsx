@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { listMoves } from "../../api/moves.js";
 import MoveCard from "../../components/moves/MoveCard.jsx";
+import MoveDetailModal from "../../components/moves/MoveDetailModal.jsx";
 import { CATEGORIES, DIFFICULTIES } from "../../constants/moveOptions.js";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -19,6 +20,7 @@ export default function MoveListPage() {
   const [difficulty, setDifficulty] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [viewMoveId, setViewMoveId] = useState(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -97,10 +99,12 @@ export default function MoveListPage() {
       ) : (
         <div className="move-grid">
           {moves.map((move) => (
-            <MoveCard key={move.id} move={move} editable={canManageMoves} />
+            <MoveCard key={move.id} move={move} editable={canManageMoves} onView={setViewMoveId} />
           ))}
         </div>
       )}
+
+      {viewMoveId && <MoveDetailModal moveId={viewMoveId} onClose={() => setViewMoveId(null)} />}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { formatExerciseDetail } from "../../utils/planFormat.js";
 import { TrashIcon } from "../common/icons.jsx";
+import MoveCombobox from "./MoveCombobox.jsx";
 
 /**
  * Renders one list of exercises plus an "add" form. Used by all three
@@ -30,6 +31,9 @@ export default function ExerciseSection({
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  // Bumped after each successful add to force MoveCombobox to remount (see
+  // its own comment for why this beats syncing its query from moveId).
+  const [comboKey, setComboKey] = useState(0);
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -53,6 +57,7 @@ export default function ExerciseSection({
         order: exercises.length,
       });
       setMoveId("");
+      setComboKey((k) => k + 1);
       setSets("");
       setAmount("");
       setAmountType("reps");
@@ -95,19 +100,7 @@ export default function ExerciseSection({
 
       {!readOnly && (
         <form className="exercise-add-form" onSubmit={handleAdd}>
-          <select
-            className="select"
-            value={moveId}
-            onChange={(e) => setMoveId(e.target.value)}
-            aria-label="انتخاب حرکت"
-          >
-            <option value="">— انتخاب حرکت —</option>
-            {moves.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.alias ? `${m.name} (${m.alias})` : m.name}
-              </option>
-            ))}
-          </select>
+          <MoveCombobox key={comboKey} moves={moves} value={moveId} onChange={setMoveId} />
 
           <div className="exercise-add-numbers">
             <input

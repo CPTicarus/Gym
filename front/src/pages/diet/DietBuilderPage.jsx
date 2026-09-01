@@ -14,11 +14,11 @@ import {
   updateDietAssignment,
   updateDietPlan,
 } from "../../api/diet.js";
-import { TrashIcon } from "../../components/common/icons.jsx";
+import { PencilIcon, TrashIcon } from "../../components/common/icons.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
-import EditableTitle from "../../components/plans/EditableTitle.jsx";
+import EditPlanInfoModal from "../../components/plans/EditPlanInfoModal.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
-import { DIET_GOAL_LABELS } from "../../constants/planOptions.js";
+import { DIET_GOAL_LABELS, DIET_GOALS } from "../../constants/planOptions.js";
 import { formatItemMacros } from "../../utils/planFormat.js";
 
 function ItemForm({ onAdd, itemCount }) {
@@ -150,6 +150,7 @@ export default function DietBuilderPage() {
   const [newMealTime, setNewMealTime] = useState("");
   const [isAddingMeal, setIsAddingMeal] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null);
   const [assignments, setAssignments] = useState(null);
@@ -207,8 +208,12 @@ export default function DietBuilderPage() {
   }
 
   async function handleAssign(userId) {
-    await assignDietPlan(planId, userId);
-    setToast("برنامه غذایی با موفقیت اختصاص داده شد.");
+    const result = await assignDietPlan(planId, userId);
+    setToast(
+      result.previous_plan_archived
+        ? `برنامه غذایی اختصاص داده شد؛ برنامه قبلی این عضو («${result.previous_plan_archived}») به‌عنوان آرشیو ثبت شد.`
+        : "برنامه غذایی با موفقیت اختصاص داده شد."
+    );
     await loadAssignments();
   }
 
@@ -240,16 +245,21 @@ export default function DietBuilderPage() {
           <Link to="/diet" className="muted back-link">
             ← بازگشت به برنامه‌های غذایی
           </Link>
-          <EditableTitle
-            value={plan.name}
-            onSave={async (name) => {
-              await updateDietPlan(planId, { name });
-              await reload();
-            }}
-          />
+          <div className="editable-title">
+            <h1 className="page-title">{plan.name}</h1>
+            <button
+              type="button"
+              className="icon-btn icon-btn-sm"
+              onClick={() => setIsEditOpen(true)}
+              aria-label="ویرایش برنامه"
+            >
+              <PencilIcon size={16} />
+            </button>
+          </div>
           <p className="page-subtitle">
             {plan.goal ? DIET_GOAL_LABELS[plan.goal] ?? plan.goal : "بدون هدف مشخص"}
           </p>
+          {plan.description && <p className="plan-description">{plan.description}</p>}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
@@ -373,6 +383,18 @@ export default function DietBuilderPage() {
           planName={plan.name}
           onAssign={handleAssign}
           onClose={() => setIsAssignOpen(false)}
+        />
+      )}
+
+      {isEditOpen && (
+        <EditPlanInfoModal
+          plan={plan}
+          goalOptions={DIET_GOALS}
+          onSave={async (payload) => {
+            await updateDietPlan(planId, payload);
+            await reload();
+          }}
+          onClose={() => setIsEditOpen(false)}
         />
       )}
     </div>
