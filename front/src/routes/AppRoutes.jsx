@@ -5,6 +5,9 @@ import { useAuth } from "../hooks/useAuth.js";
 import AppLayout from "../layouts/AppLayout.jsx";
 import AccountingPage from "../pages/accounting/AccountingPage.jsx";
 import LoginPage from "../pages/auth/LoginPage.jsx";
+import BlogFormPage from "../pages/blog/BlogFormPage.jsx";
+import BlogListPage from "../pages/blog/BlogListPage.jsx";
+import BlogPostPage from "../pages/blog/BlogPostPage.jsx";
 import DashboardPage from "../pages/dashboard/DashboardPage.jsx";
 import DietBuilderPage from "../pages/diet/DietBuilderPage.jsx";
 import DietListPage from "../pages/diet/DietListPage.jsx";
@@ -49,6 +52,8 @@ export default function AppRoutes() {
             <Route path="/diet/:planId" element={<DietBuilderPage />} />
             <Route path="/moves/new" element={<MoveFormPage />} />
             <Route path="/moves/:moveId/edit" element={<MoveFormPage />} />
+            <Route path="/blog/new" element={<BlogFormPage />} />
+            <Route path="/blog/:postId/edit" element={<BlogFormPage />} />
           </Route>
 
           {/* Admin + accounting only */}
@@ -66,6 +71,8 @@ export default function AppRoutes() {
           {/* Open to every authenticated role */}
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/moves" element={<MoveListPage />} />
+          <Route path="/blog" element={<BlogListPage />} />
+          <Route path="/blog/:postId" element={<BlogPostPage />} />
         </Route>
       </Route>
 

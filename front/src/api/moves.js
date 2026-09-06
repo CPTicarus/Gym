@@ -66,3 +66,14 @@ export async function addMoveMedia(moveId, { file, externalUrl, mediaType, capti
   });
   return data;
 }
+
+/**
+ * Persist a new display order for a move's media. Takes the full list of
+ * ids in their new order (the backend rejects a partial list — `order` is
+ * a position within the whole list, so renumbering a subset would collide
+ * with the items left out) and returns the reordered media.
+ */
+export async function reorderMoveMedia(moveId, mediaIds) {
+  const { data } = await axiosClient.post(`/moves/${moveId}/media/reorder/`, { order: mediaIds });
+  return data;
+}

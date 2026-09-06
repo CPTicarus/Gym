@@ -1,8 +1,11 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.response import Response
 
 from .models import Move, MoveMedia
 from .permissions import IsTrainerOrAdminOrReadOnly
@@ -43,6 +46,7 @@ class MoveMediaViewSet(viewsets.ModelViewSet):
       POST   /api/moves/{move_pk}/media/
       PATCH  /api/moves/{move_pk}/media/{id}/
       DELETE /api/moves/{move_pk}/media/{id}/
+      POST   /api/moves/{move_pk}/media/reorder/
 
     Reuses the same read-open / write-restricted rule as moves themselves.
     """
@@ -57,3 +61,30 @@ class MoveMediaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         move = get_object_or_404(Move, pk=self.kwargs["move_pk"])
         serializer.save(move=move)
+
+    @action(detail=False, methods=["post"])
+    def reorder(self, request, move_pk=None):
+        """Rewrite the display order of a move's media in one call.
+
+        Body: {"order": [<media_id>, ...]} — every one of the move's media
+        ids, listed in the order they should appear. All of them, because
+        `order` is a position within the whole list: renumbering a subset
+        would silently collide with the items left out. One request rather
+        than a PATCH per item so a reorder can't half-apply.
+        """
+        ids = request.data.get("order")
+        if not isinstance(ids, list) or not ids:
+            raise ValidationError({"order": "Provide a list of media ids in the new order."})
+
+        media = {item.id: item for item in self.get_queryset()}
+        if sorted(ids) != sorted(media):
+            raise ValidationError(
+                {"order": "Provide every media id belonging to this move, exactly once."}
+            )
+
+        for position, media_id in enumerate(ids):
+            media[media_id].order = position
+        MoveMedia.objects.bulk_update(media.values(), ["order"])
+
+        ordered = sorted(media.values(), key=lambda item: item.order)
+        return Response(self.get_serializer(ordered, many=True).data)

@@ -429,8 +429,10 @@
   .media-list {
     @apply mb-5 flex list-none flex-col gap-2 p-0;
   }
+  /* A media row now carries a thumbnail and reorder arrows (see
+     MoveMediaList.jsx), so the padding is even rather than text-height. */
   .media-list-item {
-    @apply flex items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2 text-[13px];
+    @apply flex items-center gap-2.5 rounded-lg border border-line bg-surface p-2 text-[13px];
   }
 
   /* ---- Move detail modal (member-facing: description + images/clips) ---- */

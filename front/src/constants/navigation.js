@@ -1,6 +1,7 @@
 import {
   ClipboardIcon,
   DumbbellIcon,
+  NewspaperIcon,
   SettingsIcon,
   UsersIcon,
   UtensilsIcon,
@@ -22,6 +23,14 @@ export const NAV_ITEMS = [
   { to: "/plans", label: "برنامه‌ها", Icon: ClipboardIcon, roles: ["trainer", "admin"] },
   { to: "/diet", label: "تغذیه", Icon: UtensilsIcon, roles: ["trainer", "admin"] },
   { to: "/accounting", label: "حسابداری", Icon: WalletIcon, roles: ["admin", "accounting"] },
+
+  // The blog is the one section every role shares — staff write, everyone reads.
+  {
+    to: "/blog",
+    label: "مطالب",
+    Icon: NewspaperIcon,
+    roles: ["member", "trainer", "admin", "accounting"],
+  },
   {
     to: "/settings",
     label: "تنظیمات",

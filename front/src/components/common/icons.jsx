@@ -118,6 +118,18 @@ export function WalletIcon(props) {
   );
 }
 
+export function NewspaperIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 5h13a1 1 0 0 1 1 1v13H6a2 2 0 0 1-2-2V5Z" />
+      <path d="M18 9h1.5a1.5 1.5 0 0 1 1.5 1.5V17a2 2 0 0 1-2 2" />
+      <path d="M7.5 8.5h6" />
+      <path d="M7.5 12h6" />
+      <path d="M7.5 15.5h3.5" />
+    </IconBase>
+  );
+}
+
 export function SettingsIcon(props) {
   return (
     <IconBase {...props}>
@@ -149,6 +161,22 @@ export function MenuIcon(props) {
       <path d="M4 6h16" />
       <path d="M4 12h16" />
       <path d="M4 18h16" />
+    </IconBase>
+  );
+}
+
+export function ChevronUpIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 14.5l6-6 6 6" />
+    </IconBase>
+  );
+}
+
+export function ChevronDownIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 9.5l6 6 6-6" />
     </IconBase>
   );
 }

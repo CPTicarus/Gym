@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { addMoveMedia, createMove, getMove, updateMove } from "../../api/moves.js";
+import { addMoveMedia, createMove, getMove, reorderMoveMedia, updateMove } from "../../api/moves.js";
+import FilePicker from "../../components/common/FilePicker.jsx";
+import MoveMediaList from "../../components/moves/MoveMediaList.jsx";
 import { CATEGORIES, DIFFICULTIES } from "../../constants/moveOptions.js";
 
 function formatApiError(data) {
@@ -38,6 +40,10 @@ export default function MoveFormPage() {
   const [caption, setCaption] = useState("");
   const [mediaError, setMediaError] = useState(null);
   const [isAddingMedia, setIsAddingMedia] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+  // Separate from mediaError so a failed reorder reports next to the list
+  // rather than down inside the add-media form.
+  const [reorderError, setReorderError] = useState(null);
 
   const nameInputRef = useRef(null);
 
@@ -122,6 +128,30 @@ export default function MoveFormPage() {
       setMediaError(err?.response?.data ? formatApiError(err.response.data) : "افزودن رسانه با مشکل مواجه شد.");
     } finally {
       setIsAddingMedia(false);
+    }
+  }
+
+  /** Swap an item with its neighbour. Applied locally first so the arrows
+   * feel instant, then persisted — the server's response is what we keep,
+   * and a failure rolls the list back rather than leaving the screen
+   * disagreeing with the database. */
+  async function handleReorderMedia(index, direction) {
+    const target = index + direction;
+    if (target < 0 || target >= mediaItems.length) return;
+
+    const previous = mediaItems;
+    const next = [...mediaItems];
+    [next[index], next[target]] = [next[target], next[index]];
+    setMediaItems(next);
+    setReorderError(null);
+    setIsReordering(true);
+    try {
+      setMediaItems(await reorderMoveMedia(move.id, next.map((m) => m.id)));
+    } catch {
+      setMediaItems(previous);
+      setReorderError("تغییر ترتیب با مشکل مواجه شد. دوباره امتحان کنید.");
+    } finally {
+      setIsReordering(false);
     }
   }
 
@@ -255,16 +285,21 @@ export default function MoveFormPage() {
           )}
 
           {mediaItems.length > 0 && (
-            <ul className="media-list">
-              {mediaItems.map((m) => (
-                <li key={m.id} className="media-list-item">
-                  <span className="badge badge-neutral">{m.media_type === "video" ? "ویدیو" : "عکس"}</span>
-                  <span className={m.external_url ? "ltr" : undefined}>
-                    {m.caption || m.external_url || "فایل بارگذاری‌شده"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p className="page-subtitle mb-2">
+                اعضا رسانه‌ها را به همین ترتیب می‌بینند — با فلش‌ها جابه‌جایشان کنید.
+              </p>
+              <MoveMediaList
+                items={mediaItems}
+                onMove={handleReorderMedia}
+                isReordering={isReordering}
+              />
+              {reorderError && (
+                <p className="error-text" role="alert">
+                  {reorderError}
+                </p>
+              )}
+            </>
           )}
 
           <form className="card form-card" onSubmit={handleAddMedia} noValidate>
@@ -276,15 +311,15 @@ export default function MoveFormPage() {
               </select>
             </label>
 
-            <label className="field">
+            <div className="field">
               <span className="label">بارگذاری فایل</span>
-              <input
-                className="input"
-                type="file"
+              <FilePicker
+                file={file}
+                onChange={setFile}
                 accept={mediaType === "video" ? "video/*" : "image/*"}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                buttonLabel={mediaType === "video" ? "انتخاب ویدیو" : "انتخاب عکس"}
               />
-            </label>
+            </div>
 
             <p className="field-divider">یا</p>
 

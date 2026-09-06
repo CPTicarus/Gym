@@ -1,0 +1,76 @@
+import { ChevronDownIcon, ChevronUpIcon } from "../common/icons.jsx";
+import { toPersianDigits } from "../../utils/jalali.js";
+
+const ARROW_BTN = "icon-btn icon-btn-sm flex-none disabled:cursor-not-allowed disabled:opacity-40";
+
+function Thumbnail({ item }) {
+  const frame = "h-12 w-12 flex-none rounded-md border border-line object-cover";
+
+  if (item.file && item.media_type === "image") {
+    return <img src={item.file} alt="" className={frame} loading="lazy" />;
+  }
+  if (item.file && item.media_type === "video") {
+    // preload="metadata" is enough for the browser to paint a first frame
+    // as the thumbnail without pulling the whole clip down.
+    return <video src={item.file} className={`${frame} bg-neutral-soft`} muted preload="metadata" />;
+  }
+  // Externally hosted (e.g. an unlisted YouTube link) — nothing to preview
+  // without embedding the provider's player, which the list doesn't need.
+  return (
+    <span
+      className={`${frame} flex items-center justify-center bg-neutral-soft text-[11px] font-semibold text-muted`}
+    >
+      لینک
+    </span>
+  );
+}
+
+/**
+ * The media attached to a move, in the order members will see it, with
+ * arrows to move an item up or down. Position is what the numbers show —
+ * they're the list index, not the stored `order` value, so they stay
+ * 1..n even if the stored numbers ever have gaps.
+ */
+export default function MoveMediaList({ items, onMove, isReordering }) {
+  return (
+    <ul className="media-list">
+      {items.map((item, index) => (
+        <li key={item.id} className="media-list-item">
+          <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-neutral-soft text-xs font-bold">
+            {toPersianDigits(index + 1)}
+          </span>
+
+          <Thumbnail item={item} />
+
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+            <span className="badge badge-neutral">{item.media_type === "video" ? "ویدیو" : "عکس"}</span>
+            <span className={`w-full truncate ${item.external_url ? "ltr" : ""}`}>
+              {item.caption || item.external_url || "فایل بارگذاری‌شده"}
+            </span>
+          </div>
+
+          <div className="flex flex-none items-center gap-1">
+            <button
+              type="button"
+              className={ARROW_BTN}
+              onClick={() => onMove(index, -1)}
+              disabled={isReordering || index === 0}
+              aria-label={`انتقال به بالا — مورد ${toPersianDigits(index + 1)}`}
+            >
+              <ChevronUpIcon size={16} />
+            </button>
+            <button
+              type="button"
+              className={ARROW_BTN}
+              onClick={() => onMove(index, 1)}
+              disabled={isReordering || index === items.length - 1}
+              aria-label={`انتقال به پایین — مورد ${toPersianDigits(index + 1)}`}
+            >
+              <ChevronDownIcon size={16} />
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
