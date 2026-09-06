@@ -76,3 +76,39 @@ class IsOwnerOrStaff(BasePermission):
             return user.is_trainer or user.is_gym_admin or user.is_accounting
 
         return user.is_gym_admin
+
+
+def can_manage_user(actor, target):
+    """Whether `actor` may edit `target`'s profile or set their password.
+
+    One rule, used by both, because "who may change this person's details"
+    and "who may change this person's password" are the same question.
+
+      admin       everyone except OTHER admins — an admin can always edit
+                  themselves, but not a peer. Admins are the people who can
+                  hand out roles, so letting one quietly take over another's
+                  account (by resetting its password) would make the
+                  restriction on creating admins pointless.
+      accounting  members only. They run the front desk, so member records
+                  are their job; trainer and admin accounts are not.
+      anyone else no. Trainers read the directory, they don't edit it.
+    """
+    if not (actor and actor.is_authenticated):
+        return False
+    if actor.is_gym_admin:
+        return target.pk == actor.pk or not target.is_gym_admin
+    if actor.is_accounting:
+        return target.is_member
+    return False
+
+
+class CanManageUser(BasePermission):
+    """Object-level companion to can_manage_user, for the user directory's
+    write actions."""
+
+    message = "You are not allowed to modify this account."
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+        return can_manage_user(request.user, obj)

@@ -40,9 +40,9 @@ class NationalIdField(serializers.CharField):
 class _NationalIdFieldMixin(serializers.Serializer):
     """Declares `national_id` wherever it's writable.
 
-    The field is declared by hand rather than left to ModelSerializer,
-    because the model must keep allowing blanks (accounts that predate the
-    column) while every path that writes one has to demand it.
+    Declared by hand rather than left to ModelSerializer so it can be a
+    NationalIdField (see above) — the generated one would be a plain
+    CharField and would normalise nothing.
 
     That hand-declaration is also why UniqueValidator is spelled out here.
     A generated field would have inherited it from the model's
@@ -127,20 +127,31 @@ class UserAdminSerializer(_NationalIdFieldMixin, _BodyMetricsFieldsMixin, serial
         read_only_fields = ["id", "username", "created_at", "is_membership_active", "height_cm"]
 
 
-class MembershipUpdateSerializer(serializers.ModelSerializer):
-    """What accounting is allowed to change: the membership window only.
-    Everything else stays read-only, so billing staff can renew or expire
-    someone without being able to edit profiles or change roles."""
+class MemberEditSerializer(_NationalIdFieldMixin, serializers.ModelSerializer):
+    """What accounting may change about a member: their details and their
+    membership window.
+
+    `role` and `is_active` are absent, and that absence is the point. If
+    accounting could set a role, it could promote a member it just created
+    to admin — which would make the rule that only admins create staff
+    accounts (UserViewSet.perform_create) worth nothing. Whether accounting
+    may reach this record at all is decided separately, per object, by
+    can_manage_user.
+    """
 
     is_membership_active = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = User
         fields = [
-            "id", "username", "first_name", "last_name", "role",
+            "id", "username", "national_id", "email", "first_name", "last_name",
+            "role", "phone_number", "date_of_birth", "gender",
             "membership_start_date", "membership_end_date", "is_membership_active",
         ]
-        read_only_fields = ["id", "username", "first_name", "last_name", "role", "is_membership_active"]
+        read_only_fields = ["id", "username", "role", "is_membership_active"]
+
+    def validate_phone_number(self, value):
+        return normalize_digits(value).strip()
 
     def validate(self, attrs):
         start = attrs.get("membership_start_date", getattr(self.instance, "membership_start_date", None))
@@ -277,6 +288,24 @@ class StaffCreateSerializer(_RequiredIdentityFieldsMixin, serializers.ModelSeria
         user.set_password(password)
         user.save()
         return user
+
+
+class SetPasswordSerializer(serializers.Serializer):
+    """Staff setting someone else's password.
+
+    Note there is no `old_password` and no way to read the current one:
+    Django stores a one-way hash, so the existing password cannot be
+    displayed, only replaced. The policy applied is the TARGET's, not the
+    requester's — resetting a member to a 4-digit PIN is fine, resetting a
+    trainer to one is not.
+    """
+
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        target = self.context["target"]
+        validate_password_for_role(attrs["password"], target.role, user=target)
+        return attrs
 
 
 class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):

@@ -1,18 +1,21 @@
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, permissions, viewsets
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
+from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import WeightLog
-from .permissions import IsAdmin, IsAdminOrAccounting, IsStaff
+from .permissions import CanManageUser, IsAdmin, IsAdminOrAccounting, IsStaff
 from .throttling import LoginRateThrottle
 from .serializers import (
     CustomTokenObtainPairSerializer,
-    MembershipUpdateSerializer,
+    MemberEditSerializer,
     MeSerializer,
     RegisterSerializer,
+    SetPasswordSerializer,
     StaffCreateSerializer,
     UserAdminSerializer,
     UserCreateSerializer,
@@ -73,9 +76,17 @@ class UserViewSet(viewsets.ModelViewSet):
              trainer / accounting: members only (their clients / billing scope)
       CREATE admin, accounting — front-desk member intake (always creates a
              MEMBER; staff accounts go through POST /auth/staff/ instead)
-      UPDATE admin: full profile, role, membership, active flag
-             accounting: membership dates only (see MembershipUpdateSerializer)
+      UPDATE admin: full profile, role, membership, active flag — for
+             anyone except another admin (themselves included, so an admin
+             can still edit their own record)
+             accounting: members only, everything but role and active flag
+             (see MemberEditSerializer)
              trainer: not allowed — read-only
+             The per-object half of that lives in can_manage_user.
+
+      POST /api/users/{id}/set-password/   {"password": "..."} — same rule
+             as UPDATE. Sets a new password; nobody can read the existing
+             one, here or anywhere else (it's a one-way hash).
 
       GET /api/users/?role=trainer   meaningful for admin; others are already scoped to members
       GET /api/users/?search=jane
@@ -99,17 +110,20 @@ class UserViewSet(viewsets.ModelViewSet):
         return User.objects.filter(role=User.Role.MEMBER)
 
     def get_permissions(self):
-        if self.action in ("create", "partial_update", "update"):
-            return [IsAdminOrAccounting()]
+        if self.action in ("create", "partial_update", "update", "set_password"):
+            # IsAdminOrAccounting is the coarse gate (who may write at all);
+            # CanManageUser is the per-record one (whose record they may
+            # touch), and only the second can see the target.
+            return [IsAdminOrAccounting(), CanManageUser()]
         return [IsStaff()]
 
     def get_serializer_class(self):
         if self.action == "create":
             return UserCreateSerializer
         if self.action in ("partial_update", "update"):
-            # Accounting gets the narrow membership-only serializer, so it
-            # can renew someone without being able to edit profiles or roles.
-            return UserAdminSerializer if self.request.user.is_gym_admin else MembershipUpdateSerializer
+            # Admin edits everything including role; accounting edits a
+            # member's details but can't touch role or the active flag.
+            return UserAdminSerializer if self.request.user.is_gym_admin else MemberEditSerializer
         return UserSerializer
 
     def perform_create(self, serializer):
@@ -121,6 +135,26 @@ class UserViewSet(viewsets.ModelViewSet):
         if role != User.Role.MEMBER and not self.request.user.is_gym_admin:
             raise PermissionDenied("Only admins can create staff accounts.")
         serializer.save()
+
+    @action(detail=True, methods=["post"], url_path="set-password")
+    def set_password(self, request, pk=None):
+        """Give someone a new password.
+
+        Deliberately a set, not a reveal. Django stores passwords as a
+        one-way hash, so the current one cannot be shown to staff, to an
+        admin, or to anyone else — it can only be replaced. What the front
+        desk needs (getting a locked-out member back in) this covers; the
+        new value is the one the caller just supplied, so the person who
+        set it already knows what to tell them.
+        """
+        target = self.get_object()  # runs CanManageUser against this record
+        serializer = SetPasswordSerializer(
+            data=request.data, context={"request": request, "target": target}
+        )
+        serializer.is_valid(raise_exception=True)
+        target.set_password(serializer.validated_data["password"])
+        target.save(update_fields=["password"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class WeightLogViewSet(viewsets.ModelViewSet):

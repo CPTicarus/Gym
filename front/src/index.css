@@ -304,7 +304,7 @@
 
   /* ---- Brand ---- */
   .brand-mark {
-    @apply font-brand text-lg font-normal text-chrome-ink;
+    @apply font-brand text-lg font-normal text-slate-900 dark:text-chrome-ink;
   }
   .brand-mark-lg {
     @apply text-2xl;

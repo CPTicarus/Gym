@@ -117,7 +117,7 @@ export default function MyWorkoutPlansPage() {
                   <p className="muted exercise-empty">روزی ثبت نشده.</p>
                 )}
 
-                <h3 className="day-block-title section-heading">حرکات روزانه</h3>
+                <h3 className="day-block-title section-heading">سرد کردن</h3>
                 <ExerciseReadOnlyList
                   exercises={plan.daily_exercises}
                   emptyText="حرکت روزانه‌ای ثبت نشده."

@@ -12,9 +12,9 @@ export async function getUser(userId) {
 
 /**
  * Admin sends the full profile; accounting's payload is narrowed by the
- * backend to membership dates only (MembershipUpdateSerializer), so
- * extra keys from an accounting user are simply ignored rather than
- * silently applied.
+ * backend to a member's own details (MemberEditSerializer), so `role` and
+ * `is_active` from an accounting user are ignored rather than applied.
+ * Which records each may touch at all is enforced per object server-side.
  */
 export async function updateUser(userId, payload) {
   const { data } = await axiosClient.patch(`/users/${userId}/`, payload);
@@ -29,4 +29,15 @@ export async function updateUser(userId, payload) {
 export async function createUser(payload) {
   const { data } = await axiosClient.post("/users/", payload);
   return data;
+}
+
+/**
+ * Give a user a new password. There is no counterpart that reads one:
+ * passwords are stored as a one-way hash, so the existing value cannot be
+ * fetched by staff, by an admin, or by anything else — only replaced.
+ * Whoever calls this already knows the value they set, which is what the
+ * front desk actually needs in order to tell someone their new password.
+ */
+export async function setUserPassword(userId, password) {
+  await axiosClient.post(`/users/${userId}/set-password/`, { password });
 }

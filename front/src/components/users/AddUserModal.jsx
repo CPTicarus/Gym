@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { createUser } from "../../api/users.js";
 import { ROLE_LABELS } from "../../constants/roles.js";
+import { GENDERS } from "../../constants/userOptions.js";
 import { toEnglishDigits } from "../../utils/jalali.js";
 import JalaliDateInput from "../common/JalaliDateInput.jsx";
 import Modal from "../common/Modal.jsx";
@@ -63,6 +64,8 @@ export default function AddUserModal({ canCreateStaff, onClose, onCreated }) {
     last_name: "",
     email: "",
     phone_number: "",
+    gender: "",
+    date_of_birth: "",
     ...defaultMembershipDates(),
   });
   // Which of the two derived fields the operator has taken over. Once a
@@ -139,6 +142,7 @@ export default function AddUserModal({ canCreateStaff, onClose, onCreated }) {
       const payload = { ...form };
       if (!payload.membership_start_date) delete payload.membership_start_date;
       if (!payload.membership_end_date) delete payload.membership_end_date;
+      if (!payload.date_of_birth) delete payload.date_of_birth;
       // A membership window means nothing for a trainer or an admin; the
       // backend drops them anyway, but there's no reason to send them.
       if (!isMember) {
@@ -264,6 +268,29 @@ export default function AddUserModal({ canCreateStaff, onClose, onCreated }) {
                   ? "به‌صورت دستی وارد شده."
                   : "چهار رقم آخر شماره تماس — قابل تغییر است."}
             </span>
+          </label>
+        </div>
+
+        {/* Optional, but worth capturing at intake while the person is
+            standing there — chasing it later never happens. */}
+        <div className="field-row">
+          <label className="field">
+            <span className="label">جنسیت (اختیاری)</span>
+            <select className="select" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
+              <option value="">—</option>
+              {GENDERS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span className="label">تاریخ تولد (اختیاری)</span>
+            <JalaliDateInput
+              value={form.date_of_birth}
+              onChange={(value) => set("date_of_birth", value)}
+            />
           </label>
         </div>
 

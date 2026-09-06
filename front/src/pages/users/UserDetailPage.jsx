@@ -8,16 +8,19 @@ import {
   listWorkoutAssignments,
   updateWorkoutAssignment,
 } from "../../api/workouts.js";
-import { TrashIcon } from "../../components/common/icons.jsx";
+import { PencilIcon, TrashIcon } from "../../components/common/icons.jsx";
 import JalaliDateInput from "../../components/common/JalaliDateInput.jsx";
+import EditUserModal from "../../components/users/EditUserModal.jsx";
 import {
   ASSIGNMENT_STATUSES,
   assignmentBadgeClass,
 } from "../../constants/planOptions.js";
 import { ROLE_LABELS } from "../../constants/roles.js";
+import { GENDER_LABELS } from "../../constants/userOptions.js";
 import { useAuth } from "../../hooks/useAuth.js";
 import { getBmiCategory } from "../../utils/bmi.js";
 import { formatDate } from "../../utils/format.js";
+import { canManageUser } from "../../utils/permissions.js";
 
 function formatApiError(data) {
   if (typeof data === "string") return data;
@@ -74,11 +77,12 @@ function AssignmentRow({ assignment, planHref, onStatusChange, onRemove, canEdit
 
 export default function UserDetailPage() {
   const { userId } = useParams();
-  const { role } = useAuth();
+  const { role, user: currentUser } = useAuth();
 
   const isAdmin = role === "admin";
   const canEditMembership = isAdmin || role === "accounting";
   const canEditAssignments = isAdmin || role === "trainer";
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const [user, setUser] = useState(null);
   const [workoutAssignments, setWorkoutAssignments] = useState([]);
@@ -162,7 +166,15 @@ export default function UserDetailPage() {
           <h1 className="page-title">{fullName}</h1>
           <p className="page-subtitle ltr">{user.username}</p>
         </div>
-        <span className="badge badge-role">{ROLE_LABELS[user.role] ?? user.role}</span>
+        <div className="flex items-center gap-2">
+          <span className="badge badge-role">{ROLE_LABELS[user.role] ?? user.role}</span>
+          {canManageUser(currentUser, user) && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setIsEditOpen(true)}>
+              <PencilIcon size={15} />
+              <span>ویرایش</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -183,6 +195,10 @@ export default function UserDetailPage() {
           <div className="detail-item">
             <dt className="label">شماره تماس</dt>
             <dd className="detail-value ltr">{user.phone_number || "—"}</dd>
+          </div>
+          <div className="detail-item">
+            <dt className="label">جنسیت</dt>
+            <dd className="detail-value">{GENDER_LABELS[user.gender] ?? "—"}</dd>
           </div>
           <div className="detail-item">
             <dt className="label">تاریخ تولد</dt>
@@ -318,6 +334,18 @@ export default function UserDetailPage() {
           </ul>
         )}
       </section>
+
+      {isEditOpen && (
+        <EditUserModal
+          user={user}
+          canEditRole={isAdmin}
+          onClose={() => setIsEditOpen(false)}
+          // Merge, don't replace: accounting's response comes from the
+          // narrower MemberEditSerializer and omits derived fields (bmi,
+          // latest weight, created_at) this page still displays.
+          onSaved={(updated) => setUser((prev) => ({ ...prev, ...updated }))}
+        />
+      )}
     </div>
   );
 }

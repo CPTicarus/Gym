@@ -250,7 +250,7 @@ export default function PlanBuilderPage() {
 
       {/* Section 3 — daily items */}
       <section className="card plan-section">
-        <h2 className="plan-section-title">۳ — حرکات روزانه</h2>
+        <h2 className="plan-section-title">۳ — سرد کردن</h2>
         <p className="muted plan-section-hint">حرکاتی که هر روز و مستقل از روز تمرین انجام می‌شوند.</p>
         <ExerciseSection
           exercises={plan.daily_exercises}
