@@ -1,19 +1,21 @@
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import WeightLog
 from .permissions import IsAdmin, IsAdminOrAccounting, IsStaff
+from .throttling import LoginRateThrottle
 from .serializers import (
     CustomTokenObtainPairSerializer,
-    MemberCreateSerializer,
     MembershipUpdateSerializer,
     MeSerializer,
     RegisterSerializer,
     StaffCreateSerializer,
     UserAdminSerializer,
+    UserCreateSerializer,
     UserSerializer,
     WeightLogSerializer,
 )
@@ -22,9 +24,18 @@ User = get_user_model()
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    """POST {username, password} -> {access, refresh}, with role baked into the token."""
+    """POST {username, password} -> {access, refresh}, with role baked into the token.
+
+    Rate-limited per account. This is not optional decoration: member
+    passwords are deliberately allowed to be short (a 4-digit PIN — see
+    apps/accounts/passwords.py), and a short password is only as safe as
+    the number of guesses an attacker gets. The limit turns 10,000
+    combinations from seconds of scripted traffic into most of a day.
+    See LoginRateThrottle for why it counts per username, not per IP.
+    """
 
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [LoginRateThrottle]
 
 
 class RegisterView(generics.CreateAPIView):
@@ -76,7 +87,9 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsStaff]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["role", "is_active"]
-    search_fields = ["username", "email", "first_name", "last_name", "phone_number"]
+    search_fields = [
+        "username", "national_id", "email", "first_name", "last_name", "phone_number",
+    ]
     http_method_names = ["get", "post", "patch", "head", "options"]
 
     def get_queryset(self):
@@ -92,12 +105,22 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == "create":
-            return MemberCreateSerializer
+            return UserCreateSerializer
         if self.action in ("partial_update", "update"):
             # Accounting gets the narrow membership-only serializer, so it
             # can renew someone without being able to edit profiles or roles.
             return UserAdminSerializer if self.request.user.is_gym_admin else MembershipUpdateSerializer
         return UserSerializer
+
+    def perform_create(self, serializer):
+        """Accounting runs the front desk, so it can sign up members — but
+        handing out trainer or admin accounts is the admin's call alone.
+        Enforced here rather than in the serializer, since it's a question
+        about the requester, not about the data."""
+        role = serializer.validated_data.get("role", User.Role.MEMBER)
+        if role != User.Role.MEMBER and not self.request.user.is_gym_admin:
+            raise PermissionDenied("Only admins can create staff accounts.")
+        serializer.save()
 
 
 class WeightLogViewSet(viewsets.ModelViewSet):

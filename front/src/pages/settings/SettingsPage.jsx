@@ -60,6 +60,13 @@ export default function SettingsPage() {
           </label>
         </div>
 
+        {/* Shown, not editable — correcting an identity document is an
+            admin job, not something you change about yourself. */}
+        <label className="field">
+          <span className="label">کد ملی</span>
+          <input className="input" dir="ltr" value={user?.national_id ?? "—"} disabled />
+        </label>
+
         <div className="field-row">
           <label className="field">
             <span className="label">نام</span>

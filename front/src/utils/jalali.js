@@ -14,6 +14,23 @@ export function toPersianDigits(value) {
   return String(value).replace(/[0-9]/g, (digit) => PERSIAN_DIGITS[digit]);
 }
 
+/**
+ * The reverse, for input rather than display: a Persian keyboard types
+ * ۰-۹ (and some produce the Arabic-Indic ٠-٩), which are the same numbers
+ * but won't match a [0-9] test or compare equal to their ASCII twins. Any
+ * digits the user typed get folded back before we do anything with them.
+ * The backend normalises the same way on the way in (normalize_digits in
+ * apps/accounts/models.py) — this is so the form behaves correctly before
+ * it ever reaches the server.
+ */
+export function toEnglishDigits(value) {
+  return String(value ?? "").replace(/[۰-۹٠-٩]/g, (digit) => {
+    const code = digit.charCodeAt(0);
+    const base = code >= 0x0660 && code <= 0x0669 ? 0x0660 : 0x06f0;
+    return String(code - base);
+  });
+}
+
 export const JALALI_MONTHS = [
   "فروردین",
   "اردیبهشت",

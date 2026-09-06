@@ -21,8 +21,12 @@ export async function updateUser(userId, payload) {
   return data;
 }
 
-/** Front-desk member intake — always creates a MEMBER. */
-export async function createMember(payload) {
+/**
+ * Front-desk account intake. `role` defaults to member server-side; an
+ * admin can pass trainer/admin/accounting, and the API refuses a staff
+ * role from anyone but an admin.
+ */
+export async function createUser(payload) {
   const { data } = await axiosClient.post("/users/", payload);
   return data;
 }

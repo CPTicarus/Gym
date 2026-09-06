@@ -2,6 +2,18 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
+# Persian (۰-۹) and Arabic-Indic (٠-٩) digits mapped onto ASCII. A Persian
+# keyboard produces the former, and a national ID or phone number typed
+# that way is the same number — it just wouldn't match a [0-9] check, or
+# compare equal to the same ID typed on an English keyboard. Normalising at
+# the edge means only one form is ever stored.
+DIGIT_TRANSLATION = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+
+
+def normalize_digits(value):
+    """Rewrite any Persian/Arabic-Indic digits in `value` as ASCII ones."""
+    return str(value or "").translate(DIGIT_TRANSLATION)
+
 
 class User(AbstractUser):
     """
@@ -24,6 +36,12 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.MEMBER)
 
     phone_number = models.CharField(max_length=20, blank=True)
+    # Required when creating anyone (enforced in the serializers, not here:
+    # accounts that predate this field have none, and a NOT NULL column
+    # would make those rows unsaveable). Unique so the same person can't be
+    # signed up twice — null rather than "" for the blanks, because SQL
+    # treats NULLs as distinct and would reject a second empty string.
+    national_id = models.CharField(max_length=20, null=True, blank=True, unique=True)
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=10, blank=True)
     profile_picture = models.ImageField(upload_to="profiles/", null=True, blank=True)

@@ -77,6 +77,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# Members are held to length alone (see apps/accounts/passwords.py for why);
+# every other role goes through AUTH_PASSWORD_VALIDATORS above. A gym that
+# wants a longer member PIN raises this without touching code.
+MEMBER_PASSWORD_MIN_LENGTH = config("MEMBER_PASSWORD_MIN_LENGTH", default=4, cast=int)
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -133,6 +138,18 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # Only the login view throttles — the rest of the API sits behind JWT
+    # and doesn't need a global limit.
+    #
+    # This exists because member passwords are allowed to be short: a
+    # 4-digit PIN is 10,000 guesses, which is seconds of scripted traffic
+    # against an unthrottled login. At 10/min an attacker needs ~16 hours
+    # for one account, which is the difference between "weak" and "open".
+    # The bucket is per username rather than per IP — see
+    # apps/accounts/throttling.py for why that matters in a gym.
+    "DEFAULT_THROTTLE_RATES": {
+        "login": config("LOGIN_THROTTLE_RATE", default="10/min"),
+    },
 }
 
 SIMPLE_JWT = {

@@ -6,14 +6,18 @@ from .models import User, WeightLog
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
-    list_display = ["username", "email", "role", "is_membership_active", "membership_end_date", "is_staff"]
+    list_display = [
+        "username", "national_id", "email", "role",
+        "is_membership_active", "membership_end_date", "is_staff",
+    ]
     list_filter = ["role", "is_staff", "is_active"]
+    search_fields = DjangoUserAdmin.search_fields + ("national_id", "phone_number")
     fieldsets = DjangoUserAdmin.fieldsets + (
         (
             "Gym profile",
             {
                 "fields": (
-                    "role", "phone_number", "date_of_birth", "gender", "profile_picture",
+                    "role", "national_id", "phone_number", "date_of_birth", "gender", "profile_picture",
                     "height_cm", "membership_start_date", "membership_end_date",
                 )
             },

@@ -173,6 +173,10 @@ export default function UserDetailPage() {
         <h2 className="plan-section-title">اطلاعات کاربر</h2>
         <dl className="detail-grid">
           <div className="detail-item">
+            <dt className="label">کد ملی</dt>
+            <dd className="detail-value ltr">{user.national_id || "—"}</dd>
+          </div>
+          <div className="detail-item">
             <dt className="label">ایمیل</dt>
             <dd className="detail-value ltr">{user.email || "—"}</dd>
           </div>

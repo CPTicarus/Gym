@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { listUsers } from "../../api/users.js";
-import AddMemberModal from "../../components/users/AddMemberModal.jsx";
+import AddUserModal from "../../components/users/AddUserModal.jsx";
 import UserListItem from "../../components/users/UserListItem.jsx";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const isAdmin = role === "admin";
   // Member intake is a front-desk/billing job — trainers get read-only
   // access here. Flip this to include "trainer" if your gym works differently.
-  const canAddMember = isAdmin || role === "accounting";
+  const canAddUser = isAdmin || role === "accounting";
 
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
@@ -68,9 +68,9 @@ export default function DashboardPage() {
           <h1 className="page-title">داشبورد</h1>
           <p className="page-subtitle">{isAdmin ? "فهرست همهٔ کاربران باشگاه." : "فهرست اعضای باشگاه."}</p>
         </div>
-        {canAddMember && (
+        {canAddUser && (
           <button className="btn btn-primary" onClick={() => setIsAddOpen(true)}>
-            + افزودن عضو
+            {isAdmin ? "+ افزودن کاربر" : "+ افزودن عضو"}
           </button>
         )}
       </div>
@@ -132,7 +132,8 @@ export default function DashboardPage() {
       )}
 
       {isAddOpen && (
-        <AddMemberModal
+        <AddUserModal
+          canCreateStaff={isAdmin}
           onClose={() => setIsAddOpen(false)}
           onCreated={() => {
             setIsAddOpen(false);
