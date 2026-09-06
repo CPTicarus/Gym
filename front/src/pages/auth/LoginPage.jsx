@@ -67,9 +67,6 @@ export default function LoginPage() {
           <p className="auth-note">{BRAND_NOTE}</p>
         </div>
 
-        {/* Full-bleed across the brand panel. The only marquee in the
-            app: behind the app proper it just competed with whatever the
-            page was actually for. */}
         <Marquee items={BRAND_TICKER} duration="10s" className="auth-marquee" />
       </div>
 

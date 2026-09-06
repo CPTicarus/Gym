@@ -235,6 +235,31 @@
   .main {
     @apply flex min-w-0 flex-1 flex-col;
   }
+  /* ---- The always-dark panels ----
+     The sidebar, the mobile drawer and the auth brand panel keep a dark
+     background in BOTH themes — that's the deliberate "constant frame"
+     the @theme block describes. The trouble is that generic components
+     get dropped inside them, and those read --color-ink, --color-muted
+     and --color-line, which in LIGHT mode resolve to near-black on
+     near-black: the drawer's close button, its logout button, the
+     sidebar footer and the brand mark all disappear.
+
+     Rather than give each one an "-inverse" variant and remember to
+     apply it every time something new is added here, the panels re-point
+     those tokens for their own subtree. Everything inside is then
+     rendering against a dark surface as far as the tokens are concerned,
+     and comes out right in either theme — including components that
+     don't exist yet. The values are the dark-theme ones, because that's
+     exactly the situation these panels are permanently in. */
+  .sidebar,
+  .drawer-panel,
+  .auth-brand {
+    --color-ink: var(--color-chrome-ink);
+    --color-muted: #9aa0a6;
+    --color-line: rgb(255 255 255 / 0.25);
+    --color-neutral-soft: rgb(255 255 255 / 0.1);
+  }
+
   .sidebar {
     @apply hidden;
   }
@@ -303,8 +328,13 @@
   }
 
   /* ---- Brand ---- */
+  /* No colour of its own, deliberately. The mark appears on two kinds of
+     background — the always-dark chrome panels and the theme-following
+     top bar — and each already sets the right ink, so inheriting is the
+     only value that's correct in all four places. Pinning a colour here
+     (either one) breaks it in the other. */
   .brand-mark {
-    @apply font-brand text-lg font-normal text-slate-900 dark:text-chrome-ink;
+    @apply font-brand text-lg font-normal;
   }
   .brand-mark-lg {
     @apply text-2xl;

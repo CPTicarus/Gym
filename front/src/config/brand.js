@@ -4,8 +4,8 @@
 // nothing else needs to change.
 
 export const BRAND_NAME = "پلاک";
-export const BRAND_TAGLINE = "پنل مدیریت باشگاه";
-export const BRAND_NOTE = "برنامه‌های تمرینی و غذایی، کتابخانه حرکات و وضعیت اعضا؛ همه در یک‌جا.";
+export const BRAND_TAGLINE = "باشگاه ایلیا";
+export const BRAND_NOTE = "شنبه دیر است، امروز وقتشه!";
 
 // The scrolling strip on the login screen. Login only, on purpose: it's
 // the one place with nothing else competing for attention. Running it
