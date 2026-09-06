@@ -1,9 +1,13 @@
+import re
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
 ALLOWED_MEDIA_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "mp4", "mov", "webm"]
+
+_EXTENSION_RE = re.compile(r"\.([a-z0-9]+)$")
 
 
 class Move(models.Model):
@@ -61,10 +65,28 @@ class MoveMedia(models.Model):
 
     class MediaType(models.TextChoices):
         IMAGE = "image", "Image"
+        GIF = "gif", "GIF"
         VIDEO = "video", "Video"
 
+    # What each extension is, so nobody has to tell us (see save()). GIF is
+    # split out from IMAGE purely for labelling — it renders in an <img>
+    # like any other image, but someone scanning a move's media wants to
+    # see at a glance which entry is the animated loop.
+    EXTENSION_MEDIA_TYPES = {
+        "jpg": MediaType.IMAGE,
+        "jpeg": MediaType.IMAGE,
+        "png": MediaType.IMAGE,
+        "webp": MediaType.IMAGE,
+        "gif": MediaType.GIF,
+        "mp4": MediaType.VIDEO,
+        "mov": MediaType.VIDEO,
+        "webm": MediaType.VIDEO,
+    }
+
     move = models.ForeignKey(Move, related_name="media", on_delete=models.CASCADE)
-    media_type = models.CharField(max_length=10, choices=MediaType.choices)
+    # Derived on save, never asked for — hence blank, so the Django admin
+    # doesn't demand it either.
+    media_type = models.CharField(max_length=10, choices=MediaType.choices, blank=True)
     file = models.FileField(
         upload_to="moves/",
         null=True,
@@ -81,6 +103,25 @@ class MoveMedia(models.Model):
 
     def __str__(self):
         return f"{self.move.name} — {self.get_media_type_display()} #{self.order}"
+
+    @classmethod
+    def detect_media_type(cls, name):
+        """The media type a filename or URL implies, or None when it has no
+        extension we recognise (a YouTube watch link, say)."""
+        path = str(name or "").split("?")[0].split("#")[0].lower()
+        match = _EXTENSION_RE.search(path)
+        return cls.EXTENSION_MEDIA_TYPES.get(match.group(1)) if match else None
+
+    def save(self, *args, **kwargs):
+        # The upload's own extension is the authority on what it is; asking
+        # the uploader to pick a type as well only invites the two to
+        # disagree. In the model rather than the serializer so the Django
+        # admin and any future import script behave the same way. A link
+        # with no usable extension falls back to video — that's what
+        # linking out is for here (see the class docstring).
+        detected = self.detect_media_type(self.file.name if self.file else self.external_url)
+        self.media_type = detected or self.media_type or self.MediaType.VIDEO
+        super().save(*args, **kwargs)
 
     def clean(self):
         if not self.file and not self.external_url:

@@ -1,4 +1,5 @@
 import { ChevronDownIcon, ChevronUpIcon } from "../common/icons.jsx";
+import { MEDIA_TYPE_LABELS } from "../../constants/moveOptions.js";
 import { toPersianDigits } from "../../utils/jalali.js";
 
 const ARROW_BTN = "icon-btn icon-btn-sm flex-none disabled:cursor-not-allowed disabled:opacity-40";
@@ -6,13 +7,15 @@ const ARROW_BTN = "icon-btn icon-btn-sm flex-none disabled:cursor-not-allowed di
 function Thumbnail({ item }) {
   const frame = "h-12 w-12 flex-none rounded-md border border-line object-cover";
 
-  if (item.file && item.media_type === "image") {
+  if (item.file) {
+    // Everything that isn't a video is an <img> — a GIF included, which is
+    // how it gets to animate in the thumbnail.
+    if (item.media_type === "video") {
+      // preload="metadata" is enough for the browser to paint a first frame
+      // as the thumbnail without pulling the whole clip down.
+      return <video src={item.file} className={`${frame} bg-neutral-soft`} muted preload="metadata" />;
+    }
     return <img src={item.file} alt="" className={frame} loading="lazy" />;
-  }
-  if (item.file && item.media_type === "video") {
-    // preload="metadata" is enough for the browser to paint a first frame
-    // as the thumbnail without pulling the whole clip down.
-    return <video src={item.file} className={`${frame} bg-neutral-soft`} muted preload="metadata" />;
   }
   // Externally hosted (e.g. an unlisted YouTube link) — nothing to preview
   // without embedding the provider's player, which the list doesn't need.
@@ -43,7 +46,9 @@ export default function MoveMediaList({ items, onMove, isReordering }) {
           <Thumbnail item={item} />
 
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-            <span className="badge badge-neutral">{item.media_type === "video" ? "ویدیو" : "عکس"}</span>
+            <span className="badge badge-neutral">
+              {MEDIA_TYPE_LABELS[item.media_type] ?? item.media_type}
+            </span>
             <span className={`w-full truncate ${item.external_url ? "ltr" : ""}`}>
               {item.caption || item.external_url || "فایل بارگذاری‌شده"}
             </span>

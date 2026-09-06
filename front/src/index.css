@@ -411,11 +411,26 @@
      instead of being eaten by the browser — every card is clickable now
      (view for everyone, plus edit via double-click for trainer/admin). */
   .move-card {
-    @apply touch-manipulation cursor-pointer rounded-lg border border-line bg-surface p-4 shadow-card transition-colors;
+    @apply relative touch-manipulation cursor-pointer rounded-lg border border-line bg-surface p-4 shadow-card transition-colors;
     border-inline-start: 4px solid var(--color-ink);
   }
   .move-card:hover {
     @apply bg-neutral-soft;
+  }
+  /* Editing is a double-click on desktop, which a touch screen has no
+     reliable equivalent for — so an editable card carries a real button up
+     to the desktop breakpoint, where the gesture takes over again (see the
+     860px block below). The extra inline-end padding is the button's
+     footprint, so a long move name doesn't wrap underneath it. */
+  .move-card-editable {
+    @apply pe-12;
+  }
+  .move-card-edit {
+    @apply absolute top-2.5 text-muted;
+    inset-inline-end: 0.625rem;
+  }
+  .move-card-edit:hover {
+    @apply text-ink;
   }
   .move-card-title {
     @apply my-0.5 mb-2.5 text-[17px];
@@ -837,6 +852,14 @@
     }
     .move-grid {
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    /* Double-click does the job with a mouse — drop the button and the
+       space it was reserving. */
+    .move-card-edit {
+      @apply hidden;
+    }
+    .move-card-editable {
+      @apply pe-4;
     }
     .brand-mark-lg {
       @apply text-4xl;

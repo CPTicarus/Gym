@@ -41,14 +41,16 @@ export async function updateMove(moveId, payload) {
 }
 
 /**
- * Attach one media item (image or video) to a move. Pass either `file`
- * (uploaded directly — sent as multipart/form-data) or `externalUrl`
- * (e.g. an unlisted YouTube/Vimeo link — sent as JSON), never both.
+ * Attach one media item to a move. Pass either `file` (uploaded directly —
+ * sent as multipart/form-data) or `externalUrl` (e.g. an unlisted
+ * YouTube/Vimeo link — sent as JSON), never both.
+ *
+ * Whether it's an image, a GIF or a video isn't passed: the backend reads
+ * that off the extension and returns it on the created item.
  */
-export async function addMoveMedia(moveId, { file, externalUrl, mediaType, caption, order }) {
+export async function addMoveMedia(moveId, { file, externalUrl, caption, order }) {
   if (file) {
     const form = new FormData();
-    form.append("media_type", mediaType);
     form.append("file", file);
     if (caption) form.append("caption", caption);
     if (order !== undefined) form.append("order", order);
@@ -59,7 +61,6 @@ export async function addMoveMedia(moveId, { file, externalUrl, mediaType, capti
   }
 
   const { data } = await axiosClient.post(`/moves/${moveId}/media/`, {
-    media_type: mediaType,
     external_url: externalUrl,
     caption,
     order,

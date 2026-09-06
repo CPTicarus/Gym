@@ -4,10 +4,14 @@ from .models import Move, MoveMedia
 
 
 class MoveMediaSerializer(serializers.ModelSerializer):
+    """`media_type` is read-only because it isn't a choice anyone makes —
+    it's derived from the upload's (or link's) extension in
+    MoveMedia.save()."""
+
     class Meta:
         model = MoveMedia
         fields = ["id", "media_type", "file", "external_url", "caption", "order"]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "media_type"]
 
     def validate(self, attrs):
         # fall back to existing instance values on partial_update (PATCH)

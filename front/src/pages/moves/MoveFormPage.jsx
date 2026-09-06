@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { addMoveMedia, createMove, getMove, reorderMoveMedia, updateMove } from "../../api/moves.js";
 import FilePicker from "../../components/common/FilePicker.jsx";
 import MoveMediaList from "../../components/moves/MoveMediaList.jsx";
-import { CATEGORIES, DIFFICULTIES } from "../../constants/moveOptions.js";
+import { CATEGORIES, DIFFICULTIES, MEDIA_ACCEPT } from "../../constants/moveOptions.js";
 
 function formatApiError(data) {
   if (typeof data === "string") return data;
@@ -34,7 +34,6 @@ export default function MoveFormPage() {
   const [loadError, setLoadError] = useState(null);
 
   // Media form
-  const [mediaType, setMediaType] = useState("image");
   const [file, setFile] = useState(null);
   const [externalUrl, setExternalUrl] = useState("");
   const [caption, setCaption] = useState("");
@@ -116,7 +115,6 @@ export default function MoveFormPage() {
       const created = await addMoveMedia(move.id, {
         file,
         externalUrl: externalUrl.trim() || undefined,
-        mediaType,
         caption: caption.trim() || undefined,
         order: mediaItems.length,
       });
@@ -167,7 +165,6 @@ export default function MoveFormPage() {
     setError(null);
     setSaved(false);
     setMediaItems([]);
-    setMediaType("image");
     setFile(null);
     setExternalUrl("");
     setCaption("");
@@ -274,7 +271,7 @@ export default function MoveFormPage() {
       {showMediaSection && (
         <>
           {isEditMode ? (
-            <h2 className="section-heading">رسانه آموزشی</h2>
+            <h2 className="section-heading">افزودن رسانه آموزشی</h2>
           ) : (
             <>
               <h1 className="page-title">افزودن رسانه آموزشی</h1>
@@ -284,41 +281,13 @@ export default function MoveFormPage() {
             </>
           )}
 
-          {mediaItems.length > 0 && (
-            <>
-              <p className="page-subtitle mb-2">
-                اعضا رسانه‌ها را به همین ترتیب می‌بینند — با فلش‌ها جابه‌جایشان کنید.
-              </p>
-              <MoveMediaList
-                items={mediaItems}
-                onMove={handleReorderMedia}
-                isReordering={isReordering}
-              />
-              {reorderError && (
-                <p className="error-text" role="alert">
-                  {reorderError}
-                </p>
-              )}
-            </>
-          )}
-
           <form className="card form-card" onSubmit={handleAddMedia} noValidate>
-            <label className="field">
-              <span className="label">نوع رسانه</span>
-              <select className="select" value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
-                <option value="image">عکس</option>
-                <option value="video">ویدیو</option>
-              </select>
-            </label>
-
             <div className="field">
               <span className="label">بارگذاری فایل</span>
-              <FilePicker
-                file={file}
-                onChange={setFile}
-                accept={mediaType === "video" ? "video/*" : "image/*"}
-                buttonLabel={mediaType === "video" ? "انتخاب ویدیو" : "انتخاب عکس"}
-              />
+              <FilePicker file={file} onChange={setFile} accept={MEDIA_ACCEPT} />
+              <span className="text-xs text-muted">
+                عکس، GIF یا ویدیو — نوعش از روی خود فایل تشخیص داده می‌شود.
+              </span>
             </div>
 
             <p className="field-divider">یا</p>
@@ -352,6 +321,25 @@ export default function MoveFormPage() {
               </button>
             </div>
           </form>
+
+          {mediaItems.length > 0 && (
+            <>
+              <h2 className="section-heading">رسانه‌های این حرکت</h2>
+              <p className="page-subtitle mb-3">
+                اعضا رسانه‌ها را به همین ترتیب می‌بینند — با فلش‌ها جابه‌جایشان کنید.
+              </p>
+              <MoveMediaList
+                items={mediaItems}
+                onMove={handleReorderMedia}
+                isReordering={isReordering}
+              />
+              {reorderError && (
+                <p className="error-text" role="alert">
+                  {reorderError}
+                </p>
+              )}
+            </>
+          )}
 
           {!isEditMode && (
             <div className="form-actions">

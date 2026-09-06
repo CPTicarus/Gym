@@ -11,18 +11,20 @@ const DIFFICULTY_VARIANT = {
 };
 
 function MediaItem({ item }) {
-  if (item.media_type === "image" && item.file) {
+  // Uploaded files split only on video vs not — a GIF is an image as far
+  // as an <img> is concerned, and that's also what makes it animate.
+  if (item.file && item.media_type === "video") {
     return (
       <li className="move-media-item">
-        <img className="move-media-image" src={item.file} alt={item.caption || "تصویر حرکت"} />
+        <video className="move-media-video" src={item.file} controls />
         {item.caption && <span className="muted move-media-caption">{item.caption}</span>}
       </li>
     );
   }
-  if (item.media_type === "video" && item.file) {
+  if (item.file) {
     return (
       <li className="move-media-item">
-        <video className="move-media-video" src={item.file} controls />
+        <img className="move-media-image" src={item.file} alt={item.caption || "تصویر حرکت"} />
         {item.caption && <span className="muted move-media-caption">{item.caption}</span>}
       </li>
     );
