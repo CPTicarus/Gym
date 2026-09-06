@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import DietAssignment, DietItem, DietPlan, Meal
+from .models import DietAssignment, DietDay, DietItem, DietPlan, Meal
 
 User = get_user_model()
 
@@ -17,8 +17,9 @@ class DietItemSerializer(serializers.ModelSerializer):
 
 
 class MealSerializer(serializers.ModelSerializer):
-    """Used to create a meal slot (name/time/order) and to read it back
-    with its food items nested (items are added via their own endpoint)."""
+    """Used to create a meal slot (name/time/order) within a day and to
+    read it back with its food items nested (items are added via their
+    own endpoint)."""
 
     items = DietItemSerializer(many=True, read_only=True)
 
@@ -26,6 +27,20 @@ class MealSerializer(serializers.ModelSerializer):
         model = Meal
         fields = ["id", "name", "time", "order", "items"]
         read_only_fields = ["id"]
+
+
+class DietDaySerializer(serializers.ModelSerializer):
+    """One of the plan's 7 fixed days. Read-only — days are auto-created
+    with the plan (see DietPlanViewSet.perform_create), never added or
+    removed by a trainer; only the meals within a day change."""
+
+    day_of_week_display = serializers.CharField(source="get_day_of_week_display", read_only=True)
+    meals = MealSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DietDay
+        fields = ["id", "day_of_week", "day_of_week_display", "meals"]
+        read_only_fields = fields
 
 
 class DietPlanListSerializer(serializers.ModelSerializer):
@@ -39,16 +54,17 @@ class DietPlanListSerializer(serializers.ModelSerializer):
 
 
 class DietPlanSerializer(serializers.ModelSerializer):
-    """Full detail — all meals (and their items) nested in one response."""
+    """Full detail — all 7 days (with their meals and items) nested in
+    one response."""
 
     created_by = serializers.StringRelatedField(read_only=True)
-    meals = MealSerializer(many=True, read_only=True)
+    days = DietDaySerializer(many=True, read_only=True)
 
     class Meta:
         model = DietPlan
         fields = [
             "id", "name", "description", "goal", "created_by",
-            "meals", "created_at", "updated_at",
+            "days", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
 

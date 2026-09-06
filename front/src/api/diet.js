@@ -8,7 +8,7 @@ export async function listDietPlans(params = {}) {
 
 export async function getDietPlan(planId) {
   const { data } = await axiosClient.get(`/diet-plans/${planId}/`);
-  return data; // includes meals[].items
+  return data; // includes days[].meals[].items
 }
 
 export async function createDietPlan(payload) {
@@ -30,14 +30,14 @@ export async function assignDietPlan(planId, userId) {
   return data;
 }
 
-// ---- Meals ----
-export async function addMeal(planId, payload) {
-  const { data } = await axiosClient.post(`/diet-plans/${planId}/meals/`, payload);
+// ---- Meals (nested under a specific day of the plan) ----
+export async function addMeal(planId, dayId, payload) {
+  const { data } = await axiosClient.post(`/diet-plans/${planId}/days/${dayId}/meals/`, payload);
   return data;
 }
 
-export async function deleteMeal(planId, mealId) {
-  await axiosClient.delete(`/diet-plans/${planId}/meals/${mealId}/`);
+export async function deleteMeal(planId, dayId, mealId) {
+  await axiosClient.delete(`/diet-plans/${planId}/days/${dayId}/meals/${mealId}/`);
 }
 
 // ---- Food items within a meal ----

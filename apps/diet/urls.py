@@ -25,8 +25,8 @@ item_detail = DietItemViewSet.as_view(
 )
 
 urlpatterns = router.urls + [
-    path("diet-plans/<int:plan_pk>/meals/", meal_list, name="plan-meal-list"),
-    path("diet-plans/<int:plan_pk>/meals/<int:pk>/", meal_detail, name="plan-meal-detail"),
+    path("diet-plans/<int:plan_pk>/days/<int:day_pk>/meals/", meal_list, name="plan-day-meal-list"),
+    path("diet-plans/<int:plan_pk>/days/<int:day_pk>/meals/<int:pk>/", meal_detail, name="plan-day-meal-detail"),
     path(
         "diet-plans/<int:plan_pk>/meals/<int:meal_pk>/items/",
         item_list,

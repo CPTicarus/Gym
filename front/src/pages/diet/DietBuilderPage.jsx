@@ -14,128 +14,83 @@ import {
   updateDietAssignment,
   updateDietPlan,
 } from "../../api/diet.js";
-import { PencilIcon, TrashIcon } from "../../components/common/icons.jsx";
+import { PencilIcon } from "../../components/common/icons.jsx";
+import MealSection from "../../components/diet/MealSection.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
 import EditPlanInfoModal from "../../components/plans/EditPlanInfoModal.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { DIET_GOAL_LABELS, DIET_GOALS } from "../../constants/planOptions.js";
-import { formatItemMacros } from "../../utils/planFormat.js";
+import { getTodayWeekday, WEEKDAY_LABELS } from "../../constants/weekdays.js";
 
-function ItemForm({ onAdd, itemCount }) {
-  const [foodName, setFoodName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+/** One weekday's block: its meals plus the "add a meal to this day" form. */
+function DayBlock({ day, onAddMeal, onDeleteMeal, onAddItem, onDeleteItem }) {
+  const [name, setName] = useState("");
+  const [time, setTime] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState(null);
 
-  async function handleSubmit(e) {
+  async function handleAdd(e) {
     e.preventDefault();
+    if (!name.trim()) return;
     setError(null);
-    if (!foodName.trim()) {
-      setError("نام خوراکی الزامی است.");
-      return;
-    }
-    setIsSaving(true);
+    setIsAdding(true);
     try {
-      await onAdd({
-        food_name: foodName.trim(),
-        quantity: quantity.trim(),
-        // "" would be rejected by DRF for these nullable numeric fields.
-        calories: calories === "" ? null : Number(calories),
-        protein_g: protein === "" ? null : Number(protein),
-        carbs_g: carbs === "" ? null : Number(carbs),
-        fat_g: fat === "" ? null : Number(fat),
-        order: itemCount,
-      });
-      setFoodName("");
-      setQuantity("");
-      setCalories("");
-      setProtein("");
-      setCarbs("");
-      setFat("");
+      await onAddMeal({ name: name.trim(), time: time || null, order: day.meals.length });
+      setName("");
+      setTime("");
     } catch {
-      setError("افزودن خوراکی با مشکل مواجه شد.");
+      setError("افزودن وعده با مشکل مواجه شد.");
     } finally {
-      setIsSaving(false);
+      setIsAdding(false);
     }
   }
 
+  const isToday = day.day_of_week === getTodayWeekday();
+
   return (
-    <form className="exercise-add-form" onSubmit={handleSubmit}>
-      <div className="item-add-top">
-        <input
-          className="input"
-          dir="auto"
-          placeholder="نام خوراکی — مثلاً سینه مرغ گریل"
-          aria-label="نام خوراکی"
-          value={foodName}
-          onChange={(e) => setFoodName(e.target.value)}
-        />
-        <input
-          className="input"
-          dir="auto"
-          placeholder="مقدار — مثلاً ۱۵۰ گرم"
-          aria-label="مقدار"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-        />
+    <div className="day-block">
+      <div className="day-block-head">
+        <h3 className="day-block-title">
+          {WEEKDAY_LABELS[day.day_of_week]}
+          {isToday && <span className="badge badge-accent mr-2">امروز</span>}
+        </h3>
       </div>
 
-      <div className="exercise-add-numbers">
-        <input
-          className="input"
-          type="number"
-          min="0"
-          dir="auto"
-          placeholder="کالری"
-          aria-label="کالری"
-          value={calories}
-          onChange={(e) => setCalories(e.target.value)}
-        />
-        <input
-          className="input"
-          type="number"
-          min="0"
-          step="0.1"
-          dir="auto"
-          placeholder="پروتئین"
-          aria-label="پروتئین به گرم"
-          value={protein}
-          onChange={(e) => setProtein(e.target.value)}
-        />
-        <input
-          className="input"
-          type="number"
-          min="0"
-          step="0.1"
-          dir="auto"
-          placeholder="کربو"
-          aria-label="کربوهیدرات به گرم"
-          value={carbs}
-          onChange={(e) => setCarbs(e.target.value)}
-        />
-        <input
-          className="input"
-          type="number"
-          min="0"
-          step="0.1"
-          dir="auto"
-          placeholder="چربی"
-          aria-label="چربی به گرم"
-          value={fat}
-          onChange={(e) => setFat(e.target.value)}
-        />
-      </div>
+      {day.meals.length === 0 && <p className="muted exercise-empty">هنوز وعده‌ای تعریف نشده.</p>}
 
+      {day.meals.map((meal) => (
+        <MealSection
+          key={meal.id}
+          meal={meal}
+          onDeleteMeal={onDeleteMeal}
+          onAddItem={(payload) => onAddItem(meal, payload)}
+          onDeleteItem={(item) => onDeleteItem(meal, item)}
+        />
+      ))}
+
+      <form className="add-day-form" onSubmit={handleAdd}>
+        <input
+          className="input"
+          dir="auto"
+          placeholder="نام وعده — مثلاً میان‌وعده"
+          aria-label={`نام وعده جدید برای ${WEEKDAY_LABELS[day.day_of_week]}`}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="input meal-time-input"
+          type="time"
+          dir="ltr"
+          aria-label="ساعت وعده"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+        />
+        <button className="btn btn-secondary btn-sm" type="submit" disabled={isAdding}>
+          {isAdding ? "…" : "+ افزودن وعده"}
+        </button>
+      </form>
       {error && <p className="error-text">{error}</p>}
-
-      <button className="btn btn-ghost btn-sm" type="submit" disabled={isSaving}>
-        {isSaving ? "در حال افزودن…" : "+ افزودن خوراکی"}
-      </button>
-    </form>
+    </div>
   );
 }
 
@@ -146,9 +101,6 @@ export default function DietBuilderPage() {
   const [plan, setPlan] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [newMealName, setNewMealName] = useState("");
-  const [newMealTime, setNewMealTime] = useState("");
-  const [isAddingMeal, setIsAddingMeal] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -186,26 +138,6 @@ export default function DietBuilderPage() {
       cancelled = true;
     };
   }, [planId, loadAssignments]);
-
-  async function handleAddMeal(e) {
-    e.preventDefault();
-    if (!newMealName.trim()) return;
-    setIsAddingMeal(true);
-    try {
-      await addMeal(planId, {
-        name: newMealName.trim(),
-        time: newMealTime || null,
-        order: plan.meals.length,
-      });
-      setNewMealName("");
-      setNewMealTime("");
-      await reload();
-    } catch {
-      setError("افزودن وعده با مشکل مواجه شد.");
-    } finally {
-      setIsAddingMeal(false);
-    }
-  }
 
   async function handleAssign(userId) {
     const result = await assignDietPlan(planId, userId);
@@ -275,91 +207,31 @@ export default function DietBuilderPage() {
       {toast && <p className="success-text">{toast}</p>}
 
       <section className="card plan-section">
-        <h2 className="plan-section-title">وعده‌های غذایی</h2>
+        <h2 className="plan-section-title">وعده‌های غذایی هفتگی</h2>
+        <p className="muted plan-section-hint">هر روز هفته وعده‌های غذایی جداگانه‌ای دارد.</p>
 
-        {plan.meals.length === 0 && <p className="muted exercise-empty">هنوز وعده‌ای تعریف نشده.</p>}
-
-        {plan.meals.map((meal) => (
-          <div key={meal.id} className="day-block">
-            <div className="day-block-head">
-              <h3 className="day-block-title">
-                {meal.name}
-                {meal.time && <span className="muted meal-time ltr"> {meal.time.slice(0, 5)}</span>}
-              </h3>
-              <button
-                type="button"
-                className="icon-btn icon-btn-sm"
-                onClick={async () => {
-                  await deleteMeal(planId, meal.id);
-                  await reload();
-                }}
-                aria-label={`حذف ${meal.name}`}
-              >
-                <TrashIcon size={16} />
-              </button>
-            </div>
-
-            {meal.items.length === 0 ? (
-              <p className="muted exercise-empty">هنوز خوراکی‌ای اضافه نشده.</p>
-            ) : (
-              <ul className="exercise-list">
-                {meal.items.map((item) => (
-                  <li key={item.id} className="exercise-row">
-                    <div className="exercise-row-main">
-                      <span className="exercise-name">
-                        {item.food_name}
-                        {item.quantity && <span className="muted"> — {item.quantity}</span>}
-                      </span>
-                      <span className="muted exercise-detail">{formatItemMacros(item)}</span>
-                      {item.notes && <span className="muted exercise-notes">{item.notes}</span>}
-                    </div>
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn-sm"
-                      onClick={async () => {
-                        await deleteDietItem(planId, meal.id, item.id);
-                        await reload();
-                      }}
-                      aria-label={`حذف ${item.food_name}`}
-                    >
-                      <TrashIcon size={16} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <ItemForm
-              itemCount={meal.items.length}
-              onAdd={async (payload) => {
-                await addDietItem(planId, meal.id, payload);
-                await reload();
-              }}
-            />
-          </div>
+        {plan.days.map((day) => (
+          <DayBlock
+            key={day.id}
+            day={day}
+            onAddMeal={async (payload) => {
+              await addMeal(planId, day.id, payload);
+              await reload();
+            }}
+            onDeleteMeal={async (meal) => {
+              await deleteMeal(planId, day.id, meal.id);
+              await reload();
+            }}
+            onAddItem={async (meal, payload) => {
+              await addDietItem(planId, meal.id, payload);
+              await reload();
+            }}
+            onDeleteItem={async (meal, item) => {
+              await deleteDietItem(planId, meal.id, item.id);
+              await reload();
+            }}
+          />
         ))}
-
-        <form className="add-day-form" onSubmit={handleAddMeal}>
-          <input
-            className="input"
-            dir="auto"
-            placeholder="نام وعده — مثلاً صبحانه"
-            aria-label="نام وعده جدید"
-            value={newMealName}
-            onChange={(e) => setNewMealName(e.target.value)}
-          />
-          <input
-            className="input meal-time-input"
-            type="time"
-            dir="ltr"
-            aria-label="ساعت وعده"
-            value={newMealTime}
-            onChange={(e) => setNewMealTime(e.target.value)}
-          />
-          <button className="btn btn-secondary btn-sm" type="submit" disabled={isAddingMeal}>
-            {isAddingMeal ? "…" : "+ افزودن وعده"}
-          </button>
-        </form>
       </section>
 
       {/* Who currently has this plan */}

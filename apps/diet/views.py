@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
 
-from .models import DietAssignment, DietItem, DietPlan, Meal
+from .models import DietAssignment, DietDay, DietItem, DietPlan, Meal
 from .serializers import (
     DietAssignmentListSerializer,
     DietAssignmentSerializer,
@@ -28,16 +28,17 @@ class DietPlanViewSet(viewsets.ModelViewSet):
       POST             /api/diet-plans/{id}/assign/   {"user": <member_id>}
     """
 
-    # Most plans use these three, so every new plan starts with them
-    # pre-filled — trainers building the common case skip straight to
-    # adding food items, and just delete/rename/add to what doesn't fit.
+    # Most days use these three, so every new plan starts with them
+    # pre-filled on all 7 days — trainers building the common case skip
+    # straight to adding food items, and just delete/rename/add to
+    # whichever days/meals don't fit.
     DEFAULT_MEALS = [
         ("صبحانه", "08:00", 0),
         ("ناهار", "13:00", 1),
         ("شام", "20:00", 2),
     ]
 
-    queryset = DietPlan.objects.all().select_related("created_by").prefetch_related("meals__items")
+    queryset = DietPlan.objects.all().select_related("created_by").prefetch_related("days__meals__items")
     permission_classes = [IsTrainerOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["goal"]
@@ -48,8 +49,13 @@ class DietPlanViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         plan = serializer.save(created_by=self.request.user)
+        days = DietDay.objects.bulk_create(
+            DietDay(plan=plan, day_of_week=value) for value, _ in DietDay.Weekday.choices
+        )
         Meal.objects.bulk_create(
-            Meal(plan=plan, name=name, time=time, order=order) for name, time, order in self.DEFAULT_MEALS
+            Meal(day=day, name=name, time=time, order=order)
+            for day in days
+            for name, time, order in self.DEFAULT_MEALS
         )
 
     @action(detail=True, methods=["post"], url_path="assign")
@@ -72,17 +78,22 @@ class DietPlanViewSet(viewsets.ModelViewSet):
 
 
 class MealViewSet(viewsets.ModelViewSet):
-    """Meal slots nested under a plan: /api/diet-plans/{plan_pk}/meals/"""
+    """Meal slots nested under a specific day of a plan:
+    /api/diet-plans/{plan_pk}/days/{day_pk}/meals/"""
 
     serializer_class = MealSerializer
     permission_classes = [IsTrainerOrAdmin]
 
     def get_queryset(self):
-        return Meal.objects.filter(plan_id=self.kwargs["plan_pk"]).prefetch_related("items")
+        # scoping by both plan_pk and day_pk means a mismatched URL 404s
+        # instead of silently exposing another plan's day
+        return Meal.objects.filter(
+            day_id=self.kwargs["day_pk"], day__plan_id=self.kwargs["plan_pk"]
+        ).prefetch_related("items")
 
     def perform_create(self, serializer):
-        plan = get_object_or_404(DietPlan, pk=self.kwargs["plan_pk"])
-        serializer.save(plan=plan)
+        day = get_object_or_404(DietDay, pk=self.kwargs["day_pk"], plan_id=self.kwargs["plan_pk"])
+        serializer.save(day=day)
 
 
 class DietItemViewSet(viewsets.ModelViewSet):
@@ -94,10 +105,10 @@ class DietItemViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # scoping by both plan_pk and meal_pk means a mismatched URL 404s
         # instead of silently exposing another plan's meal
-        return DietItem.objects.filter(meal_id=self.kwargs["meal_pk"], meal__plan_id=self.kwargs["plan_pk"])
+        return DietItem.objects.filter(meal_id=self.kwargs["meal_pk"], meal__day__plan_id=self.kwargs["plan_pk"])
 
     def perform_create(self, serializer):
-        meal = get_object_or_404(Meal, pk=self.kwargs["meal_pk"], plan_id=self.kwargs["plan_pk"])
+        meal = get_object_or_404(Meal, pk=self.kwargs["meal_pk"], day__plan_id=self.kwargs["plan_pk"])
         serializer.save(meal=meal)
 
 
@@ -138,4 +149,4 @@ class MyDietPlansView(generics.ListAPIView):
     def get_queryset(self):
         return DietAssignment.objects.filter(user=self.request.user).select_related(
             "plan", "assigned_by"
-        ).prefetch_related("plan__meals__items")
+        ).prefetch_related("plan__days__meals__items")

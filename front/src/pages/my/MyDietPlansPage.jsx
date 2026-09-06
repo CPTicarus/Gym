@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 
 import { listMyDietPlans } from "../../api/diet.js";
+import MealSection from "../../components/diet/MealSection.jsx";
 import PlanHistoryList from "../../components/plans/PlanHistoryList.jsx";
 import { DIET_GOAL_LABELS } from "../../constants/planOptions.js";
-import { formatItemMacros } from "../../utils/planFormat.js";
+import { getTodayWeekday, WEEKDAY_LABELS } from "../../constants/weekdays.js";
 
 export default function MyDietPlansPage() {
   const [assignments, setAssignments] = useState([]);
@@ -68,29 +69,19 @@ export default function MyDietPlansPage() {
                 )}
                 {plan.description && <p className="plan-description">{plan.description}</p>}
 
-                {plan.meals?.length ? (
-                  plan.meals.map((meal) => (
-                    <div key={meal.id} className="day-block">
+                {plan.days?.length ? (
+                  plan.days.map((day) => (
+                    <div key={day.id} className="day-block">
                       <h3 className="day-block-title">
-                        {meal.name}
-                        {meal.time && <span className="muted meal-time ltr"> {meal.time.slice(0, 5)}</span>}
+                        {WEEKDAY_LABELS[day.day_of_week]}
+                        {day.day_of_week === getTodayWeekday() && (
+                          <span className="badge badge-accent mr-2">امروز</span>
+                        )}
                       </h3>
-                      {meal.items?.length ? (
-                        <ul className="exercise-list">
-                          {meal.items.map((item) => (
-                            <li key={item.id} className="exercise-row">
-                              <div className="exercise-row-main">
-                                <span className="exercise-name">
-                                  {item.food_name}
-                                  {item.quantity && <span className="muted"> — {item.quantity}</span>}
-                                </span>
-                                <span className="muted exercise-detail">{formatItemMacros(item)}</span>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
+                      {day.meals.length === 0 ? (
+                        <p className="muted exercise-empty">وعده‌ای ثبت نشده.</p>
                       ) : (
-                        <p className="muted exercise-empty">خوراکی‌ای ثبت نشده.</p>
+                        day.meals.map((meal) => <MealSection key={meal.id} meal={meal} readOnly />)
                       )}
                     </div>
                   ))

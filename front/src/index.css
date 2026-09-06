@@ -567,6 +567,11 @@
   .day-block-title {
     @apply text-[15px] font-bold;
   }
+  /* Meals nested inside a diet day-block — a filled sub-block instead of
+     another border, so the day/meal hierarchy reads at a glance. */
+  .meal-block {
+    @apply mt-3 rounded-lg bg-neutral-soft p-3;
+  }
   .meal-time {
     @apply text-xs font-normal;
   }

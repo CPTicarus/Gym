@@ -33,6 +33,35 @@ class DietPlan(models.Model):
         return self.name
 
 
+class DietDay(models.Model):
+    """One day of the week within a diet plan — always exactly 7 per plan
+    (Saturday–Friday, the Persian week), auto-created when the plan is
+    made (see DietPlanViewSet.perform_create). Unlike WorkoutDay, these
+    aren't added or removed by a trainer — a diet plan is always a full
+    week; it's the meals within each day that get built out."""
+
+    class Weekday(models.IntegerChoices):
+        SATURDAY = 0, "Saturday"
+        SUNDAY = 1, "Sunday"
+        MONDAY = 2, "Monday"
+        TUESDAY = 3, "Tuesday"
+        WEDNESDAY = 4, "Wednesday"
+        THURSDAY = 5, "Thursday"
+        FRIDAY = 6, "Friday"
+
+    plan = models.ForeignKey(DietPlan, related_name="days", on_delete=models.CASCADE)
+    day_of_week = models.PositiveSmallIntegerField(choices=Weekday.choices)
+
+    class Meta:
+        ordering = ["day_of_week"]
+        constraints = [
+            models.UniqueConstraint(fields=["plan", "day_of_week"], name="unique_diet_day_per_plan")
+        ]
+
+    def __str__(self):
+        return f"{self.plan.name} - {self.get_day_of_week_display()}"
+
+
 class DietAssignment(models.Model):
     """Who currently has this diet plan, mirroring WorkoutAssignment so the
     two features behave the same way from a frontend's perspective."""
@@ -71,11 +100,11 @@ class DietAssignment(models.Model):
 
 
 class Meal(models.Model):
-    """One meal slot within a plan (Breakfast, Lunch, pre-workout snack...).
-    Free-text name rather than fixed choices — trainers name meals however
-    fits the member's schedule."""
+    """One meal slot within a specific day of the plan (Breakfast, Lunch,
+    pre-workout snack...). Free-text name rather than fixed choices —
+    trainers name meals however fits the member's schedule."""
 
-    plan = models.ForeignKey(DietPlan, related_name="meals", on_delete=models.CASCADE)
+    day = models.ForeignKey(DietDay, related_name="meals", on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
     time = models.TimeField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
@@ -84,7 +113,7 @@ class Meal(models.Model):
         ordering = ["order", "id"]
 
     def __str__(self):
-        return f"{self.plan.name} - {self.name}"
+        return f"{self.day} - {self.name}"
 
 
 class DietItem(models.Model):
