@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { listUsers } from "../../api/users.js";
+import { fullName } from "../../utils/format.js";
 import { getBmiCategory } from "../../utils/bmi.js";
 import Modal from "../common/Modal.jsx";
 
@@ -79,14 +80,14 @@ export default function AssignMemberModal({ onClose, onAssign, planName, minBmi,
       ) : (
         <ul className="assign-list">
           {members.map((m) => {
-            const fullName = [m.first_name, m.last_name].filter(Boolean).join(" ") || m.username;
+            const name = fullName(m);
             const isAssigned = assignedIds.includes(m.id);
             const outOfRange = isOutOfBmiRange(m.bmi, minBmi, maxBmi);
             const category = getBmiCategory(m.bmi);
             return (
               <li key={m.id} className="assign-row">
                 <div className="assign-row-main">
-                  <span className="assign-name">{fullName}</span>
+                  <span className="assign-name">{name}</span>
                   <span className="flex items-center gap-2">
                     <span className="muted assign-username ltr">{m.username}</span>
                     {m.bmi != null && (

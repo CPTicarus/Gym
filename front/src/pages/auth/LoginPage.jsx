@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { MoonIcon, SunIcon } from "../../components/common/icons.jsx";
 import Marquee from "../../components/common/Marquee.jsx";
+import PasswordInput from "../../components/common/PasswordInput.jsx";
 import { BRAND_NAME, BRAND_NOTE, BRAND_TAGLINE, BRAND_TICKER } from "../../config/brand.js";
 import { getRoleHome } from "../../constants/navigation.js";
 import { useAuth } from "../../hooks/useAuth.js";
@@ -90,10 +91,7 @@ export default function LoginPage() {
 
           <label className="field">
             <span className="label">رمز عبور</span>
-            <input
-              className="input"
-              type="password"
-              dir="ltr"
+            <PasswordInput
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

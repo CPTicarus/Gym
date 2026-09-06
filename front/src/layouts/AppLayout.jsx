@@ -8,8 +8,12 @@ import { ROLE_LABELS } from "../constants/roles.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { useTheme } from "../hooks/useTheme.js";
 
+// One size for every icon in the top bar — the mismatch between 20, 18
+// and 16 was most of why it looked uneven.
+const ICON_SIZE = 18;
+
 export default function AppLayout() {
-  const { user, role, logout } = useAuth();
+  const { role, greeting, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -49,6 +53,9 @@ export default function AppLayout() {
       </aside>
 
       <div className="main">
+        {/* Every control here is the same 36px square and every icon the
+            same 18px, so the bar reads as one row rather than four
+            differently-sized things. The only text is the greeting. */}
         <header className="topbar">
           <div className="topbar-start">
             <button
@@ -57,12 +64,13 @@ export default function AppLayout() {
               onClick={() => setIsDrawerOpen(true)}
               aria-label="باز کردن منو"
             >
-              <MenuIcon size={20} />
+              <MenuIcon size={ICON_SIZE} />
             </button>
             <span className="brand-mark topbar-brand">{BRAND_NAME}</span>
           </div>
 
           <div className="user-chip">
+            <span className="user-name">{greeting}</span>
             <button
               type="button"
               className="icon-btn"
@@ -70,16 +78,11 @@ export default function AppLayout() {
               aria-label={theme === "dark" ? "فعال‌سازی حالت روشن" : "فعال‌سازی حالت تیره"}
               title={theme === "dark" ? "حالت روشن" : "حالت تیره"}
             >
-              {theme === "dark" ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+              {theme === "dark" ? <SunIcon size={ICON_SIZE} /> : <MoonIcon size={ICON_SIZE} />}
             </button>
-            <div className="topbar-secondary">
-              <span className="user-name">{user?.first_name || user?.username || "…"}</span>
-              <span className="badge badge-role">{ROLE_LABELS[role] ?? role}</span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={logout}>
-                <LogOutIcon size={16} />
-                <span className="btn-label">خروج</span>
-              </button>
-            </div>
+            <button type="button" className="icon-btn" onClick={logout} aria-label="خروج" title="خروج">
+              <LogOutIcon size={ICON_SIZE} />
+            </button>
           </div>
         </header>
 

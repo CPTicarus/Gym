@@ -294,13 +294,10 @@
     @apply inline-flex;
   }
   .user-chip {
-    @apply flex items-center gap-2;
-  }
-  .topbar-secondary {
-    @apply flex items-center gap-2;
+    @apply flex min-w-0 items-center gap-2;
   }
   .user-name {
-    @apply text-sm font-semibold;
+    @apply min-w-0 truncate text-sm font-semibold;
   }
   .content {
     @apply flex-1 px-4 py-4;
@@ -380,9 +377,6 @@
   }
   .btn-block {
     @apply w-full;
-  }
-  .btn-label {
-    @apply inline;
   }
   .icon-btn {
     @apply inline-flex h-9 w-9 flex-none items-center justify-center rounded-none border border-line bg-transparent text-ink;
@@ -1043,12 +1037,10 @@
     }
   }
 
-  /* Very small phones: hide secondary text so the top bar doesn't crowd */
+  /* Very small phones: drop the greeting so the buttons keep their room.
+     Everything else in the bar is an icon and stays. */
   @media (max-width: 380px) {
     .user-name {
-      @apply hidden;
-    }
-    .btn-label {
       @apply hidden;
     }
   }

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { fullName } from "../../utils/format.js";
 import { ROLE_LABELS } from "../../constants/roles.js";
 
 function initials(user) {
@@ -23,14 +24,14 @@ function initials(user) {
  * reach one) can still render the same row as plain markup.
  */
 export default function UserListItem({ user, to, children }) {
-  const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username;
+  const name = fullName(user);
 
   const inner = (
     <>
       <div className="user-avatar">{initials(user)}</div>
       <div className="user-row-body">
         <div className="user-row-main">
-          <span className="user-row-name">{fullName}</span>
+          <span className="user-row-name">{name}</span>
           <span className="user-row-sub muted ltr">{user.username}</span>
         </div>
         <div className="user-row-end">

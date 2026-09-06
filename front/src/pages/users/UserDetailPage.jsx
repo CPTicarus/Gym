@@ -19,7 +19,7 @@ import { ROLE_LABELS } from "../../constants/roles.js";
 import { GENDER_LABELS } from "../../constants/userOptions.js";
 import { useAuth } from "../../hooks/useAuth.js";
 import { getBmiCategory } from "../../utils/bmi.js";
-import { formatDate } from "../../utils/format.js";
+import { formatDate, fullName } from "../../utils/format.js";
 import { canManageUser } from "../../utils/permissions.js";
 
 function formatApiError(data) {
@@ -154,7 +154,7 @@ export default function UserDetailPage() {
   if (error && !user) return <p className="error-text">{error}</p>;
   if (!user) return null;
 
-  const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username;
+  const name = fullName(user);
 
   return (
     <div>
@@ -163,7 +163,7 @@ export default function UserDetailPage() {
           <Link to="/dashboard" className="muted back-link">
             ← بازگشت به داشبورد
           </Link>
-          <h1 className="page-title">{fullName}</h1>
+          <h1 className="page-title">{name}</h1>
           <p className="page-subtitle ltr">{user.username}</p>
         </div>
         <div className="flex items-center gap-2">

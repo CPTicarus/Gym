@@ -13,3 +13,10 @@ export function formatDate(value) {
   const d = String(j.jd).padStart(2, "0");
   return toPersianDigits(`${j.jy}/${m}/${d}`);
 }
+
+/** "First Last", falling back to the username when a name is missing. */
+export function fullName(user) {
+  if (!user) return "";
+  return [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username || "";
+}
+

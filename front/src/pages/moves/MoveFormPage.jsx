@@ -388,7 +388,7 @@ export default function MoveFormPage() {
                 </p>
               ) : (
                 <span className="text-xs text-muted">
-                  عکس، GIF یا ویدیو — نوعش از روی خود فایل تشخیص داده می‌شود.
+                  عکس، GIF یا ویدیو 
                 </span>
               )}
             </div>
@@ -396,7 +396,6 @@ export default function MoveFormPage() {
             <p className="field-divider">یا</p>
 
             <label className="field">
-              <span className="label">لینک (مثلاً لینک غیرلیست‌شده یوتیوب یا ویمیو)</span>
               <input
                 className="input"
                 type="url"

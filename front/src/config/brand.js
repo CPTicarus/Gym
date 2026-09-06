@@ -19,3 +19,20 @@ export const BRAND_TICKER = [
   "پیگیری وزن و شاخص توده بدنی",
   "امروز سنگین‌تر از دیروز",
 ];
+
+// One of these is drawn at login and shown in the top bar for the rest of
+// the session. `{name}` is replaced with the person's full name; lines
+// without it are addressed to nobody in particular, which is fine — the
+// mix is what stops it reading like a mail merge. A gym rewrites these in
+// its own voice without touching a component.
+export const GREETINGS = [
+  "امروز همون روزه، {name}",
+  "بیشتر فشار بیار، {name}",
+  "یک تکرار بیشتر از دیروز، {name}",
+  "فقط یک ست دیگه مونده",
+  "سنگین‌تر از دفعه قبل، {name}",
+  "بدنت می‌تونه؛ ذهنت رو راضی کن",
+  "امروز رو هم بزن، {name}",
+  "قوی‌تر از دیروز",
+];
+
