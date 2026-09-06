@@ -12,7 +12,7 @@ import { TrashIcon } from "../../components/common/icons.jsx";
 import JalaliDateInput from "../../components/common/JalaliDateInput.jsx";
 import {
   ASSIGNMENT_STATUSES,
-  ASSIGNMENT_STATUS_VARIANT,
+  assignmentBadgeClass,
 } from "../../constants/planOptions.js";
 import { ROLE_LABELS } from "../../constants/roles.js";
 import { useAuth } from "../../hooks/useAuth.js";
@@ -53,7 +53,7 @@ function AssignmentRow({ assignment, planHref, onStatusChange, onRemove, canEdit
             ))}
           </select>
         ) : (
-          <span className={`badge badge-${ASSIGNMENT_STATUS_VARIANT[assignment.status] ?? "neutral"}`}>
+          <span className={assignmentBadgeClass(assignment.status)}>
             {assignment.status}
           </span>
         )}
@@ -217,7 +217,7 @@ export default function UserDetailPage() {
         <section className="card plan-section">
           <div className="plan-card-head">
             <h2 className="plan-section-title">وضعیت عضویت</h2>
-            <span className={`badge ${user.is_membership_active ? "badge-success" : "badge-danger"}`}>
+            <span className={`badge ${user.is_membership_active ? "badge-success badge-live" : "badge-danger"}`}>
               {user.is_membership_active ? "فعال" : "غیرفعال"}
             </span>
           </div>

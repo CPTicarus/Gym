@@ -75,7 +75,7 @@ export default function AccountingPage() {
           <div className="user-list">
             {members.map((m) => (
               <UserListItem key={m.id} user={m} to={`/users/${m.id}`}>
-                <span className={`badge ${m.is_membership_active ? "badge-success" : "badge-danger"}`}>
+                <span className={`badge ${m.is_membership_active ? "badge-success badge-live" : "badge-danger"}`}>
                   {m.is_membership_active ? "فعال" : "غیرفعال"}
                 </span>
                 <span className="muted user-row-date ltr">{formatDate(m.membership_end_date)}</span>

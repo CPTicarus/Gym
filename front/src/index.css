@@ -28,6 +28,33 @@
   --font-sans: "Vazirmatn", "Segoe UI", sans-serif;
   --font-brand: "Lalezar", "Vazirmatn", sans-serif;
 
+  /* ---- Industrial shape language ----
+     Every corner in the app is square. Rather than hunting down each
+     `rounded-*` in this file, the radius SCALE itself is zeroed: in
+     Tailwind v4 `rounded-lg` compiles to `border-radius: var(--radius-lg)`,
+     so flattening the tokens flattens every existing utility and every one
+     added later. Softening the whole app again later is these six numbers,
+     not a sweep through the file.
+     (`rounded-none` is the exception — v4 hardcodes it to an infinite
+     radius rather than reading a token, so those few usages were changed to
+     `rounded-none` by hand.) */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+
+  /* ---- Mechanical motion ----
+     Machinery doesn't ease in and out, and it certainly doesn't bounce: it
+     starts at full speed and stops dead. These two override the defaults
+     behind every `transition-*` utility, so the whole app snaps without a
+     single component opting in. Keep the easing LINEAR — any cubic-bezier
+     with overshoot reintroduces exactly the softness this removes. */
+  --default-transition-duration: 80ms;
+  --default-transition-timing-function: linear;
+
   /* ---- Light theme (default) ---- */
   --color-canvas: #f5f6f3;
   --color-surface: #ffffff;
@@ -91,8 +118,17 @@
     @apply bg-canvas font-sans text-ink;
     line-height: 1.7; /* Persian script wants more breathing room than Latin's usual 1.5 */
     -webkit-font-smoothing: antialiased;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition: background-color 80ms linear, color 80ms linear;
+    /* Fixed-width digits, so counts, weights and dates tick over like a
+       readout instead of reflowing as the numerals change. Vazirmatn
+       carries tabular figures for Persian digits as well as Latin. */
+    font-variant-numeric: tabular-nums;
   }
+
+  /* NOTE: no letter-spacing anywhere in this theme, however much the
+     industrial look invites it. Persian is a joined script — tracking
+     prises the glyphs of a word apart and wrecks legibility. Weight,
+     borders and case-free size contrast carry that job here instead. */
 
   h1,
   h2,
@@ -131,6 +167,55 @@
   }
   to {
     transform: translateX(0);
+  }
+}
+
+/* An indicator lamp under load: it doesn't fade, it cuts. steps(1, end)
+   holds each value and jumps to the next, so every change is instant —
+   the same "no easing" rule the transitions follow.
+
+   The rhythm is deliberately uneven (two short dropouts per cycle, not a
+   steady blink) so it reads as a working lamp rather than a decoration.
+   Two dips per 1.6s is ~1.25 flashes/second, comfortably under the three
+   per second that photosensitivity guidance draws the line at — and the
+   prefers-reduced-motion block above switches it off entirely. */
+@keyframes led-flicker {
+  0%,
+  39% {
+    opacity: 1;
+  }
+  40%,
+  43% {
+    opacity: 0.15;
+  }
+  44%,
+  71% {
+    opacity: 1;
+  }
+  72%,
+  74% {
+    opacity: 0.35;
+  }
+  75%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Two copies of the content sit in the track, so when it has travelled
+   exactly one copy's width the loop restarts with the second copy where
+   the first began — no visible seam, no jump back.
+
+   Rightward (0 -> 50%) because the app is RTL: the track's inline start is
+   the right edge and its overflow hangs off to the LEFT, so moving right
+   is what pulls unseen content into view. In an LTR build this sign flips.
+   Linear, because a ticker that eases is a ticker that stalls. */
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(50%);
   }
 }
 
@@ -208,7 +293,7 @@
   .drawer-panel {
     @apply fixed inset-y-0 z-40 flex w-72 max-w-[80vw] flex-col gap-6 overflow-y-auto bg-chrome px-5 py-5 text-chrome-ink shadow-2xl;
     inset-inline-start: 0;
-    animation: drawer-slide-in 0.18s ease-out;
+    animation: drawer-slide-in 0.12s linear;
   }
   .drawer-header {
     @apply mb-1 flex items-center justify-between;
@@ -231,6 +316,10 @@
   }
   .btn:disabled {
     @apply cursor-not-allowed opacity-60;
+  }
+  .btn:active:not(:disabled),
+  .icon-btn:active {
+    transform: translateY(1px);
   }
   .btn-primary {
     @apply bg-accent text-accent-ink;
@@ -266,7 +355,7 @@
     @apply inline;
   }
   .icon-btn {
-    @apply inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border border-line bg-transparent text-ink;
+    @apply inline-flex h-9 w-9 flex-none items-center justify-center rounded-none border border-line bg-transparent text-ink;
   }
   .icon-btn:hover {
     @apply bg-neutral-soft;
@@ -318,7 +407,7 @@
     @apply w-full cursor-pointer;
   }
   .jalali-date-clear {
-    @apply absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-base leading-none text-muted;
+    @apply absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-none text-base leading-none text-muted;
     inset-inline-end: 0.5rem;
   }
   .jalali-date-clear:hover {
@@ -333,13 +422,13 @@
 
   /* ---- Cards / badges ---- */
   .card {
-    @apply rounded-[10px] border border-line bg-surface p-5 shadow-card;
+    @apply rounded-none border-2 border-line bg-surface p-5 shadow-card;
   }
   .form-card {
     @apply max-w-[480px];
   }
   .badge {
-    @apply inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)];
+    @apply inline-block rounded-none px-2.5 py-0.5 text-xs font-semibold shadow-[inset_0_0_0_1px_rgba(0,0,0,0.05)];
   }
   .badge-neutral {
     @apply bg-neutral-soft text-ink;
@@ -358,6 +447,47 @@
   }
   .eyebrow {
     @apply mb-1.5 block text-xs font-bold text-muted;
+  }
+
+  /* ---- Status indicators ----
+     A square lamp that flickers like something actually drawing current.
+     `bg-current` means it takes the colour of whatever it sits inside, so
+     one class serves every context it's dropped into. */
+  .status-led {
+    @apply inline-block h-1.5 w-1.5 flex-none bg-current;
+    animation: led-flicker 1.6s steps(1, end) infinite;
+  }
+  /* Marks a badge as "live right now" — an active membership, an active
+     plan assignment. Deliberately a separate class rather than something
+     hung off .badge-success, because green carries three unrelated
+     meanings in this app: active, beginner difficulty, and a healthy BMI.
+     A lamp pulsing on a difficulty tag would be noise, and noise is how a
+     status light stops being read. */
+  .badge-live::before {
+    content: "";
+    @apply me-1.5 inline-block h-1.5 w-1.5 bg-current align-baseline;
+    animation: led-flicker 1.6s steps(1, end) infinite;
+  }
+
+  /* ---- Marquee banner ----
+     Gym-floor signage: a hard-edged strip of moving text. Content comes
+     from BRAND_TICKER in config/brand.js, so a gym edits its own
+     announcements in the same file it sets its name in. */
+  .marquee {
+    @apply flex overflow-hidden border-y-2 border-accent bg-chrome text-chrome-ink;
+  }
+  .marquee-track {
+    @apply flex w-max shrink-0 items-center py-1.5;
+    animation: marquee-scroll var(--marquee-duration, 14s) linear infinite;
+  }
+  .marquee-item {
+    @apply flex flex-none items-center gap-2 whitespace-nowrap px-5 text-xs font-bold;
+  }
+  /* A divider between entries, so the strip reads as discrete notices
+     rather than one long run-on sentence. */
+  .marquee-item + .marquee-item::before {
+    content: "";
+    @apply -ms-5 me-5 h-3 w-px flex-none bg-white/25;
   }
 
   /* ---- Page layout helpers ---- */
@@ -401,7 +531,7 @@
     @apply mb-5 flex flex-col gap-2.5;
   }
   .empty-state {
-    @apply flex flex-col items-center gap-4 rounded-[10px] border border-dashed border-line px-5 py-10 text-center text-muted;
+    @apply flex flex-col items-center gap-4 rounded-none border border-dashed border-line px-5 py-10 text-center text-muted;
   }
   .move-grid {
     @apply grid grid-cols-1 gap-3;
@@ -482,7 +612,7 @@
     @apply flex items-center gap-3 rounded-lg border border-line bg-surface p-4 shadow-card;
   }
   .user-avatar {
-    @apply flex h-10 w-10 flex-none items-center justify-center rounded-full bg-neutral-soft text-sm font-bold text-ink;
+    @apply flex h-10 w-10 flex-none items-center justify-center rounded-none bg-neutral-soft text-sm font-bold text-ink;
   }
   /* Wraps main + end so they stay next to the avatar at every width — end
      drops to its own line under main when space is tight, instead of the
@@ -643,7 +773,7 @@
     @apply flex flex-none items-center justify-center p-1;
   }
   .session-exercise-checkbox {
-    @apply flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 border-line text-transparent transition-colors;
+    @apply flex h-6 w-6 flex-none items-center justify-center rounded-none border-2 border-line text-transparent transition-colors;
   }
   .session-exercise-row.is-checked .session-exercise-checkbox {
     @apply border-success bg-success text-white;
@@ -774,8 +904,13 @@
   .auth-screen {
     @apply flex min-h-screen flex-col;
   }
+  /* relative + the negative insets on .auth-marquee below let the strip
+     break out of the panel's padding and run edge to edge. */
   .auth-brand {
-    @apply bg-chrome px-5 py-6 text-chrome-ink;
+    @apply relative bg-chrome px-5 py-6 pb-0 text-chrome-ink;
+  }
+  .auth-marquee {
+    @apply -mx-5 mt-6 border-x-0;
   }
   .auth-brand-inner {
     @apply mx-auto max-w-[420px];
@@ -868,7 +1003,10 @@
       @apply flex-row;
     }
     .auth-brand {
-      @apply flex flex-1 items-center justify-center p-12;
+      @apply flex flex-1 flex-col items-stretch justify-center p-12 pb-0;
+    }
+    .auth-marquee {
+      @apply -mx-12 mt-12;
     }
     .auth-form-panel {
       @apply flex-1 items-center p-12;

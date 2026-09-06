@@ -109,7 +109,7 @@ export default function DashboardPage() {
             {users.map((u) => (
               <UserListItem key={u.id} user={u} to={`/users/${u.id}`}>
                 {u.role === "member" && u.membership_end_date && (
-                  <span className={`badge ${u.is_membership_active ? "badge-success" : "badge-danger"}`}>
+                  <span className={`badge ${u.is_membership_active ? "badge-success badge-live" : "badge-danger"}`}>
                     {u.is_membership_active ? "فعال" : "غیرفعال"}
                   </span>
                 )}

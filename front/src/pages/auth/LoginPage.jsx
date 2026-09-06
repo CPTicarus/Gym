@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { MoonIcon, SunIcon } from "../../components/common/icons.jsx";
-import { BRAND_NAME, BRAND_NOTE, BRAND_TAGLINE } from "../../config/brand.js";
+import Marquee from "../../components/common/Marquee.jsx";
+import { BRAND_NAME, BRAND_NOTE, BRAND_TAGLINE, BRAND_TICKER } from "../../config/brand.js";
 import { getRoleHome } from "../../constants/navigation.js";
 import { useAuth } from "../../hooks/useAuth.js";
 import { useTheme } from "../../hooks/useTheme.js";
@@ -65,6 +66,11 @@ export default function LoginPage() {
           <div className="auth-rule" />
           <p className="auth-note">{BRAND_NOTE}</p>
         </div>
+
+        {/* Full-bleed across the brand panel. The only marquee in the
+            app: behind the app proper it just competed with whatever the
+            page was actually for. */}
+        <Marquee items={BRAND_TICKER} duration="10s" className="auth-marquee" />
       </div>
 
       <div className="auth-form-panel">

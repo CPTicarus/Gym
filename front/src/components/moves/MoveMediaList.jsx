@@ -41,7 +41,7 @@ export default function MoveMediaList({ items, onMove, onDelete, isReordering, d
     <ul className="media-list">
       {items.map((item, index) => (
         <li key={item.id} className="media-list-item">
-          <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-neutral-soft text-xs font-bold">
+          <span className="flex h-6 w-6 flex-none items-center justify-center bg-ink text-xs font-bold text-canvas">
             {toPersianDigits(index + 1)}
           </span>
 

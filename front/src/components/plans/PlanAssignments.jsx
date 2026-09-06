@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import { ASSIGNMENT_STATUSES, ASSIGNMENT_STATUS_VARIANT } from "../../constants/planOptions.js";
+import { ASSIGNMENT_STATUSES, assignmentBadgeClass } from "../../constants/planOptions.js";
 import { formatDate } from "../../utils/format.js";
 import { TrashIcon } from "../common/icons.jsx";
 
@@ -41,7 +41,7 @@ export default function PlanAssignments({ assignments, onStatusChange, onRemove,
                 ))}
               </select>
             ) : (
-              <span className={`badge badge-${ASSIGNMENT_STATUS_VARIANT[a.status] ?? "neutral"}`}>
+              <span className={assignmentBadgeClass(a.status)}>
                 {a.status}
               </span>
             )}

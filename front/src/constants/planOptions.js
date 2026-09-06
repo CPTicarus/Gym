@@ -33,3 +33,10 @@ export const ASSIGNMENT_STATUS_VARIANT = {
   paused: "accent",
   completed: "neutral",
 };
+
+/** Badge classes for an assignment's status. Only "active" gets the live
+ * lamp (see .badge-live in index.css) — the others are history. */
+export function assignmentBadgeClass(status) {
+  const variant = ASSIGNMENT_STATUS_VARIANT[status] ?? "neutral";
+  return `badge badge-${variant}${status === "active" ? " badge-live" : ""}`;
+}
