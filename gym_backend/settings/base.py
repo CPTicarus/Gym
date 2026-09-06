@@ -89,6 +89,38 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Upload size caps per media type, in megabytes (see apps/moves/models.py).
+# "warn" only flags the file in the UI before it's added; "max" is refused
+# outright, in the browser and again on the server. Every value is
+# overridable from .env, so a gym on a small VPS can tighten them — or a
+# gym with room to spare can loosen them — without a code change.
+#
+# Why these defaults:
+#   image  a well-compressed demo photo is well under 2 MB, so that's the
+#          nudge; the 8 MB cap is a backstop against accidents (a RAW
+#          export, an uncropped screenshot), not a storage budget — a
+#          straight-from-the-phone photo should still go through.
+#   gif    an animated loop is many frames, so it is legitimately far
+#          bigger than a still. Judging it by the image cap would reject
+#          most genuinely useful exercise GIFs.
+#   video  deliberately tight: this app's stance is that real video should
+#          be linked externally rather than hosted here (see MoveMedia),
+#          and these numbers keep pointing people that way.
+MEDIA_SIZE_LIMITS_MB = {
+    "image": {
+        "warn": config("MEDIA_WARN_IMAGE_MB", default=2, cast=float),
+        "max": config("MEDIA_MAX_IMAGE_MB", default=8, cast=float),
+    },
+    "gif": {
+        "warn": config("MEDIA_WARN_GIF_MB", default=5, cast=float),
+        "max": config("MEDIA_MAX_GIF_MB", default=15, cast=float),
+    },
+    "video": {
+        "warn": config("MEDIA_WARN_VIDEO_MB", default=10, cast=float),
+        "max": config("MEDIA_MAX_VIDEO_MB", default=50, cast=float),
+    },
+}
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",

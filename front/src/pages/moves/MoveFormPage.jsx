@@ -1,15 +1,65 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { addMoveMedia, createMove, getMove, reorderMoveMedia, updateMove } from "../../api/moves.js";
+import {
+  addMoveMedia,
+  createMove,
+  deleteMoveMedia,
+  getMediaLimits,
+  getMove,
+  reorderMoveMedia,
+  updateMove,
+} from "../../api/moves.js";
 import FilePicker from "../../components/common/FilePicker.jsx";
 import MoveMediaList from "../../components/moves/MoveMediaList.jsx";
-import { CATEGORIES, DIFFICULTIES, MEDIA_ACCEPT } from "../../constants/moveOptions.js";
+import {
+  CATEGORIES,
+  DIFFICULTIES,
+  MEDIA_ACCEPT,
+  mediaTypeForFile,
+} from "../../constants/moveOptions.js";
+import { toPersianDigits } from "../../utils/jalali.js";
 
 function formatApiError(data) {
   if (typeof data === "string") return data;
   const first = Object.values(data)[0];
   return Array.isArray(first) ? first[0] : String(first);
+}
+
+const BYTES_PER_MB = 1024 * 1024;
+
+function formatMb(bytes) {
+  return toPersianDigits((bytes / BYTES_PER_MB).toFixed(1).replace(/\.0$/, ""));
+}
+
+/**
+ * Where a picked file sits against its type's caps: null when it's fine,
+ * otherwise a message and whether it's a hard stop.
+ *
+ * `limits` may not have loaded yet (or the endpoint may have failed) — in
+ * that case nothing is claimed here and the server, which enforces the
+ * same caps on the way in, remains the backstop.
+ */
+function checkFileSize(file, limits) {
+  const mediaType = mediaTypeForFile(file);
+  const caps = limits?.[mediaType];
+  if (!caps) return null;
+
+  if (file.size > caps.max_bytes) {
+    return {
+      blocking: true,
+      message: `حجم این فایل ${formatMb(file.size)} مگابایت است و بیشتر از حد مجاز (${formatMb(
+        caps.max_bytes
+      )} مگابایت) است. فایل را فشرده کنید یا به‌جای بارگذاری، لینکش را وارد کنید.`,
+    };
+  }
+  if (file.size > caps.warn_bytes) {
+    return {
+      blocking: false,
+      message: `حجم این فایل ${formatMb(file.size)} مگابایت است. بارگذاری‌اش ممکن است طول بکشد و برای اعضا هم کند باز شود — اگر می‌توانید فشرده‌ترش کنید.`,
+    };
+  }
+  return null;
 }
 
 export default function MoveFormPage() {
@@ -40,6 +90,8 @@ export default function MoveFormPage() {
   const [mediaError, setMediaError] = useState(null);
   const [isAddingMedia, setIsAddingMedia] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [mediaLimits, setMediaLimits] = useState(null);
   // Separate from mediaError so a failed reorder reports next to the list
   // rather than down inside the add-media form.
   const [reorderError, setReorderError] = useState(null);
@@ -73,6 +125,21 @@ export default function MoveFormPage() {
       cancelled = true;
     };
   }, [moveId, isEditMode]);
+
+  useEffect(() => {
+    // Caps are per-gym config, so they're read from the server rather than
+    // duplicated here. A failure is non-fatal: the form just stops warning
+    // and lets the server reject anything genuinely over the line.
+    let cancelled = false;
+    getMediaLimits()
+      .then((limits) => {
+        if (!cancelled) setMediaLimits(limits);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSaveInfo(e) {
     e.preventDefault();
@@ -108,6 +175,12 @@ export default function MoveFormPage() {
     }
     if (file && externalUrl.trim()) {
       setMediaError("فقط یکی از فایل یا لینک را وارد کنید، نه هر دو.");
+      return;
+    }
+    // Belt and braces: the add button is already disabled for an oversized
+    // file, but a keyboard submit shouldn't be able to slip past it.
+    if (fileSizeNotice?.blocking) {
+      setMediaError(fileSizeNotice.message);
       return;
     }
     setIsAddingMedia(true);
@@ -153,6 +226,22 @@ export default function MoveFormPage() {
     }
   }
 
+  async function handleDeleteMedia(item) {
+    const label = item.caption || item.external_url || "این رسانه";
+    if (!window.confirm(`«${label}» از این حرکت حذف شود؟ این کار قابل بازگشت نیست.`)) return;
+
+    setReorderError(null);
+    setDeletingId(item.id);
+    try {
+      await deleteMoveMedia(move.id, item.id);
+      setMediaItems((prev) => prev.filter((m) => m.id !== item.id));
+    } catch {
+      setReorderError("حذف رسانه با مشکل مواجه شد. دوباره امتحان کنید.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   // Back to a blank step 1, without leaving /moves/new — bulk-adding moves
   // means never round-tripping through the library between each one.
   function handleAddAnother() {
@@ -177,6 +266,7 @@ export default function MoveFormPage() {
 
   const showInfoForm = isEditMode || !move;
   const showMediaSection = Boolean(move);
+  const fileSizeNotice = file ? checkFileSize(file, mediaLimits) : null;
 
   return (
     <div className="form-page">
@@ -285,9 +375,22 @@ export default function MoveFormPage() {
             <div className="field">
               <span className="label">بارگذاری فایل</span>
               <FilePicker file={file} onChange={setFile} accept={MEDIA_ACCEPT} />
-              <span className="text-xs text-muted">
-                عکس، GIF یا ویدیو — نوعش از روی خود فایل تشخیص داده می‌شود.
-              </span>
+              {fileSizeNotice ? (
+                <p
+                  className={
+                    fileSizeNotice.blocking
+                      ? "mt-1 rounded-lg bg-danger-soft px-3 py-2 text-[13px] font-semibold text-danger"
+                      : "mt-1 rounded-lg bg-accent-soft px-3 py-2 text-[13px] font-semibold text-accent-dark"
+                  }
+                  role="alert"
+                >
+                  {fileSizeNotice.message}
+                </p>
+              ) : (
+                <span className="text-xs text-muted">
+                  عکس، GIF یا ویدیو — نوعش از روی خود فایل تشخیص داده می‌شود.
+                </span>
+              )}
             </div>
 
             <p className="field-divider">یا</p>
@@ -316,7 +419,11 @@ export default function MoveFormPage() {
             )}
 
             <div className="form-actions">
-              <button className="btn btn-secondary" type="submit" disabled={isAddingMedia}>
+              <button
+                className="btn btn-secondary"
+                type="submit"
+                disabled={isAddingMedia || Boolean(fileSizeNotice?.blocking)}
+              >
                 {isAddingMedia ? "در حال افزودن…" : "افزودن رسانه"}
               </button>
             </div>
@@ -331,7 +438,9 @@ export default function MoveFormPage() {
               <MoveMediaList
                 items={mediaItems}
                 onMove={handleReorderMedia}
+                onDelete={handleDeleteMedia}
                 isReordering={isReordering}
+                deletingId={deletingId}
               />
               {reorderError && (
                 <p className="error-text" role="alert">

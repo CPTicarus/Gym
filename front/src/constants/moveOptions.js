@@ -37,3 +37,24 @@ export const MEDIA_TYPE_LABELS = {
 // dialog can't offer something the upload would then reject.
 // Keep in sync with ALLOWED_MEDIA_EXTENSIONS in apps/moves/models.py.
 export const MEDIA_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm";
+
+// The same extension -> media type mapping the backend applies
+// (MoveMedia.EXTENSION_MEDIA_TYPES), so the size cap the form checks a
+// file against is the one that file will actually be judged by.
+const EXTENSION_MEDIA_TYPES = {
+  jpg: "image",
+  jpeg: "image",
+  png: "image",
+  webp: "image",
+  gif: "gif",
+  mp4: "video",
+  mov: "video",
+  webm: "video",
+};
+
+/** Media type of a picked File, or null for an extension we don't know
+ * (the upload would be rejected for the extension itself anyway). */
+export function mediaTypeForFile(file) {
+  const extension = file?.name?.toLowerCase().split(".").pop();
+  return EXTENSION_MEDIA_TYPES[extension] ?? null;
+}

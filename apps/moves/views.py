@@ -7,7 +7,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import Move, MoveMedia
+from .models import Move, MoveMedia, media_size_limits
 from .permissions import IsTrainerOrAdminOrReadOnly
 from .serializers import MoveListSerializer, MoveMediaSerializer, MoveSerializer
 
@@ -36,6 +36,16 @@ class MoveViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=False, url_path="media-limits")
+    def media_limits(self, request):
+        """The upload caps, so the form can warn and block using the very
+        numbers the server enforces instead of a second copy that drifts.
+
+        Sizes are bytes because that's what `File.size` gives the browser —
+        no unit conversion on either side of the wire.
+        """
+        return Response(media_size_limits())
 
 
 class MoveMediaViewSet(viewsets.ModelViewSet):

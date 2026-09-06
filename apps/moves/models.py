@@ -4,10 +4,49 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 ALLOWED_MEDIA_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "mp4", "mov", "webm"]
 
 _EXTENSION_RE = re.compile(r"\.([a-z0-9]+)$")
+
+_BYTES_PER_MB = 1024 * 1024
+
+
+def media_size_limits():
+    """Per-media-type upload caps, in bytes, read from settings at call
+    time so a gym's .env override applies without a restart-time bake-in
+    (and without a migration — see validate_media_size)."""
+    return {
+        media_type: {
+            "warn_bytes": int(caps["warn"] * _BYTES_PER_MB),
+            "max_bytes": int(caps["max"] * _BYTES_PER_MB),
+        }
+        for media_type, caps in settings.MEDIA_SIZE_LIMITS_MB.items()
+    }
+
+
+def validate_media_size(value):
+    """Refuse an upload over the hard cap for its media type.
+
+    Lives on the model field rather than in the serializer for two
+    reasons: it then covers the Django admin as well, and DRF copies
+    model-field validators onto the serializer field, so the API is
+    covered by the same one line.
+
+    Only the hard cap is enforced here. The soft one is a warning, and a
+    warning is only useful *before* the upload — by the time these bytes
+    have reached the server, the cost it exists to avoid has already been
+    paid. So warning is the frontend's job (it has the file locally, and
+    reads the same numbers from /api/moves/media-limits/).
+    """
+    limits = media_size_limits().get(MoveMedia.detect_media_type(value.name))
+    if limits and value.size > limits["max_bytes"]:
+        raise ValidationError(
+            "File is too large (%(size).1f MB). The limit is %(max).1f MB."
+            % {"size": value.size / _BYTES_PER_MB, "max": limits["max_bytes"] / _BYTES_PER_MB}
+        )
 
 
 class Move(models.Model):
@@ -91,7 +130,10 @@ class MoveMedia(models.Model):
         upload_to="moves/",
         null=True,
         blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=ALLOWED_MEDIA_EXTENSIONS)],
+        validators=[
+            FileExtensionValidator(allowed_extensions=ALLOWED_MEDIA_EXTENSIONS),
+            validate_media_size,
+        ],
     )
     external_url = models.URLField(blank=True)
     caption = models.CharField(max_length=255, blank=True)
@@ -128,3 +170,20 @@ class MoveMedia(models.Model):
             raise ValidationError("Provide either an uploaded file or an external_url.")
         if self.file and self.external_url:
             raise ValidationError("Provide only one of file or external_url, not both.")
+
+
+@receiver(post_delete, sender=MoveMedia)
+def delete_media_file(sender, instance, **kwargs):
+    """Drop the uploaded blob when its row goes.
+
+    Django deletes the row, not the file — which would leave orphans piling
+    up in MEDIA_ROOT and quietly defeat the size caps this app now enforces.
+    A post_delete receiver rather than an override of delete() so it also
+    fires for cascades (deleting a Move takes its media with it) and for
+    queryset deletes.
+
+    save=False because the row is already gone; there's nothing to write
+    the cleared field back to.
+    """
+    if instance.file:
+        instance.file.delete(save=False)

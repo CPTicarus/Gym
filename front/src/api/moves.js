@@ -78,3 +78,20 @@ export async function reorderMoveMedia(moveId, mediaIds) {
   const { data } = await axiosClient.post(`/moves/${moveId}/media/reorder/`, { order: mediaIds });
   return data;
 }
+
+export async function deleteMoveMedia(moveId, mediaId) {
+  await axiosClient.delete(`/moves/${moveId}/media/${mediaId}/`);
+}
+
+/**
+ * Upload size caps, in bytes, keyed by media type:
+ * `{ image: { warn_bytes, max_bytes }, gif: {...}, video: {...} }`.
+ *
+ * Fetched rather than hardcoded because a gym can tighten or loosen them
+ * in its own .env — a second copy in the frontend would quietly disagree
+ * with what the server actually enforces.
+ */
+export async function getMediaLimits() {
+  const { data } = await axiosClient.get("/moves/media-limits/");
+  return data;
+}
