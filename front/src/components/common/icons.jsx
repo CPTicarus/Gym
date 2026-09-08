@@ -140,6 +140,15 @@ export function FlaskIcon(props) {
   );
 }
 
+export function HeartPulseIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 20s-7.5-4.6-7.5-9.4A4.1 4.1 0 0 1 12 8a4.1 4.1 0 0 1 7.5 2.6c0 1.2-.5 2.4-1.2 3.5" />
+      <path d="M3.5 13.5h3l1.5-3 2.5 5 1.8-3.4h4.2" />
+    </IconBase>
+  );
+}
+
 export function SettingsIcon(props) {
   return (
     <IconBase {...props}>

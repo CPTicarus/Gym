@@ -2,6 +2,7 @@ import {
   ClipboardIcon,
   DumbbellIcon,
   FlaskIcon,
+  HeartPulseIcon,
   NewspaperIcon,
   SettingsIcon,
   UsersIcon,
@@ -22,7 +23,8 @@ export const NAV_ITEMS = [
   // Shown to every member even though most have no protocol — the page
   // explains that having none is normal, which is better than a link that
   // silently appears only for the few who do.
-  { to: "/my-supplements", label: "مکمل‌های من", Icon: FlaskIcon, roles: ["member"] },
+  { to: "/my-supplements", label: "مکمل من", Icon: FlaskIcon, roles: ["member"] },
+  { to: "/my-body", label: "بدن من", Icon: HeartPulseIcon, roles: ["member"] },
 
   { to: "/moves", label: "حرکات", Icon: DumbbellIcon, roles: ["member", "trainer", "admin"] },
   { to: "/plans", label: "برنامه‌ها", Icon: ClipboardIcon, roles: ["trainer", "admin"] },
@@ -33,7 +35,7 @@ export const NAV_ITEMS = [
   // The blog is the one section every role shares — staff write, everyone reads.
   {
     to: "/blog",
-    label: "مطالب",
+    label: "بلاگ",
     Icon: NewspaperIcon,
     roles: ["member", "trainer", "admin", "accounting"],
   },

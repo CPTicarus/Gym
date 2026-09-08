@@ -21,9 +21,10 @@ import {
   assignmentBadgeClass,
 } from "../../constants/planOptions.js";
 import { ROLE_LABELS } from "../../constants/roles.js";
+import { conditionLabel } from "../../constants/healthConditions.js";
 import { GENDER_LABELS } from "../../constants/userOptions.js";
 import { useAuth } from "../../hooks/useAuth.js";
-import { getBmiCategory } from "../../utils/bmi.js";
+import { getBmiCategory, getWhrCategory, getWhtrCategory } from "../../utils/bmi.js";
 import { formatDate, fullName } from "../../utils/format.js";
 import { canManageUser } from "../../utils/permissions.js";
 
@@ -237,8 +238,90 @@ export default function UserDetailPage() {
               </dd>
             </div>
           )}
+          <div className="detail-item">
+            <dt className="label">دور کمر</dt>
+            <dd className="detail-value ltr">
+              {user.latest_waist_cm ? `${user.latest_waist_cm} cm` : "—"}
+            </dd>
+          </div>
+          <div className="detail-item">
+            <dt className="label">دور باسن</dt>
+            <dd className="detail-value ltr">
+              {user.latest_hips_cm ? `${user.latest_hips_cm} cm` : "—"}
+            </dd>
+          </div>
+          <div className="detail-item">
+            <dt className="label">دور سینه</dt>
+            <dd className="detail-value ltr">
+              {user.latest_chest_cm ? `${user.latest_chest_cm} cm` : "—"}
+            </dd>
+          </div>
+          <div className="detail-item">
+            <dt className="label">دور بازو</dt>
+            <dd className="detail-value ltr">
+              {user.latest_arm_cm ? `${user.latest_arm_cm} cm` : "—"}
+            </dd>
+          </div>
+          <div className="detail-item">
+            <dt className="label">دور ران</dt>
+            <dd className="detail-value ltr">
+              {user.latest_thigh_cm ? `${user.latest_thigh_cm} cm` : "—"}
+            </dd>
+          </div>
+          {user.whr != null && (
+            <div className="detail-item">
+              <dt className="label">نسبت کمر به باسن (WHR)</dt>
+              <dd className="detail-value">
+                {user.whr}
+                {getWhrCategory(user.whr, user.gender) && (
+                  <span
+                    className={`badge badge-${getWhrCategory(user.whr, user.gender).variant} mr-2`}
+                  >
+                    {getWhrCategory(user.whr, user.gender).label}
+                  </span>
+                )}
+              </dd>
+            </div>
+          )}
+          {user.whtr != null && (
+            <div className="detail-item">
+              <dt className="label">نسبت کمر به قد (WHtR)</dt>
+              <dd className="detail-value">
+                {user.whtr}
+                {getWhtrCategory(user.whtr) && (
+                  <span className={`badge badge-${getWhtrCategory(user.whtr).variant} mr-2`}>
+                    {getWhtrCategory(user.whtr).label}
+                  </span>
+                )}
+              </dd>
+            </div>
+          )}
         </dl>
       </section>
+
+      {/* The thing a trainer has to see before writing a programme. Only
+          rendered when there is something to say — an empty "no conditions"
+          panel on every profile would train people to stop reading it. */}
+      {user.health_conditions?.length > 0 && (
+        <section className="card plan-section">
+          <h2 className="plan-section-title">مشکلات پزشکی</h2>
+          <p className="muted plan-section-hint">
+            این موارد را خود عضو ثبت کرده است — هنگام نوشتن برنامه در نظر بگیرید.
+          </p>
+          <ul className="exercise-list">
+            {user.health_conditions.map((condition) => (
+              <li key={condition.id} className="exercise-row">
+                <div className="exercise-row-main">
+                  <span className="exercise-name">{conditionLabel(condition)}</span>
+                  {condition.notes && (
+                    <span className="muted exercise-detail">{condition.notes}</span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Membership window — the piece that previously only existed in Django admin */}
       {user.role === "member" && (

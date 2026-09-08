@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import WeightLog, normalize_digits
+from .models import BodyMeasurement, HealthCondition, normalize_digits
 from .passwords import validate_password_for_role
 
 User = get_user_model()
@@ -76,13 +77,59 @@ class _RequiredIdentityFieldsMixin(_NationalIdFieldMixin):
         return normalize_digits(value).strip()
 
 
+class HealthConditionSerializer(serializers.ModelSerializer):
+    """Something a trainer needs to know about. `condition` is a code from
+    a fixed list so it stays machine-readable; OTHER carries the member's
+    own wording in `description`."""
+
+    condition_display = serializers.CharField(source="get_condition_display", read_only=True)
+
+    class Meta:
+        model = HealthCondition
+        fields = ["id", "condition", "condition_display", "description", "notes", "created_at"]
+        read_only_fields = ["id", "condition_display", "created_at"]
+
+    def validate(self, attrs):
+        condition = attrs.get("condition", getattr(self.instance, "condition", None))
+        description = attrs.get("description", getattr(self.instance, "description", ""))
+        if condition == HealthCondition.Condition.OTHER and not (description or "").strip():
+            raise serializers.ValidationError(
+                {"description": "Describe the condition when choosing 'other'."}
+            )
+
+        # The database has a CONDITIONAL unique constraint on
+        # (user, condition) that exempts OTHER. DRF only auto-generates
+        # validators for plain unique_together, and `user` isn't a
+        # serializer field anyway (the view supplies it) — so without this
+        # check a re-ticked flag reaches the INSERT and surfaces as a 500
+        # instead of a field error.
+        if condition and condition != HealthCondition.Condition.OTHER:
+            user = getattr(self.context.get("request"), "user", None)
+            if user and user.is_authenticated:
+                clash = HealthCondition.objects.filter(user=user, condition=condition)
+                if self.instance is not None:
+                    clash = clash.exclude(pk=self.instance.pk)
+                if clash.exists():
+                    raise serializers.ValidationError(
+                        {"condition": "This condition is already on your list."}
+                    )
+        return attrs
+
+
 class _BodyMetricsFieldsMixin(serializers.Serializer):
     """Shared read-only body-metrics fields, mixed into every serializer
-    that shows a user's profile (list/admin/self). `latest_weight_kg` and
-    `bmi` are derived (see User model), never written directly — weight
-    only changes through a WeightLog entry."""
+    that shows a user's profile (list/admin/self). All of these are
+    derived (see User model), never written directly — the numbers behind
+    them only change through a BodyMeasurement entry."""
 
     latest_weight_kg = serializers.FloatField(read_only=True)
+    latest_waist_cm = serializers.FloatField(read_only=True)
+    latest_hips_cm = serializers.FloatField(read_only=True)
+    latest_chest_cm = serializers.FloatField(read_only=True)
+    latest_arm_cm = serializers.FloatField(read_only=True)
+    latest_thigh_cm = serializers.FloatField(read_only=True)
+    whr = serializers.FloatField(read_only=True)
+    whtr = serializers.FloatField(read_only=True)
     bmi = serializers.FloatField(read_only=True)
 
 
@@ -91,6 +138,10 @@ class UserSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
     or a member looking up a trainer's basic info."""
 
     is_membership_active = serializers.BooleanField(read_only=True)
+    # Read-only here on purpose: a trainer needs to know about a bad knee
+    # before writing a programme, but it's the member's own health record
+    # and only they edit it (see HealthConditionViewSet).
+    health_conditions = HealthConditionSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -98,7 +149,9 @@ class UserSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
             "id", "username", "national_id", "email", "first_name", "last_name",
             "role", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
-            "is_membership_active", "height_cm", "latest_weight_kg", "bmi", "created_at",
+            "is_membership_active", "height_cm", "latest_weight_kg", "latest_waist_cm",
+            "latest_hips_cm", "latest_chest_cm", "latest_arm_cm", "latest_thigh_cm",
+            "whr", "whtr", "bmi", "health_conditions", "created_at",
         ]
         read_only_fields = [
             "id", "role", "national_id", "created_at", "is_membership_active", "height_cm",
@@ -115,6 +168,7 @@ class UserAdminSerializer(_NationalIdFieldMixin, _BodyMetricsFieldsMixin, serial
     behalf by an admin."""
 
     is_membership_active = serializers.BooleanField(read_only=True)
+    health_conditions = HealthConditionSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -122,7 +176,9 @@ class UserAdminSerializer(_NationalIdFieldMixin, _BodyMetricsFieldsMixin, serial
             "id", "username", "national_id", "email", "first_name", "last_name",
             "role", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
-            "is_membership_active", "height_cm", "latest_weight_kg", "bmi", "is_active", "created_at",
+            "is_membership_active", "height_cm", "latest_weight_kg", "latest_waist_cm",
+            "latest_hips_cm", "latest_chest_cm", "latest_arm_cm", "latest_thigh_cm",
+            "whr", "whtr", "bmi", "health_conditions", "is_active", "created_at",
         ]
         read_only_fields = ["id", "username", "created_at", "is_membership_active", "height_cm"]
 
@@ -323,7 +379,9 @@ class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
             "id", "username", "national_id", "email", "first_name", "last_name",
             "role", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
-            "is_membership_active", "height_cm", "latest_weight_kg", "bmi",
+            "is_membership_active", "height_cm", "latest_weight_kg", "latest_waist_cm",
+            "latest_hips_cm", "latest_chest_cm", "latest_arm_cm", "latest_thigh_cm",
+            "whr", "whtr", "bmi",
         ]
         # national_id is shown but not self-editable: correcting one is an
         # identity change, which belongs with an admin, not with the person
@@ -339,29 +397,68 @@ class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
         return value
 
 
-class WeightLogSerializer(serializers.ModelSerializer):
-    """A member's own weight-tracking entries. `create` upserts by day —
-    logging again for a date already recorded updates that entry instead
-    of creating a duplicate (mirrors the model's one-per-day constraint),
-    so "log today's weight" stays idempotent from the frontend's view."""
+class BodyMeasurementSerializer(serializers.ModelSerializer):
+    """A member's own dated numbers.
+
+    `create` upserts by day, and MERGES rather than replaces: posting a
+    waist measurement for a date that already has a weight keeps the
+    weight. A replace would silently wipe the other half of the day's
+    entry — and quietly destroying data the member typed earlier is worse
+    than any convenience an overwrite buys.
+    """
+
+    whr = serializers.FloatField(read_only=True)
+    whtr = serializers.FloatField(read_only=True)
 
     class Meta:
-        model = WeightLog
-        fields = ["id", "weight_kg", "recorded_at", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        model = BodyMeasurement
+        fields = [
+            "id", "weight_kg", "waist_cm", "hips_cm", "chest_cm", "arm_cm", "thigh_cm",
+            "whr", "whtr", "recorded_at", "created_at",
+        ]
+        read_only_fields = ["id", "whr", "whtr", "created_at"]
 
-    def validate_weight_kg(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Weight must be greater than zero.")
+    def _validate_positive(self, value, label):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError(f"{label} must be greater than zero.")
         return value
 
+    def validate_weight_kg(self, value):
+        return self._validate_positive(value, "Weight")
+
+    def validate_waist_cm(self, value):
+        return self._validate_positive(value, "Waist")
+
+    def validate_hips_cm(self, value):
+        return self._validate_positive(value, "Hips")
+
+    def validate_chest_cm(self, value):
+        return self._validate_positive(value, "Chest")
+
+    def validate_arm_cm(self, value):
+        return self._validate_positive(value, "Arm")
+
+    def validate_thigh_cm(self, value):
+        return self._validate_positive(value, "Thigh")
+
+    def validate(self, attrs):
+        # An entry with nothing in it is not an entry.
+        measured = [
+            attrs.get(f)
+            for f in ("weight_kg", "waist_cm", "hips_cm", "chest_cm", "arm_cm", "thigh_cm")
+        ]
+        if self.instance is None and all(v is None for v in measured):
+            raise serializers.ValidationError("Record at least one measurement.")
+        return attrs
+
     def create(self, validated_data):
-        user = validated_data["user"]
-        recorded_at = validated_data["recorded_at"]
-        obj, _ = WeightLog.objects.update_or_create(
-            user=user, recorded_at=recorded_at, defaults={"weight_kg": validated_data["weight_kg"]}
-        )
-        return obj
+        user = validated_data.pop("user")
+        recorded_at = validated_data.pop("recorded_at", None) or timezone.localdate()
+        entry, _ = BodyMeasurement.objects.get_or_create(user=user, recorded_at=recorded_at)
+        for field, value in validated_data.items():
+            setattr(entry, field, value)
+        entry.save()
+        return entry
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

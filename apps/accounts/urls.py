@@ -3,17 +3,19 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
+    BodyMeasurementViewSet,
     CustomTokenObtainPairView,
+    HealthConditionViewSet,
     MeView,
     RegisterView,
     StaffCreateView,
     UserViewSet,
-    WeightLogViewSet,
 )
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
-router.register("me/weight-logs", WeightLogViewSet, basename="weight-log")
+router.register("me/measurements", BodyMeasurementViewSet, basename="measurement")
+router.register("me/health-conditions", HealthConditionViewSet, basename="health-condition")
 
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="auth-register"),

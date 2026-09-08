@@ -7,11 +7,13 @@ from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import WeightLog
+from .models import BodyMeasurement, HealthCondition
 from .permissions import CanManageUser, IsAdmin, IsAdminOrAccounting, IsStaff
 from .throttling import LoginRateThrottle
 from .serializers import (
+    BodyMeasurementSerializer,
     CustomTokenObtainPairSerializer,
+    HealthConditionSerializer,
     MemberEditSerializer,
     MeSerializer,
     RegisterSerializer,
@@ -20,7 +22,6 @@ from .serializers import (
     UserAdminSerializer,
     UserCreateSerializer,
     UserSerializer,
-    WeightLogSerializer,
 )
 
 User = get_user_model()
@@ -157,21 +158,49 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class WeightLogViewSet(viewsets.ModelViewSet):
-    """A member's own weight-tracking log — self-service only, so weight
-    always reflects what the person themselves reported.
+class BodyMeasurementViewSet(viewsets.ModelViewSet):
+    """A member's own numbers — self-service only, so what's recorded is
+    always what the person themselves reported.
 
-      GET    /api/me/weight-logs/            (most recent first)
-      POST   /api/me/weight-logs/             {"weight_kg": 82.5, "recorded_at": "2026-09-01"}
-      PATCH  /api/me/weight-logs/{id}/
-      DELETE /api/me/weight-logs/{id}/
+      GET    /api/me/measurements/          (most recent first)
+      POST   /api/me/measurements/          {"weight_kg": 82.5, "waist_cm": 88, "hips_cm": 102}
+      PATCH  /api/me/measurements/{id}/
+      DELETE /api/me/measurements/{id}/
+
+    Staff read these indirectly, through the derived numbers on a user's
+    profile (latest weight, waist, hips, WHR, BMI) rather than the log.
     """
 
-    serializer_class = WeightLogSerializer
+    serializer_class = BodyMeasurementSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return WeightLog.objects.filter(user=self.request.user)
+        # select_related because each row's whtr reads user.height_cm —
+        # without it, serializing a history is a query per entry.
+        return BodyMeasurement.objects.filter(user=self.request.user).select_related("user")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class HealthConditionViewSet(viewsets.ModelViewSet):
+    """A member's own flagged health problems.
+
+      GET    /api/me/health-conditions/
+      POST   /api/me/health-conditions/     {"condition": "knee_pain", "notes": "left, since 2024"}
+      PATCH  /api/me/health-conditions/{id}/
+      DELETE /api/me/health-conditions/{id}/
+
+    Self-service, like measurements: a trainer needs to know about a bad
+    knee, but it's the member's own health record and only they write it.
+    Staff read it nested on the user profile (see UserSerializer).
+    """
+
+    serializer_class = HealthConditionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return HealthCondition.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

@@ -14,6 +14,7 @@ import DietListPage from "../pages/diet/DietListPage.jsx";
 import MoveFormPage from "../pages/moves/MoveFormPage.jsx";
 import MoveListPage from "../pages/moves/MoveListPage.jsx";
 import GymSessionPage from "../pages/my/GymSessionPage.jsx";
+import MyBodyPage from "../pages/my/MyBodyPage.jsx";
 import MyDietPlansPage from "../pages/my/MyDietPlansPage.jsx";
 import MySupplementsPage from "../pages/my/MySupplementsPage.jsx";
 import MyWorkoutPlansPage from "../pages/my/MyWorkoutPlansPage.jsx";
@@ -72,6 +73,7 @@ export default function AppRoutes() {
             <Route path="/my-plans/session/:assignmentId" element={<GymSessionPage />} />
             <Route path="/my-diet" element={<MyDietPlansPage />} />
             <Route path="/my-supplements" element={<MySupplementsPage />} />
+            <Route path="/my-body" element={<MyBodyPage />} />
           </Route>
 
           {/* Open to every authenticated role */}

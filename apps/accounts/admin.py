@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import User, WeightLog
+from .models import BodyMeasurement, HealthCondition, User
 
 
 @admin.register(User)
@@ -25,8 +25,15 @@ class UserAdmin(DjangoUserAdmin):
     )
 
 
-@admin.register(WeightLog)
-class WeightLogAdmin(admin.ModelAdmin):
-    list_display = ["user", "weight_kg", "recorded_at"]
+@admin.register(BodyMeasurement)
+class BodyMeasurementAdmin(admin.ModelAdmin):
+    list_display = ["user", "recorded_at", "weight_kg", "waist_cm", "hips_cm", "whr"]
     list_filter = ["recorded_at"]
-    search_fields = ["user__username", "user__first_name", "user__last_name"]
+    search_fields = ["user__username", "user__first_name", "user__last_name", "user__national_id"]
+
+
+@admin.register(HealthCondition)
+class HealthConditionAdmin(admin.ModelAdmin):
+    list_display = ["user", "condition", "description", "created_at"]
+    list_filter = ["condition"]
+    search_fields = ["user__username", "user__national_id", "description", "notes"]
