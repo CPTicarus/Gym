@@ -387,6 +387,15 @@
   .icon-btn-inverse {
     @apply border-white/25 text-white;
   }
+  /* Deleting a row is the one destructive control in these lists, and it
+     sits right next to edit — it reads as danger rather than as another
+     neutral square. */
+  .icon-btn-danger {
+    @apply border-danger/40 text-danger;
+  }
+  .icon-btn-danger:hover {
+    @apply bg-danger-soft;
+  }
   .icon-btn-inverse:hover {
     @apply bg-white/10;
   }

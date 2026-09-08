@@ -68,7 +68,7 @@ function AssignmentRow({ assignment, planHref, onStatusChange, onRemove, canEdit
         {canEdit && (
           <button
             type="button"
-            className="icon-btn icon-btn-sm"
+            className="icon-btn icon-btn-sm icon-btn-danger"
             onClick={() => onRemove(assignment)}
             aria-label={`حذف اختصاص ${assignment.plan_name}`}
           >

@@ -29,6 +29,11 @@ export async function addSupplementItem(planId, payload) {
   return data;
 }
 
+export async function updateSupplementItem(planId, itemId, payload) {
+  const { data } = await axiosClient.patch(`/supplement-plans/${planId}/items/${itemId}/`, payload);
+  return data;
+}
+
 export async function deleteSupplementItem(planId, itemId) {
   await axiosClient.delete(`/supplement-plans/${planId}/items/${itemId}/`);
 }

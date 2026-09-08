@@ -7,6 +7,7 @@ import {
   assignDietPlan,
   deleteDietAssignment,
   deleteDietItem,
+  updateDietItem,
   deleteDietPlan,
   deleteMeal,
   getDietPlan,
@@ -23,7 +24,7 @@ import { DIET_GOAL_LABELS, DIET_GOALS } from "../../constants/planOptions.js";
 import { getTodayWeekday, WEEKDAY_LABELS } from "../../constants/weekdays.js";
 
 /** One weekday's block: its meals plus the "add a meal to this day" form. */
-function DayBlock({ day, onAddMeal, onDeleteMeal, onAddItem, onDeleteItem }) {
+function DayBlock({ day, onAddMeal, onDeleteMeal, onAddItem, onUpdateItem, onDeleteItem }) {
   const [name, setName] = useState("");
   const [time, setTime] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -64,6 +65,7 @@ function DayBlock({ day, onAddMeal, onDeleteMeal, onAddItem, onDeleteItem }) {
           meal={meal}
           onDeleteMeal={onDeleteMeal}
           onAddItem={(payload) => onAddItem(meal, payload)}
+          onUpdateItem={(item, payload) => onUpdateItem(meal, item, payload)}
           onDeleteItem={(item) => onDeleteItem(meal, item)}
         />
       ))}
@@ -224,6 +226,10 @@ export default function DietBuilderPage() {
             }}
             onAddItem={async (meal, payload) => {
               await addDietItem(planId, meal.id, payload);
+              await reload();
+            }}
+            onUpdateItem={async (meal, item, payload) => {
+              await updateDietItem(planId, meal.id, item.id, payload);
               await reload();
             }}
             onDeleteItem={async (meal, item) => {

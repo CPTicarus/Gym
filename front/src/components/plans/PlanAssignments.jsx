@@ -48,7 +48,7 @@ export default function PlanAssignments({ assignments, onStatusChange, onRemove,
             {canEdit && (
               <button
                 type="button"
-                className="icon-btn icon-btn-sm"
+                className="icon-btn icon-btn-sm icon-btn-danger"
                 onClick={() => onRemove(a)}
                 aria-label={`حذف اختصاص ${a.user_full_name}`}
               >

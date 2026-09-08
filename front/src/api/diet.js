@@ -46,6 +46,14 @@ export async function addDietItem(planId, mealId, payload) {
   return data;
 }
 
+export async function updateDietItem(planId, mealId, itemId, payload) {
+  const { data } = await axiosClient.patch(
+    `/diet-plans/${planId}/meals/${mealId}/items/${itemId}/`,
+    payload
+  );
+  return data;
+}
+
 export async function deleteDietItem(planId, mealId, itemId) {
   await axiosClient.delete(`/diet-plans/${planId}/meals/${mealId}/items/${itemId}/`);
 }

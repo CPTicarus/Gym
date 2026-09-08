@@ -36,6 +36,11 @@ export async function addWarmupExercise(planId, payload) {
   return data;
 }
 
+export async function updateWarmupExercise(planId, exerciseId, payload) {
+  const { data } = await axiosClient.patch(`/workout-plans/${planId}/warmup/${exerciseId}/`, payload);
+  return data;
+}
+
 export async function deleteWarmupExercise(planId, exerciseId) {
   await axiosClient.delete(`/workout-plans/${planId}/warmup/${exerciseId}/`);
 }
@@ -55,6 +60,14 @@ export async function addDayExercise(planId, dayId, payload) {
   return data;
 }
 
+export async function updateDayExercise(planId, dayId, exerciseId, payload) {
+  const { data } = await axiosClient.patch(
+    `/workout-plans/${planId}/days/${dayId}/exercises/${exerciseId}/`,
+    payload
+  );
+  return data;
+}
+
 export async function deleteDayExercise(planId, dayId, exerciseId) {
   await axiosClient.delete(`/workout-plans/${planId}/days/${dayId}/exercises/${exerciseId}/`);
 }
@@ -62,6 +75,11 @@ export async function deleteDayExercise(planId, dayId, exerciseId) {
 // ---- Section 3: daily items ----
 export async function addDailyExercise(planId, payload) {
   const { data } = await axiosClient.post(`/workout-plans/${planId}/daily/`, payload);
+  return data;
+}
+
+export async function updateDailyExercise(planId, exerciseId, payload) {
+  const { data } = await axiosClient.patch(`/workout-plans/${planId}/daily/${exerciseId}/`, payload);
   return data;
 }
 

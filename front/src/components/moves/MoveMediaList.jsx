@@ -3,7 +3,7 @@ import { MEDIA_TYPE_LABELS } from "../../constants/moveOptions.js";
 import { toPersianDigits } from "../../utils/jalali.js";
 
 const ROW_BTN = "icon-btn icon-btn-sm flex-none disabled:cursor-not-allowed disabled:opacity-40";
-const DELETE_BTN = `${ROW_BTN} border-danger/40 text-danger hover:bg-danger-soft`;
+const DELETE_BTN = `${ROW_BTN} icon-btn-danger`;
 
 function Thumbnail({ item }) {
   const frame = "h-12 w-12 flex-none rounded-md border border-line object-cover";

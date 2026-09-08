@@ -6,6 +6,7 @@ import {
   assignSupplementPlan,
   deleteSupplementAssignment,
   deleteSupplementItem,
+  updateSupplementItem,
   deleteSupplementPlan,
   getSupplementPlan,
   listSupplementAssignments,
@@ -19,8 +20,6 @@ import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import SupplementItemList from "../../components/supplements/SupplementItemList.jsx";
 import { SUPPLEMENT_GOALS, SUPPLEMENT_GOAL_LABELS } from "../../constants/supplementOptions.js";
 
-const EMPTY_ITEM = { name: "", dosage: "", timing: "", frequency: "", notes: "" };
-
 export default function SupplementBuilderPage() {
   const { planId } = useParams();
   const navigate = useNavigate();
@@ -31,8 +30,6 @@ export default function SupplementBuilderPage() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const [draft, setDraft] = useState(EMPTY_ITEM);
-  const [isAdding, setIsAdding] = useState(false);
   const [itemError, setItemError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
@@ -66,27 +63,19 @@ export default function SupplementBuilderPage() {
     };
   }, [planId, loadAssignments]);
 
-  async function handleAddItem(e) {
-    e.preventDefault();
+  async function handleAddItem(payload) {
     setItemError(null);
-    if (!draft.name.trim()) {
-      setItemError("نام مکمل الزامی است.");
-      return;
-    }
-    setIsAdding(true);
-    try {
-      const created = await addSupplementItem(planId, {
-        ...draft,
-        name: draft.name.trim(),
-        order: plan.items.length,
-      });
-      setPlan((prev) => ({ ...prev, items: [...prev.items, created] }));
-      setDraft(EMPTY_ITEM);
-    } catch {
-      setItemError("افزودن مکمل با مشکل مواجه شد.");
-    } finally {
-      setIsAdding(false);
-    }
+    const created = await addSupplementItem(planId, payload);
+    setPlan((prev) => ({ ...prev, items: [...prev.items, created] }));
+  }
+
+  async function handleUpdateItem(item, payload) {
+    setItemError(null);
+    const updated = await updateSupplementItem(planId, item.id, payload);
+    setPlan((prev) => ({
+      ...prev,
+      items: prev.items.map((i) => (i.id === item.id ? updated : i)),
+    }));
   }
 
   async function handleDeleteItem(item) {
@@ -134,10 +123,6 @@ export default function SupplementBuilderPage() {
   if (isLoading) return <p className="muted">در حال بارگذاری…</p>;
   if (!plan) return <p className="error-text">{error}</p>;
 
-  function setField(field, value) {
-    setDraft((prev) => ({ ...prev, [field]: value }));
-  }
-
   return (
     <div>
       <div className="page-header">
@@ -179,66 +164,18 @@ export default function SupplementBuilderPage() {
 
         <SupplementItemList
           items={plan.items}
+          onAdd={handleAddItem}
+          onUpdate={handleUpdateItem}
           onDelete={handleDeleteItem}
           deletingId={deletingId}
         />
 
-        <form className="exercise-add-form" onSubmit={handleAddItem} noValidate>
-          <div className="item-add-top">
-            <input
-              className="input"
-              dir="auto"
-              value={draft.name}
-              onChange={(e) => setField("name", e.target.value)}
-              placeholder="نام مکمل (مثلاً وی پروتئین)"
-              required
-            />
-            <input
-              className="input"
-              dir="auto"
-              value={draft.dosage}
-              onChange={(e) => setField("dosage", e.target.value)}
-              placeholder="مقدار (مثلاً ۳۰ گرم)"
-            />
-          </div>
+        {itemError && (
+          <p className="error-text" role="alert">
+            {itemError}
+          </p>
+        )}
 
-          <div className="item-add-top">
-            <input
-              className="input"
-              dir="auto"
-              value={draft.timing}
-              onChange={(e) => setField("timing", e.target.value)}
-              placeholder="زمان مصرف (مثلاً بعد از تمرین)"
-            />
-            <input
-              className="input"
-              dir="auto"
-              value={draft.frequency}
-              onChange={(e) => setField("frequency", e.target.value)}
-              placeholder="تناوب (مثلاً روزانه)"
-            />
-          </div>
-
-          <input
-            className="input"
-            dir="auto"
-            value={draft.notes}
-            onChange={(e) => setField("notes", e.target.value)}
-            placeholder="توضیح (اختیاری)"
-          />
-
-          {itemError && (
-            <p className="error-text" role="alert">
-              {itemError}
-            </p>
-          )}
-
-          <div className="form-actions">
-            <button className="btn btn-secondary btn-sm" type="submit" disabled={isAdding}>
-              {isAdding ? "در حال افزودن…" : "افزودن مکمل"}
-            </button>
-          </div>
-        </form>
       </section>
 
       <section className="card plan-section">

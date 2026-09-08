@@ -11,6 +11,9 @@ import {
   deleteDailyExercise,
   deleteDayExercise,
   deleteWarmupExercise,
+  updateDailyExercise,
+  updateDayExercise,
+  updateWarmupExercise,
   deleteWorkoutAssignment,
   deleteWorkoutDay,
   deleteWorkoutPlan,
@@ -190,6 +193,10 @@ export default function PlanBuilderPage() {
             await addWarmupExercise(planId, payload);
             await reload();
           }}
+          onUpdate={async (ex, payload) => {
+            await updateWarmupExercise(planId, ex.id, payload);
+            await reload();
+          }}
           onDelete={async (ex) => {
             await deleteWarmupExercise(planId, ex.id);
             await reload();
@@ -209,7 +216,7 @@ export default function PlanBuilderPage() {
               <h3 className="day-block-title">{day.name}</h3>
               <button
                 type="button"
-                className="icon-btn icon-btn-sm"
+                className="icon-btn icon-btn-sm icon-btn-danger"
                 onClick={() => handleDeleteDay(day)}
                 aria-label={`حذف ${day.name}`}
               >
@@ -223,6 +230,10 @@ export default function PlanBuilderPage() {
               emptyText="هنوز حرکتی برای این روز اضافه نشده."
               onAdd={async (payload) => {
                 await addDayExercise(planId, day.id, payload);
+                await reload();
+              }}
+              onUpdate={async (ex, payload) => {
+                await updateDayExercise(planId, day.id, ex.id, payload);
                 await reload();
               }}
               onDelete={async (ex) => {
@@ -258,6 +269,10 @@ export default function PlanBuilderPage() {
           emptyText="هنوز حرکت روزانه‌ای اضافه نشده."
           onAdd={async (payload) => {
             await addDailyExercise(planId, payload);
+            await reload();
+          }}
+          onUpdate={async (ex, payload) => {
+            await updateDailyExercise(planId, ex.id, payload);
             await reload();
           }}
           onDelete={async (ex) => {

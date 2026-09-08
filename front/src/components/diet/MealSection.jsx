@@ -1,17 +1,26 @@
 import { useState } from "react";
 
 import { formatItemMacros } from "../../utils/planFormat.js";
-import { TrashIcon } from "../common/icons.jsx";
+import { PencilIcon, TrashIcon } from "../common/icons.jsx";
 
-function ItemForm({ onAdd, itemCount }) {
-  const [foodName, setFoodName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
+/**
+ * The fields for one food item, used BOTH to add a new one and to edit an
+ * existing one — so the two can't drift apart as fields are added.
+ *
+ * `onCancel` marks the edit use: that form is unmounted by its parent on
+ * save, so it doesn't clear itself; the add form stays mounted and does.
+ */
+function ItemForm({ item, submitLabel, onSubmit, onCancel }) {
+  const [foodName, setFoodName] = useState(item?.food_name ?? "");
+  const [quantity, setQuantity] = useState(item?.quantity ?? "");
+  const [calories, setCalories] = useState(item?.calories != null ? String(item.calories) : "");
+  const [protein, setProtein] = useState(item?.protein_g != null ? String(item.protein_g) : "");
+  const [carbs, setCarbs] = useState(item?.carbs_g != null ? String(item.carbs_g) : "");
+  const [fat, setFat] = useState(item?.fat_g != null ? String(item.fat_g) : "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  const isEdit = Boolean(onCancel);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -22,7 +31,7 @@ function ItemForm({ onAdd, itemCount }) {
     }
     setIsSaving(true);
     try {
-      await onAdd({
+      await onSubmit({
         food_name: foodName.trim(),
         quantity: quantity.trim(),
         // "" would be rejected by DRF for these nullable numeric fields.
@@ -30,16 +39,17 @@ function ItemForm({ onAdd, itemCount }) {
         protein_g: protein === "" ? null : Number(protein),
         carbs_g: carbs === "" ? null : Number(carbs),
         fat_g: fat === "" ? null : Number(fat),
-        order: itemCount,
       });
-      setFoodName("");
-      setQuantity("");
-      setCalories("");
-      setProtein("");
-      setCarbs("");
-      setFat("");
+      if (!isEdit) {
+        setFoodName("");
+        setQuantity("");
+        setCalories("");
+        setProtein("");
+        setCarbs("");
+        setFat("");
+      }
     } catch {
-      setError("افزودن خوراکی با مشکل مواجه شد.");
+      setError(isEdit ? "ذخیره تغییرات با مشکل مواجه شد." : "افزودن خوراکی با مشکل مواجه شد.");
     } finally {
       setIsSaving(false);
     }
@@ -114,9 +124,20 @@ function ItemForm({ onAdd, itemCount }) {
 
       {error && <p className="error-text">{error}</p>}
 
-      <button className="btn btn-ghost btn-sm" type="submit" disabled={isSaving}>
-        {isSaving ? "در حال افزودن…" : "+ افزودن خوراکی"}
-      </button>
+      <div className="form-actions">
+        {isEdit && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
+            انصراف
+          </button>
+        )}
+        <button
+          className={isEdit ? "btn btn-secondary btn-sm" : "btn btn-ghost btn-sm"}
+          type="submit"
+          disabled={isSaving}
+        >
+          {isSaving ? "در حال ذخیره…" : submitLabel}
+        </button>
+      </div>
     </form>
   );
 }
@@ -124,8 +145,17 @@ function ItemForm({ onAdd, itemCount }) {
 /** One meal slot (name/time, its food items, and the add-item form) —
  * nested inside a day's block. Used by both the trainer-facing builder
  * (editable) and reused read-only-ish since `onDelete`/`onAddItem`/
- * `onDeleteItem` are only passed where editing is allowed. */
-export default function MealSection({ meal, onDeleteMeal, onAddItem, onDeleteItem, readOnly = false }) {
+ * `onUpdateItem`/`onDeleteItem` are only passed where editing is allowed. */
+export default function MealSection({
+  meal,
+  onDeleteMeal,
+  onAddItem,
+  onUpdateItem,
+  onDeleteItem,
+  readOnly = false,
+}) {
+  const [editingId, setEditingId] = useState(null);
+
   return (
     <div className="meal-block">
       <div className="day-block-head">
@@ -136,7 +166,7 @@ export default function MealSection({ meal, onDeleteMeal, onAddItem, onDeleteIte
         {!readOnly && (
           <button
             type="button"
-            className="icon-btn icon-btn-sm"
+            className="icon-btn icon-btn-sm icon-btn-danger"
             onClick={() => onDeleteMeal(meal)}
             aria-label={`حذف ${meal.name}`}
           >
@@ -149,32 +179,63 @@ export default function MealSection({ meal, onDeleteMeal, onAddItem, onDeleteIte
         <p className="muted exercise-empty">هنوز خوراکی‌ای اضافه نشده.</p>
       ) : (
         <ul className="exercise-list">
-          {meal.items.map((item) => (
-            <li key={item.id} className="exercise-row">
-              <div className="exercise-row-main">
-                <span className="exercise-name">
-                  {item.food_name}
-                  {item.quantity && <span className="muted"> — {item.quantity}</span>}
-                </span>
-                <span className="muted exercise-detail">{formatItemMacros(item)}</span>
-                {item.notes && <span className="muted exercise-notes">{item.notes}</span>}
-              </div>
-              {!readOnly && (
-                <button
-                  type="button"
-                  className="icon-btn icon-btn-sm"
-                  onClick={() => onDeleteItem(item)}
-                  aria-label={`حذف ${item.food_name}`}
-                >
-                  <TrashIcon size={16} />
-                </button>
-              )}
-            </li>
-          ))}
+          {meal.items.map((item) =>
+            editingId === item.id ? (
+              // The row becomes the form in place, so it keeps its position
+              // in the meal while you edit it.
+              <li key={item.id} className="exercise-row flex-col items-stretch">
+                <ItemForm
+                  item={item}
+                  submitLabel="ذخیره"
+                  onCancel={() => setEditingId(null)}
+                  onSubmit={async (payload) => {
+                    await onUpdateItem(item, payload);
+                    setEditingId(null);
+                  }}
+                />
+              </li>
+            ) : (
+              <li key={item.id} className="exercise-row">
+                <div className="exercise-row-main">
+                  <span className="exercise-name">
+                    {item.food_name}
+                    {item.quantity && <span className="muted"> — {item.quantity}</span>}
+                  </span>
+                  <span className="muted exercise-detail">{formatItemMacros(item)}</span>
+                  {item.notes && <span className="muted exercise-notes">{item.notes}</span>}
+                </div>
+                {!readOnly && (
+                  <div className="flex flex-none items-center gap-1">
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn-sm"
+                      onClick={() => setEditingId(item.id)}
+                      aria-label={`ویرایش ${item.food_name}`}
+                    >
+                      <PencilIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn-sm icon-btn-danger"
+                      onClick={() => onDeleteItem(item)}
+                      aria-label={`حذف ${item.food_name}`}
+                    >
+                      <TrashIcon size={16} />
+                    </button>
+                  </div>
+                )}
+              </li>
+            )
+          )}
         </ul>
       )}
 
-      {!readOnly && <ItemForm itemCount={meal.items.length} onAdd={onAddItem} />}
+      {!readOnly && (
+        <ItemForm
+          submitLabel="+ افزودن خوراکی"
+          onSubmit={(payload) => onAddItem({ ...payload, order: meal.items.length })}
+        />
+      )}
     </div>
   );
 }
