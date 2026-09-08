@@ -827,6 +827,66 @@
   .session-exercise-row.is-checked .exercise-detail {
     @apply text-muted line-through;
   }
+
+  /* ---- Session progress, confirm and summary ----
+     The count/clock line reads as a readout on the machine rather than as
+     body copy: tabular figures so the seconds don't shift the layout every
+     tick, and the bar squared off like everything else in the app. */
+  .session-progress {
+    @apply mb-3 flex flex-col gap-2 p-4;
+  }
+  .session-progress-head {
+    @apply flex items-center justify-between gap-3;
+  }
+  .session-progress-count {
+    @apply text-[15px] font-extrabold;
+    font-variant-numeric: tabular-nums;
+  }
+  .session-progress-timer {
+    @apply inline-flex items-center gap-1.5 text-[13px] font-semibold;
+    font-variant-numeric: tabular-nums;
+  }
+  .session-progress-track {
+    @apply h-2 w-full overflow-hidden bg-neutral-soft;
+  }
+  .session-progress-fill {
+    /* Width is the only thing animated here, and it's the one place a
+       slower-than-mechanical transition earns its keep — the bar growing
+       is the feedback for the tap. */
+    @apply h-full bg-accent;
+    transition: width 220ms linear;
+  }
+  .session-progress.is-complete {
+    @apply border-success;
+  }
+  .session-progress.is-complete .session-progress-fill {
+    @apply bg-success;
+  }
+  .session-progress.is-complete .session-progress-count {
+    @apply text-success;
+  }
+  .session-confirm-text {
+    @apply mb-4 text-sm;
+  }
+  .session-confirm-actions {
+    @apply mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end;
+  }
+  .session-summary-stats {
+    @apply flex flex-col gap-0 border-t border-line;
+  }
+  .session-summary-stat {
+    @apply flex items-baseline justify-between gap-3 border-b border-line py-2.5;
+  }
+  .session-summary-stat-label {
+    @apply text-[13px];
+  }
+  .session-summary-stat-value {
+    @apply text-[15px] font-extrabold;
+    font-variant-numeric: tabular-nums;
+  }
+  .session-summary-next {
+    @apply mt-4 bg-neutral-soft px-3 py-2.5 text-sm;
+  }
   .exercise-add-form {
     @apply mt-3 flex flex-col gap-2 border-t border-line pt-3;
   }
