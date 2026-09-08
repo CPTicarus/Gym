@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.diet",
     "apps.accounting",
     "apps.blog",
+    "apps.supplements",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

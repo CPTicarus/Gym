@@ -1,6 +1,7 @@
 import {
   ClipboardIcon,
   DumbbellIcon,
+  FlaskIcon,
   NewspaperIcon,
   SettingsIcon,
   UsersIcon,
@@ -18,10 +19,15 @@ export const NAV_ITEMS = [
   // the builders. Different routes, so both can sit in one nav list.
   { to: "/my-plans", label: "برنامه من", Icon: ClipboardIcon, roles: ["member"] },
   { to: "/my-diet", label: "تغذیه من", Icon: UtensilsIcon, roles: ["member"] },
+  // Shown to every member even though most have no protocol — the page
+  // explains that having none is normal, which is better than a link that
+  // silently appears only for the few who do.
+  { to: "/my-supplements", label: "مکمل‌های من", Icon: FlaskIcon, roles: ["member"] },
 
   { to: "/moves", label: "حرکات", Icon: DumbbellIcon, roles: ["member", "trainer", "admin"] },
   { to: "/plans", label: "برنامه‌ها", Icon: ClipboardIcon, roles: ["trainer", "admin"] },
   { to: "/diet", label: "تغذیه", Icon: UtensilsIcon, roles: ["trainer", "admin"] },
+  { to: "/supplements", label: "مکمل‌ها", Icon: FlaskIcon, roles: ["trainer", "admin"] },
   { to: "/accounting", label: "حسابداری", Icon: WalletIcon, roles: ["admin", "accounting"] },
 
   // The blog is the one section every role shares — staff write, everyone reads.

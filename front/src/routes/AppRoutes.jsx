@@ -15,10 +15,13 @@ import MoveFormPage from "../pages/moves/MoveFormPage.jsx";
 import MoveListPage from "../pages/moves/MoveListPage.jsx";
 import GymSessionPage from "../pages/my/GymSessionPage.jsx";
 import MyDietPlansPage from "../pages/my/MyDietPlansPage.jsx";
+import MySupplementsPage from "../pages/my/MySupplementsPage.jsx";
 import MyWorkoutPlansPage from "../pages/my/MyWorkoutPlansPage.jsx";
 import PlanBuilderPage from "../pages/plans/PlanBuilderPage.jsx";
 import PlanListPage from "../pages/plans/PlanListPage.jsx";
 import SettingsPage from "../pages/settings/SettingsPage.jsx";
+import SupplementBuilderPage from "../pages/supplements/SupplementBuilderPage.jsx";
+import SupplementListPage from "../pages/supplements/SupplementListPage.jsx";
 import UserDetailPage from "../pages/users/UserDetailPage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
@@ -50,6 +53,8 @@ export default function AppRoutes() {
             <Route path="/plans/:planId" element={<PlanBuilderPage />} />
             <Route path="/diet" element={<DietListPage />} />
             <Route path="/diet/:planId" element={<DietBuilderPage />} />
+            <Route path="/supplements" element={<SupplementListPage />} />
+            <Route path="/supplements/:planId" element={<SupplementBuilderPage />} />
             <Route path="/moves/new" element={<MoveFormPage />} />
             <Route path="/moves/:moveId/edit" element={<MoveFormPage />} />
             <Route path="/blog/new" element={<BlogFormPage />} />
@@ -66,6 +71,7 @@ export default function AppRoutes() {
             <Route path="/my-plans" element={<MyWorkoutPlansPage />} />
             <Route path="/my-plans/session/:assignmentId" element={<GymSessionPage />} />
             <Route path="/my-diet" element={<MyDietPlansPage />} />
+            <Route path="/my-supplements" element={<MySupplementsPage />} />
           </Route>
 
           {/* Open to every authenticated role */}

@@ -130,6 +130,16 @@ export function NewspaperIcon(props) {
   );
 }
 
+export function FlaskIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 3h4" />
+      <path d="M10.5 3v6.2L5.6 17.4A1.6 1.6 0 0 0 7 20h10a1.6 1.6 0 0 0 1.4-2.6L13.5 9.2V3" />
+      <path d="M8 14.5h8" />
+    </IconBase>
+  );
+}
+
 export function SettingsIcon(props) {
   return (
     <IconBase {...props}>

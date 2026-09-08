@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { deleteDietAssignment, listDietAssignments, updateDietAssignment } from "../../api/diet.js";
+import {
+  deleteSupplementAssignment,
+  listSupplementAssignments,
+  updateSupplementAssignment,
+} from "../../api/supplements.js";
 import { getUser, updateUser } from "../../api/users.js";
 import {
   deleteWorkoutAssignment,
@@ -92,17 +97,20 @@ export default function UserDetailPage() {
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [supplementAssignments, setSupplementAssignments] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [toast, setToast] = useState(null);
 
   const loadAssignments = useCallback(async () => {
-    const [w, d] = await Promise.all([
+    const [w, d, s] = await Promise.all([
       listWorkoutAssignments({ user: userId }),
       listDietAssignments({ user: userId }),
+      listSupplementAssignments({ user: userId }),
     ]);
     setWorkoutAssignments(w.results ?? w);
     setDietAssignments(d.results ?? d);
+    setSupplementAssignments(s.results ?? s);
   }, [userId]);
 
   useEffect(() => {
@@ -334,6 +342,33 @@ export default function UserDetailPage() {
           </ul>
         )}
       </section>
+
+      {/* Only rendered when there is one. Most members are on no protocol,
+          and an empty "no supplements" panel on every profile would be
+          noise rather than information. */}
+      {supplementAssignments.length > 0 && (
+        <section className="card plan-section">
+          <h2 className="plan-section-title">مکمل‌ها</h2>
+          <ul className="assignment-list">
+            {supplementAssignments.map((a) => (
+              <AssignmentRow
+                key={a.id}
+                assignment={a}
+                planHref={`/supplements/${a.plan}`}
+                canEdit={canEditAssignments}
+                onStatusChange={async (assignment, status) => {
+                  await updateSupplementAssignment(assignment.id, { status });
+                  await loadAssignments();
+                }}
+                onRemove={async (assignment) => {
+                  await deleteSupplementAssignment(assignment.id);
+                  await loadAssignments();
+                }}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
 
       {isEditOpen && (
         <EditUserModal
