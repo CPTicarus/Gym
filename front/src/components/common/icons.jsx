@@ -159,6 +159,15 @@ export function PrinterIcon(props) {
   );
 }
 
+export function CopyIcon(props) {
+  return (
+    <IconBase {...props}>
+      <rect x="9" y="9" width="11" height="11" rx="1.5" />
+      <path d="M15 5.5A1.5 1.5 0 0 0 13.5 4h-8A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15" />
+    </IconBase>
+  );
+}
+
 export function SettingsIcon(props) {
   return (
     <IconBase {...props}>

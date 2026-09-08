@@ -7,17 +7,19 @@ import {
   assignDietPlan,
   deleteDietAssignment,
   deleteDietItem,
-  updateDietItem,
   deleteDietPlan,
   deleteMeal,
+  duplicateDietPlan,
   getDietPlan,
   listDietAssignments,
   updateDietAssignment,
+  updateDietItem,
   updateDietPlan,
 } from "../../api/diet.js";
 import { PencilIcon } from "../../components/common/icons.jsx";
 import MealSection from "../../components/diet/MealSection.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
+import DuplicatePlanButton from "../../components/plans/DuplicatePlanButton.jsx";
 import EditPlanInfoModal from "../../components/plans/EditPlanInfoModal.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { DIET_GOAL_LABELS, DIET_GOALS } from "../../constants/planOptions.js";
@@ -196,6 +198,15 @@ export default function DietBuilderPage() {
           {plan.description && <p className="plan-description">{plan.description}</p>}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
+          <DuplicatePlanButton
+            planName={plan.name}
+            onDuplicate={async (name) => {
+              const copy = await duplicateDietPlan(planId, name);
+              // Straight into the copy — the whole point is to change one
+              // thing and assign it, not to admire a new row in a list.
+              navigate(`/diet/${copy.id}`);
+            }}
+          />
           <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
             اختصاص به عضو
           </button>

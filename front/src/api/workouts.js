@@ -113,3 +113,14 @@ export async function updateWorkoutAssignment(assignmentId, payload) {
 export async function deleteWorkoutAssignment(assignmentId) {
   await axiosClient.delete(`/workout-assignments/${assignmentId}/`);
 }
+
+/**
+ * Deep-copy a plan — everything inside it, but none of its assignments.
+ * The copy starts unassigned on purpose: it exists to be changed before
+ * anyone is put on it. Returns the new plan, so the caller can navigate
+ * straight into it.
+ */
+export async function duplicateWorkoutPlan(planId, name) {
+  const { data } = await axiosClient.post(`/workout-plans/${planId}/duplicate/`, { name });
+  return data;
+}

@@ -1,3 +1,4 @@
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -7,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
+from apps.plan_copy import copy_name
 
 from .models import (
     DailyExercise,
@@ -33,9 +35,10 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
     Trainer/admin-only management of workout plans. Members never hit this
     directly — they read their own plans via /api/my-workout-plans/.
 
-      GET/POST        /api/workout-plans/
+      GET/POST         /api/workout-plans/
       GET/PATCH/DELETE /api/workout-plans/{id}/
-      POST             /api/workout-plans/{id}/assign/   {"user": <member_id>}
+      POST             /api/workout-plans/{id}/assign/      {"user": <member_id>}
+      POST             /api/workout-plans/{id}/duplicate/   {"name": "..."} (optional)
     """
 
     queryset = WorkoutPlan.objects.all().select_related("created_by").prefetch_related(
@@ -51,6 +54,78 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="duplicate")
+    def duplicate(self, request, pk=None):
+        """Copy a plan whole — warmup, every training day and its
+        exercises, and the daily items.
+
+        This is the "same programme, one thing different" case: a member
+        turns up with a bad knee and needs the existing plan minus the
+        squats, and rebuilding twelve exercises to change one is how
+        trainers end up not bothering.
+
+        What is NOT copied is the assignments. A duplicate exists to be
+        varied before anyone gets it, so handing the original's members an
+        untouched clone would defeat the point — and would quietly give
+        two active plans to people who didn't ask for one. `created_by`
+        becomes whoever pressed the button.
+
+        Wrapped in a transaction: a plan copied down to "half its days" is
+        worse than no copy, because nothing about it looks wrong.
+        """
+        source = self.get_object()
+        with transaction.atomic():
+            copy = WorkoutPlan.objects.create(
+                name=copy_name(source.name, request.data.get("name")),
+                description=source.description,
+                goal=source.goal,
+                is_template=source.is_template,
+                min_bmi=source.min_bmi,
+                max_bmi=source.max_bmi,
+                created_by=request.user,
+            )
+            WarmupExercise.objects.bulk_create(
+                WarmupExercise(
+                    plan=copy,
+                    move_id=exercise.move_id,
+                    sets=exercise.sets,
+                    reps=exercise.reps,
+                    duration_seconds=exercise.duration_seconds,
+                    order=exercise.order,
+                    notes=exercise.notes,
+                )
+                for exercise in source.warmup_exercises.all()
+            )
+            for day in source.days.all():
+                day_copy = WorkoutDay.objects.create(plan=copy, name=day.name, order=day.order)
+                WorkoutDayExercise.objects.bulk_create(
+                    WorkoutDayExercise(
+                        day=day_copy,
+                        move_id=exercise.move_id,
+                        sets=exercise.sets,
+                        reps=exercise.reps,
+                        duration_seconds=exercise.duration_seconds,
+                        rest_seconds=exercise.rest_seconds,
+                        order=exercise.order,
+                        notes=exercise.notes,
+                    )
+                    for exercise in day.exercises.all()
+                )
+            DailyExercise.objects.bulk_create(
+                DailyExercise(
+                    plan=copy,
+                    move_id=exercise.move_id,
+                    sets=exercise.sets,
+                    reps=exercise.reps,
+                    duration_seconds=exercise.duration_seconds,
+                    order=exercise.order,
+                    notes=exercise.notes,
+                )
+                for exercise in source.daily_exercises.all()
+            )
+        serializer = WorkoutPlanSerializer(copy, context=self.get_serializer_context())
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, pk=None):

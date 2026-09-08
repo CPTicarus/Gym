@@ -6,15 +6,17 @@ import {
   assignSupplementPlan,
   deleteSupplementAssignment,
   deleteSupplementItem,
-  updateSupplementItem,
   deleteSupplementPlan,
+  duplicateSupplementPlan,
   getSupplementPlan,
   listSupplementAssignments,
   updateSupplementAssignment,
+  updateSupplementItem,
   updateSupplementPlan,
 } from "../../api/supplements.js";
 import { PencilIcon } from "../../components/common/icons.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
+import DuplicatePlanButton from "../../components/plans/DuplicatePlanButton.jsx";
 import EditPlanInfoModal from "../../components/plans/EditPlanInfoModal.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import SupplementItemList from "../../components/supplements/SupplementItemList.jsx";
@@ -147,9 +149,18 @@ export default function SupplementBuilderPage() {
             </span>
           )}
         </div>
-        <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
-          اختصاص به عضو
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <DuplicatePlanButton
+            planName={plan.name}
+            onDuplicate={async (name) => {
+              const copy = await duplicateSupplementPlan(planId, name);
+              navigate(`/supplements/${copy.id}`);
+            }}
+          />
+          <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
+            اختصاص به عضو
+          </button>
+        </div>
       </div>
 
       {error && <p className="error-text">{error}</p>}

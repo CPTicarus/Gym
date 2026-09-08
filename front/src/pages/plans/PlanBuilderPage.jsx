@@ -11,19 +11,21 @@ import {
   deleteDailyExercise,
   deleteDayExercise,
   deleteWarmupExercise,
-  updateDailyExercise,
-  updateDayExercise,
-  updateWarmupExercise,
   deleteWorkoutAssignment,
   deleteWorkoutDay,
   deleteWorkoutPlan,
+  duplicateWorkoutPlan,
   getWorkoutPlan,
   listWorkoutAssignments,
+  updateDailyExercise,
+  updateDayExercise,
+  updateWarmupExercise,
   updateWorkoutAssignment,
   updateWorkoutPlan,
 } from "../../api/workouts.js";
 import { PencilIcon, TrashIcon } from "../../components/common/icons.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
+import DuplicatePlanButton from "../../components/plans/DuplicatePlanButton.jsx";
 import EditPlanInfoModal from "../../components/plans/EditPlanInfoModal.jsx";
 import ExerciseSection from "../../components/plans/ExerciseSection.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
@@ -169,6 +171,15 @@ export default function PlanBuilderPage() {
           {plan.description && <p className="plan-description">{plan.description}</p>}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
+          <DuplicatePlanButton
+            planName={plan.name}
+            onDuplicate={async (name) => {
+              const copy = await duplicateWorkoutPlan(planId, name);
+              // Straight into the copy — the whole point is to change one
+              // thing and assign it, not to admire a new row in a list.
+              navigate(`/plans/${copy.id}`);
+            }}
+          />
           <button className="btn btn-primary" onClick={() => setIsAssignOpen(true)}>
             اختصاص به عضو
           </button>

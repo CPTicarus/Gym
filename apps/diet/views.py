@@ -1,3 +1,4 @@
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -6,6 +7,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
+from apps.plan_copy import copy_name
 
 from .models import DietAssignment, DietDay, DietItem, DietPlan, Meal
 from .serializers import (
@@ -25,7 +27,8 @@ class DietPlanViewSet(viewsets.ModelViewSet):
 
       GET/POST         /api/diet-plans/
       GET/PATCH/DELETE /api/diet-plans/{id}/
-      POST             /api/diet-plans/{id}/assign/   {"user": <member_id>}
+      POST             /api/diet-plans/{id}/assign/      {"user": <member_id>}
+      POST             /api/diet-plans/{id}/duplicate/   {"name": "..."} (optional)
     """
 
     # Most days use these three, so every new plan starts with them
@@ -57,6 +60,50 @@ class DietPlanViewSet(viewsets.ModelViewSet):
             for day in days
             for name, time, order in self.DEFAULT_MEALS
         )
+
+    @action(detail=True, methods=["post"], url_path="duplicate")
+    def duplicate(self, request, pk=None):
+        """Copy a plan with all seven days, their meals and every item.
+
+        Note this bypasses perform_create's default-meal scaffolding on
+        purpose: a copy takes the SOURCE's days and meals, and seeding it
+        with the standard breakfast/lunch/dinner first would leave the
+        duplicate with both.
+
+        Assignments aren't copied — a duplicate exists to be varied before
+        anyone gets it. Atomic, so a half-copied plan can't be left behind
+        looking complete.
+        """
+        source = self.get_object()
+        with transaction.atomic():
+            copy = DietPlan.objects.create(
+                name=copy_name(source.name, request.data.get("name")),
+                description=source.description,
+                goal=source.goal,
+                created_by=request.user,
+            )
+            for day in source.days.all():
+                day_copy = DietDay.objects.create(plan=copy, day_of_week=day.day_of_week)
+                for meal in day.meals.all():
+                    meal_copy = Meal.objects.create(
+                        day=day_copy, name=meal.name, time=meal.time, order=meal.order
+                    )
+                    DietItem.objects.bulk_create(
+                        DietItem(
+                            meal=meal_copy,
+                            food_name=item.food_name,
+                            quantity=item.quantity,
+                            calories=item.calories,
+                            protein_g=item.protein_g,
+                            carbs_g=item.carbs_g,
+                            fat_g=item.fat_g,
+                            notes=item.notes,
+                            order=item.order,
+                        )
+                        for item in meal.items.all()
+                    )
+        serializer = DietPlanSerializer(copy, context=self.get_serializer_context())
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, pk=None):

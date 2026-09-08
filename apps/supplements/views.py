@@ -1,3 +1,4 @@
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -6,6 +7,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
+from apps.plan_copy import copy_name
 
 from .models import SupplementAssignment, SupplementItem, SupplementPlan
 from .serializers import (
@@ -24,7 +26,8 @@ class SupplementPlanViewSet(viewsets.ModelViewSet):
 
       GET/POST         /api/supplement-plans/
       GET/PATCH/DELETE /api/supplement-plans/{id}/
-      POST             /api/supplement-plans/{id}/assign/   {"user": <member_id>}
+      POST             /api/supplement-plans/{id}/assign/      {"user": <member_id>}
+      POST             /api/supplement-plans/{id}/duplicate/   {"name": "..."} (optional)
     """
 
     queryset = SupplementPlan.objects.all().select_related("created_by").prefetch_related("items")
@@ -45,6 +48,41 @@ class SupplementPlanViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="duplicate")
+    def duplicate(self, request, pk=None):
+        """Copy a protocol and its items into a new one.
+
+        Assignments are deliberately NOT copied: a duplicate exists to be
+        varied before anyone gets it, and silently handing the original's
+        members an untouched clone is the opposite of that. `created_by`
+        becomes whoever pressed the button, since they own the copy.
+
+        Atomic — a half-copied protocol is worse than none, because it
+        looks complete.
+        """
+        source = self.get_object()
+        with transaction.atomic():
+            copy = SupplementPlan.objects.create(
+                name=copy_name(source.name, request.data.get("name")),
+                description=source.description,
+                goal=source.goal,
+                created_by=request.user,
+            )
+            SupplementItem.objects.bulk_create(
+                SupplementItem(
+                    plan=copy,
+                    name=item.name,
+                    dosage=item.dosage,
+                    timing=item.timing,
+                    frequency=item.frequency,
+                    notes=item.notes,
+                    order=item.order,
+                )
+                for item in source.items.all()
+            )
+        serializer = SupplementPlanSerializer(copy, context=self.get_serializer_context())
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, pk=None):

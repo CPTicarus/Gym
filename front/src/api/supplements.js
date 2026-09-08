@@ -64,3 +64,14 @@ export async function listMySupplementPlans(params = {}) {
   const { data } = await axiosClient.get("/my-supplement-plans/", { params });
   return data;
 }
+
+/**
+ * Deep-copy a plan — everything inside it, but none of its assignments.
+ * The copy starts unassigned on purpose: it exists to be changed before
+ * anyone is put on it. Returns the new plan, so the caller can navigate
+ * straight into it.
+ */
+export async function duplicateSupplementPlan(planId, name) {
+  const { data } = await axiosClient.post(`/supplement-plans/${planId}/duplicate/`, { name });
+  return data;
+}
