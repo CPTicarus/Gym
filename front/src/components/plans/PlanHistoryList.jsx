@@ -14,7 +14,10 @@ export default function PlanHistoryList({ assignments, goalLabels }) {
   if (assignments.length === 0) return null;
 
   return (
-    <section className="card plan-section">
+    // no-print: what a member carries to the gym is the plan they're on
+    // now. Past plans are collapsed here anyway, so printing them would
+    // yield a lone toggle button and nothing else.
+    <section className="card plan-section no-print">
       <button
         type="button"
         className="plan-history-toggle"

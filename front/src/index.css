@@ -281,6 +281,12 @@
   .muted {
     @apply text-muted;
   }
+  /* Paired with the @media print block at the end of this file:
+     .print-only is hidden on screen and shown on paper, .no-print the
+     reverse. */
+  .print-only {
+    @apply hidden;
+  }
   .topbar {
     @apply sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface px-4 py-3;
   }
@@ -1053,4 +1059,125 @@
       @apply hidden;
     }
   }
+
+  /* =====================================================================
+     PRINT
+     Members take their plan to the gym on paper. Some would rather not
+     carry a phone onto the floor; in women-only gyms they often aren't
+     allowed one at all. For those members the printout isn't a fallback,
+     it's the only way they see their programme — so this is a real view
+     of the app, not a courtesy stylesheet.
+
+     Placed last in the layer so these declarations win on specificity
+     ties with everything above.
+  ===================================================================== */
+  @media print {
+    /* A printer has no dark mode. Whatever the screen is set to, print
+       the light palette — otherwise a dark theme comes out as a page of
+       solid ink. Accent and status colours flatten to black, because a
+       mono printer renders a mid-red and a mid-green as the same grey and
+       the distinction was never load-bearing on paper. */
+    :root,
+    :root[data-theme="dark"] {
+      --color-canvas: #ffffff;
+      --color-surface: #ffffff;
+      --color-ink: #000000;
+      --color-muted: #3d3d3d;
+      --color-line: #9a9a9a;
+      --color-neutral-soft: #f2f2f2;
+      --color-accent: #000000;
+      --color-accent-dark: #000000;
+      --color-accent-ink: #ffffff;
+      --color-accent-soft: #f0f0f0;
+      --color-success: #000000;
+      --color-success-soft: #f0f0f0;
+      --color-danger: #000000;
+      --color-danger-soft: #f0f0f0;
+      --color-chrome: #ffffff;
+      --color-chrome-ink: #000000;
+      --shadow-card: none;
+    }
+
+    /* Navigation and controls mean nothing on paper. `.no-print` is the
+       opt-out any page can reach for. */
+    .sidebar,
+    .topbar,
+    .drawer-backdrop,
+    .drawer-panel,
+    .modal-backdrop,
+    .filter-bar,
+    .page-header .btn,
+    .form-actions,
+    .no-print {
+      display: none !important;
+    }
+
+    .print-only {
+      @apply block;
+    }
+
+    .app-shell {
+      @apply block;
+    }
+    .content {
+      @apply p-0;
+    }
+    body {
+      line-height: 1.5;
+    }
+
+    .print-header {
+      @apply mb-4 flex items-baseline justify-between gap-3 border-b border-line pb-2 text-xs;
+    }
+    .print-brand {
+      @apply font-brand text-base;
+    }
+    .print-owner {
+      @apply font-bold;
+    }
+
+    /* Cards become plain sections — a border on every side plus a shadow
+       wastes both ink and vertical space over a multi-page plan. */
+    .card {
+      @apply border-0 p-0 shadow-none;
+    }
+    .plan-section {
+      @apply mb-4 border-b border-line pb-3;
+    }
+
+    /* Keep a day's exercises, a meal, or a single row from being split
+       across a page boundary when it would fit whole. */
+    .day-block,
+    .meal-block,
+    .exercise-row,
+    .assignment-row,
+    .media-list-item {
+      break-inside: avoid;
+    }
+    h1,
+    h2,
+    h3,
+    h4 {
+      break-after: avoid;
+    }
+
+    /* Tap targets are just text on paper. */
+    .exercise-row-view-btn,
+    .session-exercise-info {
+      @apply p-0;
+    }
+    .exercise-row {
+      @apply px-0;
+    }
+
+    /* A flickering lamp is meaningless once printed, and prints as a dot. */
+    .status-led,
+    .badge-live::before {
+      display: none !important;
+    }
+  }
+}
+
+@page {
+  margin: 14mm;
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { listMySupplementPlans } from "../../api/supplements.js";
+import PrintButton from "../../components/common/PrintButton.jsx";
+import PrintHeader from "../../components/common/PrintHeader.jsx";
 import PlanHistoryList from "../../components/plans/PlanHistoryList.jsx";
 import SupplementItemList from "../../components/supplements/SupplementItemList.jsx";
 import { SUPPLEMENT_GOAL_LABELS } from "../../constants/supplementOptions.js";
@@ -33,11 +35,14 @@ export default function MySupplementsPage() {
 
   return (
     <div>
+      <PrintHeader title="برنامه مکمل" />
+
       <div className="page-header">
         <div>
           <h1 className="page-title">مکمل‌های من</h1>
           <p className="page-subtitle">برنامه مصرف مکملی که مربی برای شما تنظیم کرده است.</p>
         </div>
+        <PrintButton />
       </div>
 
       {error && <p className="error-text">{error}</p>}

@@ -83,7 +83,7 @@ export default function BlogListPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">مطالب</h1>
+          <h1 className="page-title">بلاگ</h1>
           <p className="page-subtitle">
             {canWrite
               ? "نوشته‌های آموزشی، تغذیه‌ای و اخبار باشگاه — برای همه اعضا."

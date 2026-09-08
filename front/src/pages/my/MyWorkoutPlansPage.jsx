@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 
 import { listMyWorkoutPlans } from "../../api/workouts.js";
 import MoveDetailModal from "../../components/moves/MoveDetailModal.jsx";
+import PrintButton from "../../components/common/PrintButton.jsx";
+import PrintHeader from "../../components/common/PrintHeader.jsx";
 import PlanHistoryList from "../../components/plans/PlanHistoryList.jsx";
 import { WORKOUT_GOAL_LABELS } from "../../constants/planOptions.js";
 import { formatExerciseDetail } from "../../utils/planFormat.js";
@@ -55,11 +57,14 @@ export default function MyWorkoutPlansPage() {
 
   return (
     <div>
+      <PrintHeader title="برنامه تمرینی" />
+
       <div className="page-header">
         <div>
           <h1 className="page-title">برنامه تمرینی من</h1>
           <p className="page-subtitle">برنامه‌هایی که مربی برای شما تنظیم کرده است.</p>
         </div>
+        <PrintButton />
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -90,7 +95,8 @@ export default function MyWorkoutPlansPage() {
                 )}
                 {plan.description && <p className="plan-description">{plan.description}</p>}
 
-                <Link to={`/my-plans/session/${a.id}`} className="btn btn-primary btn-block">
+                {/* A screen-only action — on paper you're already at the gym. */}
+                <Link to={`/my-plans/session/${a.id}`} className="btn btn-primary btn-block no-print">
                   من در باشگاهم
                 </Link>
 

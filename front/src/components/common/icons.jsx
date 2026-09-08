@@ -149,6 +149,16 @@ export function HeartPulseIcon(props) {
   );
 }
 
+export function PrinterIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M7 9V4h10v5" />
+      <path d="M7 18H5.5A1.5 1.5 0 0 1 4 16.5v-5A1.5 1.5 0 0 1 5.5 10h13a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5H17" />
+      <path d="M7 14h10v6H7z" />
+    </IconBase>
+  );
+}
+
 export function SettingsIcon(props) {
   return (
     <IconBase {...props}>

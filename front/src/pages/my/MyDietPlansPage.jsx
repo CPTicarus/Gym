@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 
 import { listMyDietPlans } from "../../api/diet.js";
 import MealSection from "../../components/diet/MealSection.jsx";
+import PrintButton from "../../components/common/PrintButton.jsx";
+import PrintHeader from "../../components/common/PrintHeader.jsx";
 import PlanHistoryList from "../../components/plans/PlanHistoryList.jsx";
 import { DIET_GOAL_LABELS } from "../../constants/planOptions.js";
 import { getTodayWeekday, WEEKDAY_LABELS } from "../../constants/weekdays.js";
@@ -34,11 +36,14 @@ export default function MyDietPlansPage() {
 
   return (
     <div>
+      <PrintHeader title="برنامه غذایی" />
+
       <div className="page-header">
         <div>
           <h1 className="page-title">برنامه غذایی من</h1>
           <p className="page-subtitle">برنامه‌های غذایی که مربی برای شما تنظیم کرده است.</p>
         </div>
+        <PrintButton />
       </div>
 
       {error && <p className="error-text">{error}</p>}

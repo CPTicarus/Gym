@@ -109,7 +109,7 @@ export default function BlogFormPage() {
   return (
     <div className="form-page">
       <Link to="/blog" className="muted back-link">
-        ← بازگشت به مطالب
+        ← بازگشت به بلاگ
       </Link>
 
       <h1 className="page-title">{isEditMode ? "ویرایش بلاگ" : "بلاگ جدید"}</h1>
@@ -135,7 +135,7 @@ export default function BlogFormPage() {
         </label>
 
         <label className="field">
-          <span className="label">خلاصه (در فهرست مطالب نمایش داده می‌شود)</span>
+          <span className="label">خلاصه (در فهرست بلاگ نمایش داده می‌شود)</span>
           <textarea
             className="textarea"
             dir="auto"
