@@ -356,7 +356,18 @@ export default function GymSessionPage() {
     try {
       // The response is the assignment *after* advancing, so its active_day
       // is the one that comes up next time — the "what's next" line for free.
-      const updated = await finishWorkoutDay(assignmentId);
+      // The stats go up with it: the server can't know which boxes were
+      // ticked, and this is what the streak and month count are built from.
+      const updated = await finishWorkoutDay(assignmentId, {
+        duration_seconds: elapsed,
+        moves_done: progress.done,
+        moves_total: progress.total,
+        total_sets: progress.sets,
+        total_reps: progress.reps,
+      });
+      // Still kept locally as well — it costs nothing and means the last
+      // session survives a request that succeeded on a flaky connection
+      // without the response ever arriving.
       appendWorkoutLog({
         assignmentId,
         dayName: day?.name ?? null,

@@ -11,6 +11,7 @@ from .models import (
     WorkoutDay,
     WorkoutDayExercise,
     WorkoutPlan,
+    WorkoutSession,
 )
 
 User = get_user_model()
@@ -159,3 +160,58 @@ class WorkoutAssignmentSerializer(serializers.ModelSerializer):
     def get_active_day(self, obj):
         day = obj.active_day()
         return WorkoutDaySerializer(day).data if day else None
+
+
+class WorkoutSessionSerializer(serializers.ModelSerializer):
+    """Read-only history row. `completed_at` goes out as a full ISO
+    datetime, not a date, on purpose: TIME_ZONE is UTC, so a session
+    finished at 1am Tehran carries the previous day's UTC date and only
+    the instant is unambiguous. The frontend converts it to the member's
+    local day -- and to a Jalali month -- exactly as it does everywhere
+    else (see front/src/utils/jalali.js on why that boundary is there)."""
+
+    class Meta:
+        model = WorkoutSession
+        fields = [
+            "id", "plan_name", "day_name", "completed_at", "duration_seconds",
+            "moves_done", "moves_total", "total_sets", "total_reps",
+        ]
+        read_only_fields = fields
+
+
+class FinishWorkoutDaySerializer(serializers.Serializer):
+    """The optional body of POST .../finish-day/.
+
+    Every field defaults, so a client that posts nothing still finishes the
+    day and simply logs a session with zeroes rather than failing -- the
+    endpoint predates this payload and shouldn't start rejecting callers.
+
+    These numbers are counted on the client (it's the only thing that knows
+    which boxes got ticked), so they're bounded here rather than trusted.
+    The two bounds behave differently on purpose:
+
+    Duration is CLAMPED, not rejected. Leaving the tab open overnight and
+    finishing in the morning is an ordinary thing a real member does, and
+    refusing the request would mean their workout doesn't get logged at all
+    over a number that's merely implausible. Six hours is recorded instead.
+
+    The counts are REJECTED, because there is no real session with 5,000
+    moves in it -- that's a broken or hostile client, and silently writing
+    a clamped version of nonsense is worse than turning it away.
+    """
+
+    duration_seconds = serializers.IntegerField(required=False, default=0, min_value=0)
+    moves_done = serializers.IntegerField(required=False, default=0, min_value=0, max_value=1000)
+    moves_total = serializers.IntegerField(required=False, default=0, min_value=0, max_value=1000)
+    total_sets = serializers.IntegerField(required=False, default=0, min_value=0, max_value=10000)
+    total_reps = serializers.IntegerField(required=False, default=0, min_value=0, max_value=100000)
+
+    def validate(self, attrs):
+        if attrs["moves_done"] > attrs["moves_total"]:
+            raise serializers.ValidationError(
+                {"moves_done": "Cannot be greater than moves_total."}
+            )
+        attrs["duration_seconds"] = min(
+            attrs["duration_seconds"], WorkoutSession.MAX_DURATION_SECONDS
+        )
+        return attrs

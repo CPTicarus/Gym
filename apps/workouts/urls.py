@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     DailyExerciseViewSet,
     FinishWorkoutDayView,
+    MyWorkoutSessionsView,
     MyWorkoutPlansView,
     WarmupExerciseViewSet,
     WorkoutAssignmentViewSet,
@@ -67,4 +68,5 @@ urlpatterns = router.urls + [
         FinishWorkoutDayView.as_view(),
         name="my-workout-finish-day",
     ),
+    path("my-workout-sessions/", MyWorkoutSessionsView.as_view(), name="my-workout-sessions"),
 ]

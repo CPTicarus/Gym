@@ -747,6 +747,46 @@
   .day-block {
     @apply mt-3 rounded-lg border border-line p-3;
   }
+  /* ---- Member diet: today by default, the week on request ----
+     The other six days stay in the DOM and are hidden here rather than
+     unrendered, which is what lets the print block below put the whole
+     week back on paper no matter which way the toggle is set. */
+  .diet-week.is-today-only .day-block:not(.is-today) {
+    @apply hidden;
+  }
+  /* ---- Member workout streak / month count ----
+     Three readouts across the top of the member's plan. Equal columns so
+     the numbers line up as a row of gauges rather than as a sentence. */
+  .workout-streak {
+    @apply mb-3 flex flex-col gap-3 p-4;
+  }
+  .workout-streak-stats {
+    @apply grid grid-cols-3 gap-2;
+  }
+  .workout-streak-stat {
+    @apply flex flex-col items-center gap-0.5 text-center;
+  }
+  .workout-streak-value {
+    @apply text-2xl font-extrabold leading-none;
+    font-variant-numeric: tabular-nums;
+  }
+  /* A date can't carry the same weight as a two-digit count without
+     wrapping on a narrow phone. */
+  .workout-streak-value-sm {
+    @apply text-base;
+  }
+  .workout-streak-label {
+    @apply text-xs;
+  }
+  .workout-streak-note {
+    @apply border-t border-line pt-3 text-center text-[13px] font-semibold text-success;
+  }
+  .diet-week-head {
+    @apply mt-5 flex flex-wrap items-center justify-between gap-2;
+  }
+  .diet-week-title {
+    @apply my-0;
+  }
   .day-block-head {
     @apply mb-2 flex items-center justify-between gap-2;
   }
@@ -1234,6 +1274,13 @@
     .status-led,
     .badge-live::before {
       display: none !important;
+    }
+
+    /* The screen collapses a diet plan to today; a printed one is taken to
+       the kitchen for the week, so every day comes back regardless of how
+       the toggle was left. */
+    .diet-week.is-today-only .day-block:not(.is-today) {
+      display: block !important;
     }
   }
 }

@@ -12,6 +12,14 @@ export default function MyDietPlansPage() {
   const [assignments, setAssignments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  // A diet plan is seven days, but on any given day six of them are noise —
+  // the member opening this at breakfast wants today. The other six stay
+  // mounted and are hidden in CSS rather than unrendered, so a printed plan
+  // is still the full week whatever this is set to (see the print block in
+  // index.css); paper is the one place you do want all seven.
+  const [isWeekVisible, setIsWeekVisible] = useState(false);
+
+  const today = getTodayWeekday();
 
   useEffect(() => {
     let cancelled = false;
@@ -75,21 +83,55 @@ export default function MyDietPlansPage() {
                 {plan.description && <p className="plan-description">{plan.description}</p>}
 
                 {plan.days?.length ? (
-                  plan.days.map((day) => (
-                    <div key={day.id} className="day-block">
-                      <h3 className="day-block-title">
-                        {WEEKDAY_LABELS[day.day_of_week]}
-                        {day.day_of_week === getTodayWeekday() && (
-                          <span className="badge badge-accent mr-2">امروز</span>
+                  (() => {
+                    // Plans built before the 7-day auto-create, or with a day
+                    // somehow removed, could have no entry for today —-
+                    // collapsing to it would show an empty card, so those
+                    // fall back to the full week and drop the toggle.
+                    const hasToday = plan.days.some((d) => d.day_of_week === today);
+                    const isCollapsed = !isWeekVisible && hasToday;
+                    return (
+                      <>
+                        {hasToday && (
+                          <div className="diet-week-head no-print">
+                            <h3 className="section-heading diet-week-title">
+                              {isCollapsed ? `امروز — ${WEEKDAY_LABELS[today]}` : "برنامه کل هفته"}
+                            </h3>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => setIsWeekVisible((v) => !v)}
+                              aria-expanded={!isCollapsed}
+                            >
+                              {isCollapsed ? "نمایش کل هفته" : "فقط امروز"}
+                            </button>
+                          </div>
                         )}
-                      </h3>
-                      {day.meals.length === 0 ? (
-                        <p className="muted exercise-empty">وعده‌ای ثبت نشده.</p>
-                      ) : (
-                        day.meals.map((meal) => <MealSection key={meal.id} meal={meal} readOnly />)
-                      )}
-                    </div>
-                  ))
+                        <div className={`diet-week${isCollapsed ? " is-today-only" : ""}`}>
+                          {plan.days.map((day) => (
+                            <div
+                              key={day.id}
+                              className={`day-block${day.day_of_week === today ? " is-today" : ""}`}
+                            >
+                              <h3 className="day-block-title">
+                                {WEEKDAY_LABELS[day.day_of_week]}
+                                {day.day_of_week === today && (
+                                  <span className="badge badge-accent mr-2">امروز</span>
+                                )}
+                              </h3>
+                              {day.meals.length === 0 ? (
+                                <p className="muted exercise-empty">وعده‌ای ثبت نشده.</p>
+                              ) : (
+                                day.meals.map((meal) => (
+                                  <MealSection key={meal.id} meal={meal} readOnly />
+                                ))
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()
                 ) : (
                   <p className="muted exercise-empty">وعده‌ای ثبت نشده.</p>
                 )}

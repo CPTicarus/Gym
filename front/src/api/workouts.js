@@ -93,9 +93,20 @@ export async function listMyWorkoutPlans(params = {}) {
   return data;
 }
 
-// Ends today's gym session — advances which day comes up next time.
-export async function finishWorkoutDay(assignmentId) {
-  const { data } = await axiosClient.post(`/my-workout-plans/${assignmentId}/finish-day/`);
+// Ends today's gym session — advances which day comes up next time, and
+// logs the session itself. `stats` is what the browser counted (duration,
+// how many moves were ticked off, sets/reps); the server only ever sees
+// the totals, since it has no idea which checkboxes were tapped.
+export async function finishWorkoutDay(assignmentId, stats = {}) {
+  const { data } = await axiosClient.post(`/my-workout-plans/${assignmentId}/finish-day/`, stats);
+  return data;
+}
+
+// Finished sessions, newest first — the raw material for the month count
+// and the week streak, which are worked out client-side (see
+// utils/workoutStats.js for why the calendar maths lives there).
+export async function listMyWorkoutSessions() {
+  const { data } = await axiosClient.get("/my-workout-sessions/");
   return data;
 }
 

@@ -195,3 +195,56 @@ class DailyExercise(_RepsOrDurationMixin, models.Model):
 
     def __str__(self):
         return f"{self.plan.name} daily: {self.move.name}"
+
+
+class WorkoutSession(models.Model):
+    """One finished gym session, written when a member ends their workout.
+
+    This exists so "how many sessions this month" and "how many weeks in a
+    row" can be answered at all. Finishing a day used to do nothing but
+    move the assignment's current_day pointer: that records that a session
+    happened, but not when, for how long, or how much of it actually got
+    done -- and the pointer is overwritten by the next session, so even
+    that much is gone a day later.
+
+    Almost everything here is a snapshot rather than a live lookup, because
+    this is history and history must not be rewritten underneath the
+    member. A trainer renaming "Push Day", swapping someone onto a new
+    plan, or deleting a finished assignment should not change or erase what
+    that person did in March -- so the foreign keys are nullable with
+    SET_NULL, the names are copied in at finish time, and the totals are
+    stored rather than recomputed from a plan that has since moved on.
+    """
+
+    # A tab left open overnight would otherwise log a 14-hour "workout" and
+    # poison every average built on this table. Sessions are clamped to
+    # this on the way in (see FinishWorkoutDayView).
+    MAX_DURATION_SECONDS = 6 * 60 * 60
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="workout_sessions", on_delete=models.CASCADE
+    )
+    assignment = models.ForeignKey(
+        WorkoutAssignment, related_name="sessions", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    day = models.ForeignKey(
+        "WorkoutDay", related_name="+", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    plan_name = models.CharField(max_length=100, blank=True)
+    day_name = models.CharField(max_length=50, blank=True)
+
+    completed_at = models.DateTimeField(auto_now_add=True)
+    duration_seconds = models.PositiveIntegerField(default=0)
+    moves_done = models.PositiveIntegerField(default=0)
+    moves_total = models.PositiveIntegerField(default=0)
+    total_sets = models.PositiveIntegerField(default=0)
+    total_reps = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-completed_at"]
+        # Every read of this table is "this member's sessions, newest
+        # first" -- the streak/count endpoint and nothing else.
+        indexes = [models.Index(fields=["user", "-completed_at"])]
+
+    def __str__(self):
+        return f"{self.user} - {self.day_name or 'session'} @ {self.completed_at:%Y-%m-%d}"

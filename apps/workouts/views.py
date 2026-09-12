@@ -17,9 +17,11 @@ from .models import (
     WorkoutDay,
     WorkoutDayExercise,
     WorkoutPlan,
+    WorkoutSession,
 )
 from .serializers import (
     DailyExerciseSerializer,
+    FinishWorkoutDaySerializer,
     WarmupExerciseSerializer,
     WorkoutAssignmentListSerializer,
     WorkoutAssignmentSerializer,
@@ -27,6 +29,7 @@ from .serializers import (
     WorkoutDaySerializer,
     WorkoutPlanListSerializer,
     WorkoutPlanSerializer,
+    WorkoutSessionSerializer,
 )
 
 
@@ -277,5 +280,69 @@ class FinishWorkoutDayView(APIView):
 
     def post(self, request, assignment_pk):
         assignment = get_object_or_404(WorkoutAssignment, pk=assignment_pk, user=request.user)
-        assignment.advance_day()
-        return Response(WorkoutAssignmentSerializer(assignment).data)
+
+        payload = FinishWorkoutDaySerializer(data=request.data or {})
+        payload.is_valid(raise_exception=True)
+        stats = payload.validated_data
+
+        # The day that was just WORKED, captured before advance_day() moves
+        # the pointer past it -- the response's active_day is the next one.
+        finished_day = assignment.active_day()
+
+        # One transaction: a logged session whose day never advanced (or an
+        # advanced day with no session behind it) would quietly corrupt both
+        # the streak and where the member picks up next time.
+        with transaction.atomic():
+            session = WorkoutSession.objects.create(
+                user=request.user,
+                assignment=assignment,
+                day=finished_day,
+                # Snapshots -- see WorkoutSession's docstring on why these
+                # are copied rather than followed through the FKs.
+                plan_name=assignment.plan.name,
+                day_name=finished_day.name if finished_day else "",
+                **stats,
+            )
+            assignment.advance_day()
+
+        return Response(
+            {
+                **WorkoutAssignmentSerializer(assignment).data,
+                "session": WorkoutSessionSerializer(session).data,
+            }
+        )
+
+
+class MyWorkoutSessionsView(APIView):
+    """A member's own finished sessions, for the streak and month count.
+
+      GET /api/my-workout-sessions/
+
+    Deliberately not a paginated ListAPIView: a streak is only correct if
+    you can see every week back to the one that breaks it, and the global
+    PAGE_SIZE of 20 would cut that off after a month and a half. It returns
+    a flat, capped list instead.
+
+    The bucketing into "this month" and "N weeks in a row" is left to the
+    client. Those are Jalali-calendar, Saturday-first-week questions, and
+    front/src/utils/jalali.js is deliberately the single place in this
+    system that knows about the Persian calendar -- teaching the API a
+    second answer would give us two that could disagree.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    # ~15 months at three sessions a week: past the point where anyone's
+    # streak is still unbroken, and small enough to send in one response.
+    RECENT_LIMIT = 200
+
+    def get(self, request):
+        sessions = WorkoutSession.objects.filter(user=request.user)
+        return Response(
+            {
+                "count": sessions.count(),
+                "results": WorkoutSessionSerializer(
+                    sessions[: self.RECENT_LIMIT], many=True
+                ).data,
+            }
+        )

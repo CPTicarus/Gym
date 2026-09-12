@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { listMyWorkoutPlans } from "../../api/workouts.js";
+import { listMyWorkoutPlans, listMyWorkoutSessions } from "../../api/workouts.js";
+import WorkoutStreakCard from "../../components/plans/WorkoutStreakCard.jsx";
 import MoveDetailModal from "../../components/moves/MoveDetailModal.jsx";
 import PrintButton from "../../components/common/PrintButton.jsx";
 import PrintHeader from "../../components/common/PrintHeader.jsx";
@@ -33,6 +34,7 @@ export default function MyWorkoutPlansPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMoveId, setViewMoveId] = useState(null);
+  const [sessions, setSessions] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +49,21 @@ export default function MyWorkoutPlansPage() {
       }
     }
     load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetched separately, and its failure is deliberately silent: the streak
+  // is a nice-to-have on top of the page, and losing it must not replace
+  // the plan someone came here to read with an error.
+  useEffect(() => {
+    let cancelled = false;
+    listMyWorkoutSessions()
+      .then((data) => {
+        if (!cancelled) setSessions(data.results ?? data ?? []);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -68,6 +85,8 @@ export default function MyWorkoutPlansPage() {
       </div>
 
       {error && <p className="error-text">{error}</p>}
+
+      <WorkoutStreakCard sessions={sessions} />
 
       {isLoading ? (
         <p className="muted">در حال بارگذاری…</p>
