@@ -93,6 +93,22 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Uploads that must NOT be readable by anyone holding the URL.
+#
+# Everything under MEDIA_ROOT is served as a plain static file -- by the
+# static() helper in gym_backend/urls.py during development, and by the web
+# server in production. That is correct for a blog cover or a move demo,
+# and completely wrong for a member's progress photos, which are pictures
+# of someone's body: no login, no role check, just a URL that works forever
+# for whoever ends up holding it.
+#
+# So those live outside MEDIA_ROOT entirely, where no static handler can
+# reach them, and are streamed by a view that checks who is asking (see
+# apps/accounts/views.py BodyPhotoFileView). Keeping them in a separate
+# tree rather than a subfolder of MEDIA_ROOT is the point: a subfolder is
+# one careless `static()` line away from being public again.
+PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Upload size caps per media type, in megabytes (see apps/moves/models.py).

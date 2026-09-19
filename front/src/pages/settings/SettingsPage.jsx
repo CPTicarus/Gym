@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import BodyPhotoExampleManager from "../../components/body/BodyPhotoExampleManager.jsx";
 import { ROLE_LABELS } from "../../constants/roles.js";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -99,6 +100,10 @@ export default function SettingsPage() {
         </div>
       </form>
 
+      {/* Gym-wide, not part of this account — hence the separate card and
+          its own heading. Trainers and admins set these; everyone else
+          never sees that they exist. */}
+      {(role === "trainer" || role === "admin") && <BodyPhotoExampleManager />}
     </div>
   );
 }

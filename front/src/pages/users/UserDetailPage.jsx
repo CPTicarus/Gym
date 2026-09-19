@@ -20,6 +20,7 @@ import {
   ASSIGNMENT_STATUSES,
   assignmentBadgeClass,
 } from "../../constants/planOptions.js";
+import MemberBodyPhotos from "../../components/body/MemberBodyPhotos.jsx";
 import { ROLE_LABELS } from "../../constants/roles.js";
 import { conditionLabel } from "../../constants/healthConditions.js";
 import { GENDER_LABELS } from "../../constants/userOptions.js";
@@ -321,6 +322,13 @@ export default function UserDetailPage() {
             ))}
           </ul>
         </section>
+      )}
+
+      {/* Front/side/back, for judging form before writing a programme.
+          Trainers and admins only — the endpoint 403s for accounting, and
+          the component renders nothing when there are no photos. */}
+      {user.role === "member" && (isAdmin || role === "trainer") && (
+        <MemberBodyPhotos userId={user.id} />
       )}
 
       {/* Membership window — the piece that previously only existed in Django admin */}

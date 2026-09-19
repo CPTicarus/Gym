@@ -273,3 +273,14 @@ export function ClockIcon(props) {
     </IconBase>
   );
 }
+
+export function ExpandIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M9 3H3v6" />
+      <path d="M15 21h6v-6" />
+      <path d="M3 3l7 7" />
+      <path d="M21 21l-7-7" />
+    </IconBase>
+  );
+}

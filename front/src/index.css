@@ -754,6 +754,81 @@
   .diet-week.is-today-only .day-block:not(.is-today) {
     @apply hidden;
   }
+  /* ---- Body photos (front / side / back) ----
+     Three fixed slots rather than a gallery, so the set reads as "these
+     three angles" whether or not they're all filled. Portrait-ish frames
+     because that's the shape a phone camera produces for a standing
+     person, and object-contain so nothing gets cropped to fit. */
+  .body-photo-grid {
+    @apply grid grid-cols-3 gap-2;
+  }
+  .body-photo-slot {
+    @apply flex flex-col items-center gap-2;
+  }
+  .body-photo-label {
+    @apply text-[13px] font-semibold;
+  }
+  .body-photo-frame {
+    @apply aspect-[3/4] w-full bg-neutral-soft object-contain;
+  }
+  .body-photo-frame.is-empty {
+    @apply flex items-center justify-center border border-dashed border-line px-2 text-center text-xs text-muted;
+  }
+  .body-photo-actions {
+    @apply flex items-center justify-center gap-1;
+  }
+  /* ---- Opening a photo full screen (trainer's view) ----
+     touch-manipulation is load-bearing, not a nicety: it turns off the
+     browser's double-tap-to-zoom on this element, which is what lets a
+     real double-tap reach onDoubleClick instead of being swallowed. Same
+     reasoning as .move-card. */
+  .body-photo-zoomable {
+    @apply relative w-full touch-manipulation cursor-zoom-in;
+  }
+  /* Small, translucent, and out of the way — the photo is the content, and
+     this sits over a corner of it rather than taking a row of its own. */
+  .body-photo-zoom-btn {
+    @apply absolute bottom-1 h-7 w-7 border-none bg-ink/70 text-canvas;
+    inset-inline-end: 0.25rem;
+  }
+  .body-photo-zoom-btn:hover {
+    @apply bg-ink text-canvas;
+  }
+
+  .body-photo-lightbox {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4;
+  }
+  .body-photo-lightbox-image {
+    /* Fills whatever the device has, without ever cropping or upscaling
+       past its own pixels — a blown-up 400px photo helps nobody. */
+    @apply max-h-full max-w-full object-contain;
+  }
+  .body-photo-lightbox-close {
+    @apply absolute top-4 z-10;
+    inset-inline-end: 1rem;
+  }
+  /* Physical left + physical translate, not logical `start-1/2`: mixing a
+     logical inset with a physical translate lands off-centre in RTL. */
+  .body-photo-lightbox-label {
+    @apply absolute top-6 left-1/2 -translate-x-1/2 text-sm font-bold text-white/90;
+  }
+  .body-photo-lightbox-message {
+    @apply text-sm text-white/80;
+  }
+
+  /* An example shown inside a member's empty slot. Faded and tagged, so
+     at a glance the slot still reads as "nothing here yet" rather than as
+     a photo they've already uploaded. */
+  .body-photo-example {
+    @apply relative w-full;
+  }
+  .body-photo-example .body-photo-frame {
+    @apply opacity-45;
+  }
+  .body-photo-example-tag {
+    @apply absolute bottom-1 left-1/2 -translate-x-1/2 bg-ink/75 px-2 py-0.5 text-[11px] font-bold text-canvas;
+  }
+
   /* ---- Member workout streak / month count ----
      Three readouts across the top of the member's plan. Equal columns so
      the numbers line up as a row of gauges rather than as a sentence. */

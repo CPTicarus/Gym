@@ -1,6 +1,39 @@
+import uuid
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
+from django.core.files.storage import FileSystemStorage
+from django.core.validators import FileExtensionValidator
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
+
+# Body photos are stored here instead of MEDIA_ROOT so that no static file
+# handler can serve them -- see PRIVATE_MEDIA_ROOT in settings/base.py and
+# BodyPhotoFileView, which is the only way to read one back.
+private_media_storage = FileSystemStorage(location=settings.PRIVATE_MEDIA_ROOT)
+
+_BYTES_PER_MB = 1024 * 1024
+
+
+def validate_body_photo_size(value):
+    """Refuse a photo over the image cap the rest of the app already uses
+    (MEDIA_SIZE_LIMITS_MB in settings), so a straight-from-the-phone photo
+    goes through but an accidental RAW export doesn't.
+
+    On the model field rather than in the serializer, matching
+    apps/moves/models.py: it then covers the Django admin as well, and DRF
+    copies model-field validators onto the serializer field.
+    """
+    max_bytes = int(settings.MEDIA_SIZE_LIMITS_MB["image"]["max"] * _BYTES_PER_MB)
+    if value.size > max_bytes:
+        raise ValidationError(
+            "Image is too large (%(size).1f MB). The limit is %(max).1f MB."
+            % {"size": value.size / _BYTES_PER_MB, "max": max_bytes / _BYTES_PER_MB}
+        )
 
 # Persian (۰-۹) and Arabic-Indic (٠-٩) digits mapped onto ASCII. A Persian
 # keyboard produces the former, and a national ID or phone number typed
@@ -286,3 +319,131 @@ class HealthCondition(models.Model):
     def __str__(self):
         label = self.description if self.condition == self.Condition.OTHER else self.get_condition_display()
         return f"{self.user}: {label}"
+
+
+def _body_photo_path(instance, filename):
+    """Where a body photo lands on disk.
+
+    The filename is random rather than derived from the pose or the member,
+    so that even if this tree is ever accidentally exposed (a stray
+    `static()` line, a misconfigured nginx location), the files can't be
+    walked by guessing `body/7/front.jpg`. Belt and braces on top of
+    PRIVATE_MEDIA_ROOT -- the storage location is the actual protection.
+    """
+    extension = Path(filename).suffix.lower().lstrip(".") or "jpg"
+    return f"body/{instance.user_id}/{uuid.uuid4().hex}.{extension}"
+
+
+class BodyPhoto(models.Model):
+    """A member's front / side / back progress photo.
+
+    Trainers write better programmes when they can see posture and
+    proportion -- where someone carries weight, how they stand -- which no
+    tape measure captures. The member uploads them; only they and a
+    trainer or admin can look at them.
+
+    Three rows at most, one per pose: this is "what does this person look
+    like right now", the reference a trainer works from. Re-uploading a
+    pose replaces it (see BodyPhotoSerializer), and the old file is
+    deleted rather than orphaned.
+
+    Note the storage= argument. These files deliberately do NOT live under
+    MEDIA_ROOT, because everything there is served as a static file to
+    anyone with the URL. See PRIVATE_MEDIA_ROOT in settings/base.py.
+    """
+
+    class Pose(models.TextChoices):
+        FRONT = "front", "Front"
+        SIDE = "side", "Side"
+        BACK = "back", "Back"
+
+    user = models.ForeignKey(User, related_name="body_photos", on_delete=models.CASCADE)
+    pose = models.CharField(max_length=10, choices=Pose.choices)
+    image = models.ImageField(
+        upload_to=_body_photo_path,
+        storage=private_media_storage,
+        validators=[
+            FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"]),
+            validate_body_photo_size,
+        ],
+    )
+    uploaded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["pose"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "pose"], name="unique_body_photo_per_pose")
+        ]
+
+    def __str__(self):
+        return f"{self.user}: {self.get_pose_display()}"
+
+
+@receiver(post_delete, sender=BodyPhoto)
+def delete_body_photo_file(sender, instance, **kwargs):
+    """Drop the image when its row goes.
+
+    This matters more here than for ordinary media: a member deleting a
+    body photo is withdrawing consent to have it stored, and leaving the
+    file on disk would make the delete button a lie. post_delete rather
+    than an override of delete() so it fires for cascades too -- deleting
+    a user takes their photos with them.
+    """
+    if instance.image:
+        instance.image.delete(save=False)
+
+
+def _body_photo_example_path(instance, filename):
+    extension = Path(filename).suffix.lower().lstrip(".") or "jpg"
+    return f"body-examples/{instance.pose}-{uuid.uuid4().hex}.{extension}"
+
+
+class BodyPhotoExample(models.Model):
+    """A trainer's demonstration of what each body photo should look like.
+
+    Members are being asked to photograph themselves in three specific
+    angles, and "front / side / back" leaves a lot unsaid -- how far back
+    to stand, arms where, what to wear. A trainer posing for the three
+    shots answers all of that at once, in the one place it's needed: the
+    empty slot the member is about to fill.
+
+    Gym-wide rather than per member: one row per pose for everybody, which
+    is what the unique constraint on `pose` enforces. Having none is a
+    perfectly good state -- the slots simply sit empty, as they did before.
+
+    Stored in the same private tree as members' own photos. These are
+    posed deliberately for display, so they're readable by any signed-in
+    user rather than just staff -- but they're still a photograph of a
+    real person's body, and there's no reason for them to be fetchable by
+    anyone who never logged in.
+    """
+
+    pose = models.CharField(max_length=10, choices=BodyPhoto.Pose.choices, unique=True)
+    image = models.ImageField(
+        upload_to=_body_photo_example_path,
+        storage=private_media_storage,
+        validators=[
+            FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"]),
+            validate_body_photo_size,
+        ],
+    )
+    # Who to ask about it. SET_NULL so removing a trainer's account doesn't
+    # take the gym's instructions down with it.
+    uploaded_by = models.ForeignKey(
+        User, related_name="+", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["pose"]
+
+    def __str__(self):
+        return f"Example: {self.get_pose_display()}"
+
+
+@receiver(post_delete, sender=BodyPhotoExample)
+def delete_body_photo_example_file(sender, instance, **kwargs):
+    """Same reasoning as delete_body_photo_file -- the trainer who posed
+    for this gets to have it actually gone when it's removed."""
+    if instance.image:
+        instance.image.delete(save=False)

@@ -8,6 +8,7 @@ import {
   listMyMeasurements,
   logMeasurement,
 } from "../../api/body.js";
+import BodyPhotoManager from "../../components/body/BodyPhotoManager.jsx";
 import MeasurementTrend from "../../components/body/MeasurementTrend.jsx";
 import JalaliDateInput from "../../components/common/JalaliDateInput.jsx";
 import { TrashIcon } from "../../components/common/icons.jsx";
@@ -405,6 +406,8 @@ export default function MyBodyPage() {
           </>
         )}
       </section>
+
+      <BodyPhotoManager />
 
       {/* Health flags */}
       <section className="card plan-section">

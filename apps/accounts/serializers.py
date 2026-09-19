@@ -1,10 +1,19 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import FileExtensionValidator
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import BodyMeasurement, HealthCondition, normalize_digits
+from .models import (
+    BodyMeasurement,
+    BodyPhoto,
+    BodyPhotoExample,
+    HealthCondition,
+    normalize_digits,
+    validate_body_photo_size,
+)
 from .passwords import validate_password_for_role
 
 User = get_user_model()
@@ -472,3 +481,109 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["role"] = user.role
         token["full_name"] = user.get_full_name() or user.username
         return token
+
+
+class BodyPhotoSerializer(serializers.ModelSerializer):
+    """One progress photo.
+
+    `image` is write-only and `file_url` is what goes out. The stored path
+    is useless to a client anyway -- these files are not served statically
+    (that is the whole point of PRIVATE_MEDIA_ROOT) -- and exposing it
+    would invite someone to try /media/body/... and wonder why it 404s.
+    The URL given instead points at the permission-checked streaming view.
+    """
+
+    # Declaring the field explicitly (for write_only) means DRF does NOT
+    # copy the model field's validators onto it, so the extension allowlist
+    # and the size cap have to be restated here or they simply never run.
+    image = serializers.ImageField(
+        write_only=True,
+        validators=[
+            FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"]),
+            validate_body_photo_size,
+        ],
+    )
+    file_url = serializers.SerializerMethodField()
+    pose_display = serializers.CharField(source="get_pose_display", read_only=True)
+
+    class Meta:
+        model = BodyPhoto
+        fields = ["id", "pose", "pose_display", "image", "file_url", "uploaded_at"]
+        read_only_fields = ["id", "pose_display", "file_url", "uploaded_at"]
+
+    def get_file_url(self, obj):
+        url = reverse("body-photo-file", kwargs={"pk": obj.pk})
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request else url
+
+    def create(self, validated_data):
+        """Upload-or-replace, keyed on the pose.
+
+        A member re-taking their front photo is updating one thing, not
+        adding a second front photo -- and the unique constraint would
+        reject the second one anyway, turning an ordinary action into a
+        400. The old file is deleted rather than left behind, because a
+        replaced body photo is one the member no longer wants stored.
+        """
+        user = validated_data["user"]
+        pose = validated_data["pose"]
+        existing = BodyPhoto.objects.filter(user=user, pose=pose).first()
+        if existing:
+            existing.image.delete(save=False)
+            existing.image = validated_data["image"]
+            existing.save()
+            return existing
+        return super().create(validated_data)
+
+
+class BodyPhotoExampleSerializer(serializers.ModelSerializer):
+    """The gym's demonstration photo for one pose.
+
+    Same write-only image / read-only URL split as BodyPhotoSerializer, and
+    for the same reason: the stored path is not a thing a client can fetch.
+    """
+
+    # `pose` is unique=True on the model, so DRF would fit this field with a
+    # UniqueValidator and reject the second POST for a pose at validation
+    # time -- before create() below ever gets the chance to treat it as the
+    # replacement it is. Dropping the validator is safe because create()
+    # looks the row up itself, and the database constraint is still there
+    # for anything that bypasses this serializer.
+    pose = serializers.ChoiceField(choices=BodyPhoto.Pose.choices, validators=[])
+    image = serializers.ImageField(
+        write_only=True,
+        validators=[
+            FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"]),
+            validate_body_photo_size,
+        ],
+    )
+    file_url = serializers.SerializerMethodField()
+    pose_display = serializers.CharField(source="get_pose_display", read_only=True)
+    uploaded_by_name = serializers.CharField(source="uploaded_by.get_full_name", read_only=True)
+
+    class Meta:
+        model = BodyPhotoExample
+        fields = [
+            "id", "pose", "pose_display", "image", "file_url",
+            "uploaded_by_name", "updated_at",
+        ]
+        read_only_fields = ["id", "pose_display", "file_url", "uploaded_by_name", "updated_at"]
+
+    def get_file_url(self, obj):
+        url = reverse("body-photo-example-file", kwargs={"pk": obj.pk})
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request else url
+
+    def create(self, validated_data):
+        """Upload-or-replace, keyed on the pose — there is exactly one
+        example per pose gym-wide, so posting "front" again is a trainer
+        re-shooting the demonstration, not adding a second one."""
+        pose = validated_data["pose"]
+        existing = BodyPhotoExample.objects.filter(pose=pose).first()
+        if existing:
+            existing.image.delete(save=False)
+            existing.image = validated_data["image"]
+            existing.uploaded_by = validated_data.get("uploaded_by")
+            existing.save()
+            return existing
+        return super().create(validated_data)
