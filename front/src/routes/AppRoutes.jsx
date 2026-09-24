@@ -11,6 +11,7 @@ import BlogPostPage from "../pages/blog/BlogPostPage.jsx";
 import DashboardPage from "../pages/dashboard/DashboardPage.jsx";
 import DietBuilderPage from "../pages/diet/DietBuilderPage.jsx";
 import DietListPage from "../pages/diet/DietListPage.jsx";
+import FoodListPage from "../pages/foods/FoodListPage.jsx";
 import MoveFormPage from "../pages/moves/MoveFormPage.jsx";
 import MoveListPage from "../pages/moves/MoveListPage.jsx";
 import GymSessionPage from "../pages/my/GymSessionPage.jsx";
@@ -52,6 +53,7 @@ export default function AppRoutes() {
           <Route element={<ProtectedRoute allowedRoles={["trainer", "admin"]} />}>
             <Route path="/plans" element={<PlanListPage />} />
             <Route path="/plans/:planId" element={<PlanBuilderPage />} />
+            <Route path="/foods" element={<FoodListPage />} />
             <Route path="/diet" element={<DietListPage />} />
             <Route path="/diet/:planId" element={<DietBuilderPage />} />
             <Route path="/supplements" element={<SupplementListPage />} />

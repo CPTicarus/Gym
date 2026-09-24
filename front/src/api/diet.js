@@ -8,7 +8,7 @@ export async function listDietPlans(params = {}) {
 
 export async function getDietPlan(planId) {
   const { data } = await axiosClient.get(`/diet-plans/${planId}/`);
-  return data; // includes days[].meals[].items
+  return data; // includes days[].meals[].items, or allowed_foods, with each food nested
 }
 
 export async function createDietPlan(payload) {
@@ -56,6 +56,21 @@ export async function updateDietItem(planId, mealId, itemId, payload) {
 
 export async function deleteDietItem(planId, mealId, itemId) {
   await axiosClient.delete(`/diet-plans/${planId}/meals/${mealId}/items/${itemId}/`);
+}
+
+// ---- Allowed foods (only on a plan of kind "allowed") ----
+export async function addAllowedFood(planId, payload) {
+  const { data } = await axiosClient.post(`/diet-plans/${planId}/allowed-foods/`, payload);
+  return data;
+}
+
+export async function updateAllowedFood(planId, entryId, payload) {
+  const { data } = await axiosClient.patch(`/diet-plans/${planId}/allowed-foods/${entryId}/`, payload);
+  return data;
+}
+
+export async function deleteAllowedFood(planId, entryId) {
+  await axiosClient.delete(`/diet-plans/${planId}/allowed-foods/${entryId}/`);
 }
 
 // ---- Member-facing ----

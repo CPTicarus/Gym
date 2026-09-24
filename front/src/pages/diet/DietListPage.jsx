@@ -3,7 +3,28 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { createDietPlan, listDietPlans } from "../../api/diet.js";
 import Modal from "../../components/common/Modal.jsx";
-import { DIET_GOALS, DIET_GOAL_LABELS } from "../../constants/planOptions.js";
+import {
+  DIET_GOALS,
+  DIET_GOAL_LABELS,
+  DIET_PLAN_KINDS,
+  DIET_PLAN_KIND_LABELS,
+} from "../../constants/planOptions.js";
+
+// The two ways to start a plan. The kind can't be changed afterwards (see
+// DietPlan.Kind), so the choice is spelled out here rather than hidden
+// behind a bare select.
+const KIND_OPTIONS = [
+  {
+    value: "weekly",
+    title: "استاندارد — ۷ روز، هر روز ۳ وعده",
+    description: "صبحانه، ناهار و شامِ هر ۷ روز هفته از قبل ساخته می‌شود؛ فقط خوراکی‌ها و مقدارشان را اضافه کنید.",
+  },
+  {
+    value: "allowed",
+    title: "خالی — فهرست خوراکی‌های مجاز",
+    description: "بدون روز و وعده. به‌جای برنامه دقیق، فقط خوراکی‌هایی را که عضو مجاز به مصرفشان است مشخص کنید.",
+  },
+];
 
 export default function DietListPage() {
   const navigate = useNavigate();
@@ -11,10 +32,12 @@ export default function DietListPage() {
   const [plans, setPlans] = useState([]);
   const [search, setSearch] = useState("");
   const [goal, setGoal] = useState("");
+  const [kind, setKind] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [isCreating, setIsCreating] = useState(false);
+  const [newKind, setNewKind] = useState("weekly");
   const [newName, setNewName] = useState("");
   const [newGoal, setNewGoal] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -28,6 +51,7 @@ export default function DietListPage() {
       const params = {};
       if (search) params.search = search;
       if (goal) params.goal = goal;
+      if (kind) params.kind = kind;
       const data = await listDietPlans(params);
       setPlans(data.results ?? data);
     } catch {
@@ -35,7 +59,7 @@ export default function DietListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, goal]);
+  }, [search, goal, kind]);
 
   useEffect(() => {
     const timeout = setTimeout(load, 250);
@@ -55,6 +79,7 @@ export default function DietListPage() {
         name: newName.trim(),
         description: newDescription.trim(),
         goal: newGoal,
+        kind: newKind,
       });
       navigate(`/diet/${created.id}`);
     } catch {
@@ -92,6 +117,14 @@ export default function DietListPage() {
             </option>
           ))}
         </select>
+        <select className="select" value={kind} onChange={(e) => setKind(e.target.value)}>
+          <option value="">همه انواع</option>
+          {DIET_PLAN_KINDS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -112,7 +145,10 @@ export default function DietListPage() {
               <div className="plan-card-head">
                 <h3 className="plan-card-title">{p.name}</h3>
               </div>
-              {p.goal && <span className="badge badge-neutral">{DIET_GOAL_LABELS[p.goal] ?? p.goal}</span>}
+              <div className="flex flex-wrap gap-1.5">
+                {p.goal && <span className="badge badge-neutral">{DIET_GOAL_LABELS[p.goal] ?? p.goal}</span>}
+                <span className="badge badge-neutral">{DIET_PLAN_KIND_LABELS[p.kind] ?? p.kind}</span>
+              </div>
             </Link>
           ))}
         </div>
@@ -121,6 +157,29 @@ export default function DietListPage() {
       {isCreating && (
         <Modal title="برنامه غذایی جدید" onClose={() => setIsCreating(false)}>
           <form onSubmit={handleCreate} noValidate>
+            <fieldset className="field">
+              <legend className="label mb-1.5">نوع برنامه</legend>
+              <div className="kind-options">
+                {KIND_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`kind-option${newKind === option.value ? " is-selected" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="diet-plan-kind"
+                      className="sr-only"
+                      value={option.value}
+                      checked={newKind === option.value}
+                      onChange={() => setNewKind(option.value)}
+                    />
+                    <span className="kind-option-title">{option.title}</span>
+                    <span className="kind-option-text">{option.description}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
             <label className="field">
               <span className="label">نام برنامه</span>
               <input

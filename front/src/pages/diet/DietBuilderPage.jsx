@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import {
+  addAllowedFood,
   addDietItem,
   addMeal,
   assignDietPlan,
+  deleteAllowedFood,
   deleteDietAssignment,
   deleteDietItem,
   deleteDietPlan,
@@ -12,21 +14,28 @@ import {
   duplicateDietPlan,
   getDietPlan,
   listDietAssignments,
+  updateAllowedFood,
   updateDietAssignment,
   updateDietItem,
   updateDietPlan,
 } from "../../api/diet.js";
+import { fetchAllFoods } from "../../api/foods.js";
 import { PencilIcon } from "../../components/common/icons.jsx";
+import AllowedFoodSection from "../../components/diet/AllowedFoodSection.jsx";
 import MealSection from "../../components/diet/MealSection.jsx";
+import { NutrientTotals } from "../../components/diet/NutrientSummary.jsx";
 import AssignMemberModal from "../../components/plans/AssignMemberModal.jsx";
 import DuplicatePlanButton from "../../components/plans/DuplicatePlanButton.jsx";
 import EditPlanInfoModal from "../../components/plans/EditPlanInfoModal.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
-import { DIET_GOAL_LABELS, DIET_GOALS } from "../../constants/planOptions.js";
+import { DIET_GOAL_LABELS, DIET_GOALS, DIET_PLAN_KIND_LABELS } from "../../constants/planOptions.js";
 import { getTodayWeekday, WEEKDAY_LABELS } from "../../constants/weekdays.js";
+import { dayTotals } from "../../utils/nutrition.js";
+import { sortByName } from "../../utils/search.js";
 
-/** One weekday's block: its meals plus the "add a meal to this day" form. */
-function DayBlock({ day, onAddMeal, onDeleteMeal, onAddItem, onUpdateItem, onDeleteItem }) {
+/** One weekday's block: the day's total, its meals, and the "add a meal to
+ * this day" form. */
+function DayBlock({ day, foods, onAddMeal, onDeleteMeal, onAddItem, onUpdateItem, onDeleteItem, onFoodCreated }) {
   const [name, setName] = useState("");
   const [time, setTime] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -49,6 +58,7 @@ function DayBlock({ day, onAddMeal, onDeleteMeal, onAddItem, onUpdateItem, onDel
   }
 
   const isToday = day.day_of_week === getTodayWeekday();
+  const { totals, incomplete } = dayTotals(day);
 
   return (
     <div className="day-block">
@@ -59,16 +69,20 @@ function DayBlock({ day, onAddMeal, onDeleteMeal, onAddItem, onUpdateItem, onDel
         </h3>
       </div>
 
+      <NutrientTotals label="جمع روز" totals={totals} incomplete={incomplete} variant="readout" />
+
       {day.meals.length === 0 && <p className="muted exercise-empty">هنوز وعده‌ای تعریف نشده.</p>}
 
       {day.meals.map((meal) => (
         <MealSection
           key={meal.id}
           meal={meal}
+          foods={foods}
           onDeleteMeal={onDeleteMeal}
           onAddItem={(payload) => onAddItem(meal, payload)}
           onUpdateItem={(item, payload) => onUpdateItem(meal, item, payload)}
           onDeleteItem={(item) => onDeleteItem(meal, item)}
+          onFoodCreated={onFoodCreated}
         />
       ))}
 
@@ -103,6 +117,7 @@ export default function DietBuilderPage() {
   const navigate = useNavigate();
 
   const [plan, setPlan] = useState(null);
+  const [foods, setFoods] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -121,15 +136,22 @@ export default function DietBuilderPage() {
     setAssignments(data.results ?? data);
   }, [planId]);
 
+  // A food added from a picker joins the library list straight away, so
+  // every other meal's picker can offer it without a refetch.
+  const handleFoodCreated = useCallback((food) => {
+    setFoods((prev) => sortByName([...prev, food]));
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     async function init() {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getDietPlan(planId);
+        const [data, foodList] = await Promise.all([getDietPlan(planId), fetchAllFoods()]);
         if (cancelled) return;
         setPlan(data);
+        setFoods(foodList);
         await loadAssignments();
       } catch {
         if (!cancelled) setError("بارگذاری برنامه با مشکل مواجه شد.");
@@ -194,6 +216,7 @@ export default function DietBuilderPage() {
           </div>
           <p className="page-subtitle">
             {plan.goal ? DIET_GOAL_LABELS[plan.goal] ?? plan.goal : "بدون هدف مشخص"}
+            {` • ${DIET_PLAN_KIND_LABELS[plan.kind] ?? plan.kind}`}
           </p>
           {plan.description && <p className="plan-description">{plan.description}</p>}
         </div>
@@ -219,37 +242,68 @@ export default function DietBuilderPage() {
       {error && <p className="error-text">{error}</p>}
       {toast && <p className="success-text">{toast}</p>}
 
-      <section className="card plan-section">
-        <h2 className="plan-section-title">وعده‌های غذایی هفتگی</h2>
-        <p className="muted plan-section-hint">هر روز هفته وعده‌های غذایی جداگانه‌ای دارد.</p>
-
-        {plan.days.map((day) => (
-          <DayBlock
-            key={day.id}
-            day={day}
-            onAddMeal={async (payload) => {
-              await addMeal(planId, day.id, payload);
+      {plan.kind === "allowed" ? (
+        <section className="card plan-section">
+          <h2 className="plan-section-title">خوراکی‌های مجاز</h2>
+          <p className="muted plan-section-hint">
+            این برنامه روز و وعده ثابتی ندارد — عضو از میان این خوراکی‌ها انتخاب می‌کند. مقدار اختیاری است.
+          </p>
+          <AllowedFoodSection
+            entries={plan.allowed_foods}
+            foods={foods}
+            onAdd={async (payload) => {
+              await addAllowedFood(planId, payload);
               await reload();
             }}
-            onDeleteMeal={async (meal) => {
-              await deleteMeal(planId, day.id, meal.id);
+            onUpdate={async (entry, payload) => {
+              await updateAllowedFood(planId, entry.id, payload);
               await reload();
             }}
-            onAddItem={async (meal, payload) => {
-              await addDietItem(planId, meal.id, payload);
+            onDelete={async (entry) => {
+              await deleteAllowedFood(planId, entry.id);
               await reload();
             }}
-            onUpdateItem={async (meal, item, payload) => {
-              await updateDietItem(planId, meal.id, item.id, payload);
-              await reload();
-            }}
-            onDeleteItem={async (meal, item) => {
-              await deleteDietItem(planId, meal.id, item.id);
-              await reload();
-            }}
+            onFoodCreated={handleFoodCreated}
           />
-        ))}
-      </section>
+        </section>
+      ) : (
+        <section className="card plan-section">
+          <h2 className="plan-section-title">وعده‌های غذایی هفتگی</h2>
+          <p className="muted plan-section-hint">
+            هر روز هفته وعده‌های جداگانه‌ای دارد. فقط مقدار هر خوراکی را وارد کنید — ارزش غذایی‌اش و جمع هر وعده و
+            هر روز خودکار حساب می‌شود. «+» کنار یک عدد یعنی برای بعضی خوراکی‌ها آن مقدار ثبت نشده.
+          </p>
+
+          {plan.days.map((day) => (
+            <DayBlock
+              key={day.id}
+              day={day}
+              foods={foods}
+              onAddMeal={async (payload) => {
+                await addMeal(planId, day.id, payload);
+                await reload();
+              }}
+              onDeleteMeal={async (meal) => {
+                await deleteMeal(planId, day.id, meal.id);
+                await reload();
+              }}
+              onAddItem={async (meal, payload) => {
+                await addDietItem(planId, meal.id, payload);
+                await reload();
+              }}
+              onUpdateItem={async (meal, item, payload) => {
+                await updateDietItem(planId, meal.id, item.id, payload);
+                await reload();
+              }}
+              onDeleteItem={async (meal, item) => {
+                await deleteDietItem(planId, meal.id, item.id);
+                await reload();
+              }}
+              onFoodCreated={handleFoodCreated}
+            />
+          ))}
+        </section>
+      )}
 
       {/* Who currently has this plan */}
       <section className="card plan-section">

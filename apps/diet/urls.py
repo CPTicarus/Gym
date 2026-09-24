@@ -2,14 +2,17 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AllowedFoodViewSet,
     DietAssignmentViewSet,
     DietItemViewSet,
     DietPlanViewSet,
+    FoodViewSet,
     MealViewSet,
     MyDietPlansView,
 )
 
 router = DefaultRouter()
+router.register("foods", FoodViewSet, basename="food")
 router.register("diet-plans", DietPlanViewSet, basename="diet-plan")
 router.register("diet-assignments", DietAssignmentViewSet, basename="diet-assignment")
 # router also auto-generates POST /diet-plans/{id}/assign/ from the @action
@@ -21,6 +24,11 @@ meal_detail = MealViewSet.as_view(
 
 item_list = DietItemViewSet.as_view({"get": "list", "post": "create"})
 item_detail = DietItemViewSet.as_view(
+    {"get": "retrieve", "patch": "partial_update", "put": "update", "delete": "destroy"}
+)
+
+allowed_list = AllowedFoodViewSet.as_view({"get": "list", "post": "create"})
+allowed_detail = AllowedFoodViewSet.as_view(
     {"get": "retrieve", "patch": "partial_update", "put": "update", "delete": "destroy"}
 )
 
@@ -36,6 +44,12 @@ urlpatterns = router.urls + [
         "diet-plans/<int:plan_pk>/meals/<int:meal_pk>/items/<int:pk>/",
         item_detail,
         name="plan-meal-item-detail",
+    ),
+    path("diet-plans/<int:plan_pk>/allowed-foods/", allowed_list, name="plan-allowed-food-list"),
+    path(
+        "diet-plans/<int:plan_pk>/allowed-foods/<int:pk>/",
+        allowed_detail,
+        name="plan-allowed-food-detail",
     ),
 
     # Member-facing

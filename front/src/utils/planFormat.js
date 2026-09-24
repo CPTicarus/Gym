@@ -11,11 +11,5 @@ export function formatExerciseDetail(ex) {
   return parts.join(" × ");
 }
 
-export function formatItemMacros(item) {
-  const parts = [];
-  if (item.calories) parts.push(`${item.calories} کالری`);
-  if (item.protein_g) parts.push(`پروتئین ${item.protein_g}g`);
-  if (item.carbs_g) parts.push(`کربوهیدرات ${item.carbs_g}g`);
-  if (item.fat_g) parts.push(`چربی ${item.fat_g}g`);
-  return parts.join(" • ");
-}
+// Diet nutrition lives in utils/nutrition.js — it's arithmetic (scaling a
+// food to an amount, summing meals and days), not just formatting.

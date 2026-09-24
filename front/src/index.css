@@ -886,6 +886,163 @@
     @apply sm:w-32;
   }
 
+  /* ---- Nutrition: food library, diet builder, member diet ----
+     Numbers are the point of these screens, so they're set as readouts:
+     tabular figures (inherited from body), the value in bold ink and its
+     unit/name muted beside it. */
+  .nutrient-chips {
+    @apply m-0 flex list-none flex-wrap gap-1 p-0;
+  }
+  .nutrient-chip {
+    @apply border border-line bg-surface px-1.5 text-[11px] leading-5 text-muted;
+  }
+  .nutrient-chip-value {
+    @apply font-bold text-ink;
+  }
+  /* "جمع وعده": under a meal's foods, set off by a dashed rule so it reads
+     as the sum of what's above rather than as one more food. */
+  .nutrient-totals-chips {
+    @apply mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-dashed border-line pt-2;
+  }
+  .nutrient-totals-chips .nutrient-chip {
+    @apply text-ink;
+  }
+  .nutrient-totals-label {
+    @apply text-xs font-bold;
+  }
+  /* "جمع روز": a strip of gauges under the day's name. The 1px gaps over a
+     line-coloured background draw the rules between cells, and each cell
+     grows to fill its row, so a wrapped last row has no empty holes. */
+  .nutrient-totals-readout {
+    @apply mb-3 flex flex-col gap-1.5;
+  }
+  .nutrient-readout {
+    @apply m-0 flex flex-wrap gap-px border border-line bg-line;
+  }
+  .nutrient-readout-cell {
+    @apply flex flex-col-reverse items-center gap-0.5 bg-surface px-1.5 py-2 text-center;
+    flex: 1 1 3.75rem;
+  }
+  .nutrient-readout-value {
+    @apply m-0 text-[17px] font-extrabold leading-tight;
+  }
+  .nutrient-readout-label {
+    @apply text-[11px] leading-4 text-muted;
+  }
+
+  /* Adding a food to a meal / an allowed list. */
+  .food-entry-fields {
+    @apply grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)];
+  }
+  .amount-unit {
+    @apply flex flex-none items-center px-1 text-[13px] font-semibold text-muted;
+  }
+  .food-entry-preview {
+    @apply flex items-start gap-1.5;
+  }
+  .food-entry-serving {
+    @apply flex flex-wrap items-center gap-1.5 text-xs;
+  }
+  /* Full width, like the amount/notes row beneath it and its own dropdown. */
+  .food-combobox .input {
+    @apply w-full;
+  }
+  .combobox-option-sub {
+    @apply block text-xs text-muted;
+  }
+  .combobox-create {
+    @apply font-bold text-accent-dark;
+  }
+  .allowed-group + .allowed-group {
+    @apply mt-4;
+  }
+  .allowed-group-title {
+    @apply mb-2 text-[13px] font-bold text-muted;
+  }
+
+  /* Picking a diet plan's kind — two cards rather than a bare select,
+     since the choice can't be changed once the plan exists. */
+  .kind-options {
+    @apply grid grid-cols-1 gap-2;
+  }
+  .kind-option {
+    @apply flex cursor-pointer flex-col gap-1 border-2 border-line p-3 transition-colors;
+  }
+  .kind-option:hover {
+    @apply bg-neutral-soft;
+  }
+  .kind-option.is-selected {
+    @apply border-accent bg-accent-soft;
+  }
+  .kind-option:has(:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .kind-option-title {
+    @apply text-sm font-bold;
+  }
+  .kind-option-text {
+    @apply text-xs leading-5 text-muted;
+  }
+
+  /* Food library cards — the move card's ink edge, since both are library
+     entries rather than plans. */
+  .food-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3;
+  }
+  .food-card {
+    @apply relative flex flex-col items-start gap-1 border border-line bg-surface p-4 shadow-card transition-colors;
+    border-inline-start: 4px solid var(--color-ink);
+  }
+  .food-card:hover {
+    @apply bg-neutral-soft;
+  }
+  .food-card-title {
+    @apply text-[16px];
+  }
+  .food-card-open {
+    @apply cursor-pointer text-start font-extrabold;
+  }
+  /* Stretches the name's button over the whole card, so the card is one
+     click target while its nutrient list stays outside the <button>. */
+  .food-card-open::after {
+    content: "";
+    @apply absolute inset-0;
+  }
+  .food-card-open:focus-visible {
+    outline: none;
+  }
+  .food-card:has(.food-card-open:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .food-card-alias {
+    @apply -mt-1 text-xs text-muted;
+  }
+  .food-card-serving {
+    @apply text-xs font-semibold text-muted;
+  }
+
+  /* Food form: "per [100] [g]", then the nutrient inputs in a grid. */
+  .serving-row {
+    @apply flex items-center gap-2;
+  }
+  .serving-row .input {
+    @apply w-28 flex-none;
+  }
+  .serving-row .select {
+    @apply min-w-0 flex-1;
+  }
+  .nutrient-inputs {
+    @apply grid grid-cols-2 gap-x-3 sm:grid-cols-3;
+  }
+  .nutrient-inputs .field {
+    @apply mb-3;
+  }
+  .nutrient-inputs .input {
+    @apply min-w-0;
+  }
+
   /* ---- Exercise / food item rows ---- */
   .exercise-list {
     @apply flex list-none flex-col gap-2 p-0;
@@ -1326,7 +1483,9 @@
     .meal-block,
     .exercise-row,
     .assignment-row,
-    .media-list-item {
+    .media-list-item,
+    .nutrient-totals,
+    .allowed-group {
       break-inside: avoid;
     }
     h1,

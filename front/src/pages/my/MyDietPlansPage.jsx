@@ -1,12 +1,66 @@
 import { useEffect, useState } from "react";
 
 import { listMyDietPlans } from "../../api/diet.js";
+import AllowedFoodSection from "../../components/diet/AllowedFoodSection.jsx";
 import MealSection from "../../components/diet/MealSection.jsx";
+import { NutrientTotals } from "../../components/diet/NutrientSummary.jsx";
 import PrintButton from "../../components/common/PrintButton.jsx";
 import PrintHeader from "../../components/common/PrintHeader.jsx";
 import PlanHistoryList from "../../components/plans/PlanHistoryList.jsx";
 import { DIET_GOAL_LABELS } from "../../constants/planOptions.js";
 import { getTodayWeekday, WEEKDAY_LABELS } from "../../constants/weekdays.js";
+import { dayTotals } from "../../utils/nutrition.js";
+
+/** A weekly plan, today first: the other six days are one tap away (and
+ * always on paper — see the print block in index.css). */
+function WeeklyPlanView({ plan, today, isWeekVisible, onToggleWeek }) {
+  if (!plan.days?.length) return <p className="muted exercise-empty">وعده‌ای ثبت نشده.</p>;
+
+  // Plans built before the 7-day auto-create, or with a day somehow
+  // removed, could have no entry for today — collapsing to it would show
+  // an empty card, so those fall back to the full week and drop the toggle.
+  const hasToday = plan.days.some((d) => d.day_of_week === today);
+  const isCollapsed = !isWeekVisible && hasToday;
+
+  return (
+    <>
+      {hasToday && (
+        <div className="diet-week-head no-print">
+          <h3 className="section-heading diet-week-title">
+            {isCollapsed ? `امروز — ${WEEKDAY_LABELS[today]}` : "برنامه کل هفته"}
+          </h3>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={onToggleWeek}
+            aria-expanded={!isCollapsed}
+          >
+            {isCollapsed ? "نمایش کل هفته" : "فقط امروز"}
+          </button>
+        </div>
+      )}
+      <div className={`diet-week${isCollapsed ? " is-today-only" : ""}`}>
+        {plan.days.map((day) => {
+          const { totals, incomplete } = dayTotals(day);
+          return (
+            <div key={day.id} className={`day-block${day.day_of_week === today ? " is-today" : ""}`}>
+              <h3 className="day-block-title">
+                {WEEKDAY_LABELS[day.day_of_week]}
+                {day.day_of_week === today && <span className="badge badge-accent mr-2">امروز</span>}
+              </h3>
+              <NutrientTotals label="جمع روز" totals={totals} incomplete={incomplete} variant="readout" />
+              {day.meals.length === 0 ? (
+                <p className="muted exercise-empty">وعده‌ای ثبت نشده.</p>
+              ) : (
+                day.meals.map((meal) => <MealSection key={meal.id} meal={meal} readOnly />)
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 export default function MyDietPlansPage() {
   const [assignments, setAssignments] = useState([]);
@@ -82,58 +136,21 @@ export default function MyDietPlansPage() {
                 )}
                 {plan.description && <p className="plan-description">{plan.description}</p>}
 
-                {plan.days?.length ? (
-                  (() => {
-                    // Plans built before the 7-day auto-create, or with a day
-                    // somehow removed, could have no entry for today —-
-                    // collapsing to it would show an empty card, so those
-                    // fall back to the full week and drop the toggle.
-                    const hasToday = plan.days.some((d) => d.day_of_week === today);
-                    const isCollapsed = !isWeekVisible && hasToday;
-                    return (
-                      <>
-                        {hasToday && (
-                          <div className="diet-week-head no-print">
-                            <h3 className="section-heading diet-week-title">
-                              {isCollapsed ? `امروز — ${WEEKDAY_LABELS[today]}` : "برنامه کل هفته"}
-                            </h3>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              onClick={() => setIsWeekVisible((v) => !v)}
-                              aria-expanded={!isCollapsed}
-                            >
-                              {isCollapsed ? "نمایش کل هفته" : "فقط امروز"}
-                            </button>
-                          </div>
-                        )}
-                        <div className={`diet-week${isCollapsed ? " is-today-only" : ""}`}>
-                          {plan.days.map((day) => (
-                            <div
-                              key={day.id}
-                              className={`day-block${day.day_of_week === today ? " is-today" : ""}`}
-                            >
-                              <h3 className="day-block-title">
-                                {WEEKDAY_LABELS[day.day_of_week]}
-                                {day.day_of_week === today && (
-                                  <span className="badge badge-accent mr-2">امروز</span>
-                                )}
-                              </h3>
-                              {day.meals.length === 0 ? (
-                                <p className="muted exercise-empty">وعده‌ای ثبت نشده.</p>
-                              ) : (
-                                day.meals.map((meal) => (
-                                  <MealSection key={meal.id} meal={meal} readOnly />
-                                ))
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    );
-                  })()
+                {plan.kind === "allowed" ? (
+                  <>
+                    <h3 className="section-heading">خوراکی‌های مجاز</h3>
+                    <p className="muted plan-section-hint">
+                      برنامه شما وعده و ساعت ثابتی ندارد — از میان این خوراکی‌ها انتخاب کنید.
+                    </p>
+                    <AllowedFoodSection entries={plan.allowed_foods} readOnly />
+                  </>
                 ) : (
-                  <p className="muted exercise-empty">وعده‌ای ثبت نشده.</p>
+                  <WeeklyPlanView
+                    plan={plan}
+                    today={today}
+                    isWeekVisible={isWeekVisible}
+                    onToggleWeek={() => setIsWeekVisible((v) => !v)}
+                  />
                 )}
               </div>
             );

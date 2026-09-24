@@ -108,6 +108,15 @@ export function UtensilsIcon(props) {
   );
 }
 
+export function AppleIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 7.5C10.4 6.3 7.4 6.1 5.8 8.1c-1.8 2.2-1.3 6.3.8 9.3 1.2 1.7 2.6 2.9 4 2.4.6-.2.9-.4 1.4-.4s.8.2 1.4.4c1.4.5 2.8-.7 4-2.4 2.1-3 2.6-7.1.8-9.3-1.6-2-4.6-1.8-6.2-.6Z" />
+      <path d="M12 7.5c0-2 .8-3.6 2.5-4.5" />
+    </IconBase>
+  );
+}
+
 export function WalletIcon(props) {
   return (
     <IconBase {...props}>

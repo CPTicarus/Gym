@@ -1,11 +1,25 @@
 from django.contrib import admin
 
-from .models import DietAssignment, DietDay, DietItem, DietPlan, Meal
+from .models import AllowedFood, DietAssignment, DietDay, DietItem, DietPlan, Food, Meal
+
+
+@admin.register(Food)
+class FoodAdmin(admin.ModelAdmin):
+    list_display = ["name", "category", "serving_size", "unit", *Food.NUTRIENT_FIELDS[:4]]
+    list_filter = ["category", "unit"]
+    search_fields = ["name", "alias"]
 
 
 class DietItemInline(admin.TabularInline):
     model = DietItem
     extra = 1
+    autocomplete_fields = ["food"]
+
+
+class AllowedFoodInline(admin.TabularInline):
+    model = AllowedFood
+    extra = 1
+    autocomplete_fields = ["food"]
 
 
 class MealInline(admin.TabularInline):
@@ -21,10 +35,10 @@ class DietDayInline(admin.TabularInline):
 
 @admin.register(DietPlan)
 class DietPlanAdmin(admin.ModelAdmin):
-    list_display = ["name", "goal", "created_by", "created_at"]
-    list_filter = ["goal"]
+    list_display = ["name", "kind", "goal", "created_by", "created_at"]
+    list_filter = ["kind", "goal"]
     search_fields = ["name", "description"]
-    inlines = [DietDayInline]
+    inlines = [DietDayInline, AllowedFoodInline]
 
 
 @admin.register(DietDay)

@@ -1,4 +1,5 @@
 import {
+  AppleIcon,
   ClipboardIcon,
   DumbbellIcon,
   FlaskIcon,
@@ -28,6 +29,10 @@ export const NAV_ITEMS = [
 
   { to: "/moves", label: "حرکات", Icon: DumbbellIcon, roles: ["member", "trainer", "admin"] },
   { to: "/plans", label: "برنامه‌ها", Icon: ClipboardIcon, roles: ["trainer", "admin"] },
+  // The food library sits in front of the diet builder the way moves sit in
+  // front of plans: build the library, then build plans from it. Staff
+  // only — members see each food's numbers inside their own plan.
+  { to: "/foods", label: "خوراکی‌ها", Icon: AppleIcon, roles: ["trainer", "admin"] },
   { to: "/diet", label: "تغذیه", Icon: UtensilsIcon, roles: ["trainer", "admin"] },
   { to: "/supplements", label: "مکمل‌ها", Icon: FlaskIcon, roles: ["trainer", "admin"] },
   { to: "/accounting", label: "حسابداری", Icon: WalletIcon, roles: ["admin", "accounting"] },

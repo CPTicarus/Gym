@@ -18,6 +18,12 @@ export const DIET_GOALS = [
   ["other", "سایر"],
 ];
 
+// Chosen once, when the plan is created — see DietPlan.Kind.
+export const DIET_PLAN_KINDS = [
+  ["weekly", "برنامه هفتگی"],
+  ["allowed", "خوراکی‌های مجاز"],
+];
+
 export const ASSIGNMENT_STATUSES = [
   ["active", "فعال"],
   ["paused", "متوقف"],
@@ -26,6 +32,7 @@ export const ASSIGNMENT_STATUSES = [
 
 export const WORKOUT_GOAL_LABELS = Object.fromEntries(WORKOUT_GOALS);
 export const DIET_GOAL_LABELS = Object.fromEntries(DIET_GOALS);
+export const DIET_PLAN_KIND_LABELS = Object.fromEntries(DIET_PLAN_KINDS);
 export const ASSIGNMENT_STATUS_LABELS = Object.fromEntries(ASSIGNMENT_STATUSES);
 
 export const ASSIGNMENT_STATUS_VARIANT = {
