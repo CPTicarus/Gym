@@ -34,7 +34,7 @@ export async function deleteHealthCondition(conditionId) {
   await axiosClient.delete(`/me/health-conditions/${conditionId}/`);
 }
 
-// ---- Body photos (front / side / back) ----
+// ---- Body photos (front / side / back, and any extras) ----
 //
 // These are NOT ordinary media. They're stored outside the server's public
 // media tree and streamed by a view that checks who's asking, which is why
@@ -48,13 +48,33 @@ export async function listMyBodyPhotos() {
   return data.results ?? data;
 }
 
-/** Upload or replace one pose. The server keys on the pose, so posting
- *  "front" again swaps the existing photo rather than adding a second. */
+/** Upload or replace one of the three main poses — the server keys on the
+ *  pose, so posting "front" again swaps the existing photo rather than
+ *  adding a second. With pose "extra" it always adds one. */
 export async function uploadBodyPhoto(pose, file) {
   const form = new FormData();
   form.append("pose", pose);
   form.append("image", file);
   const { data } = await axiosClient.post("/me/body-photos/", form);
+  return data;
+}
+
+/** Set (or, with "", clear) an extra photo's note for the trainer. Sent as
+ *  a form like the uploads — the endpoint only reads multipart/form data. */
+export async function updateBodyPhotoNote(photoId, note) {
+  const form = new FormData();
+  form.append("note", note);
+  const { data } = await axiosClient.patch(`/me/body-photos/${photoId}/`, form);
+  return data;
+}
+
+/** A new image for a photo that's already there — how an extra is
+ *  replaced, since several share the "extra" pose and a POST would add
+ *  another rather than swap this one. */
+export async function replaceBodyPhoto(photoId, file) {
+  const form = new FormData();
+  form.append("image", file);
+  const { data } = await axiosClient.patch(`/me/body-photos/${photoId}/`, form);
   return data;
 }
 
@@ -68,9 +88,12 @@ export async function listMemberBodyPhotos(userId) {
   return data.results ?? data;
 }
 
-/** The image bytes for one photo, as a Blob. */
-export async function getBodyPhotoBlob(photoId) {
+/** The image bytes for one photo, as a Blob. `version` (the photo's
+ *  uploaded_at) rides along as a query string: a replaced photo keeps its
+ *  id, so the URL has to change some other way to be fetched afresh. */
+export async function getBodyPhotoBlob(photoId, version) {
   const { data } = await axiosClient.get(`/body-photos/${photoId}/file/`, {
+    params: version ? { v: version } : undefined,
     responseType: "blob",
   });
   return data;
@@ -101,8 +124,12 @@ export async function deleteBodyPhotoExample(exampleId) {
   await axiosClient.delete(`/body-photo-examples/${exampleId}/`);
 }
 
-export async function getBodyPhotoExampleBlob(exampleId) {
+/** Same `version` idea as getBodyPhotoBlob, and it matters more here:
+ *  examples are cached for ten minutes, so a re-shot example would
+ *  otherwise keep showing the old picture from the browser's cache. */
+export async function getBodyPhotoExampleBlob(exampleId, version) {
   const { data } = await axiosClient.get(`/body-photo-examples/${exampleId}/file/`, {
+    params: version ? { v: version } : undefined,
     responseType: "blob",
   });
   return data;

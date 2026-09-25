@@ -768,6 +768,17 @@
   .body-photo-label {
     @apply text-[13px] font-semibold;
   }
+  /* A member's note on an extra photo, under it. Two lines at most — the
+     full text is in the title, and in the trainer's full-screen view. */
+  .body-photo-note {
+    @apply line-clamp-2 w-full text-center text-xs text-muted;
+  }
+  .body-photo-note-btn:hover {
+    @apply text-ink underline;
+  }
+  .body-photo-note-btn.is-empty {
+    @apply font-semibold;
+  }
   .body-photo-frame {
     @apply aspect-[3/4] w-full bg-neutral-soft object-contain;
   }
@@ -776,6 +787,27 @@
   }
   .body-photo-actions {
     @apply flex items-center justify-center gap-1;
+  }
+  /* Photos past the main three. Rarely used, so it's one quiet toggle
+     under the grid rather than more empty slots in it. */
+  .body-photo-extras {
+    @apply mt-4 border-t border-line pt-3;
+  }
+  .body-photo-extras-toggle {
+    @apply flex w-full items-center justify-between gap-2 text-sm font-bold;
+  }
+  .body-photo-extras-toggle[aria-expanded="true"] {
+    @apply mb-2;
+  }
+  .body-photo-extras .body-photo-grid {
+    @apply mb-3;
+  }
+  .body-photo-extra-add {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  .body-photo-extra-add .select,
+  .body-photo-extra-add .input {
+    @apply min-w-0 flex-1 basis-48;
   }
   /* ---- Opening a photo full screen (trainer's view) ----
      touch-manipulation is load-bearing, not a nicety: it turns off the
@@ -809,8 +841,10 @@
   }
   /* Physical left + physical translate, not logical `start-1/2`: mixing a
      logical inset with a physical translate lands off-centre in RTL. */
+  /* Capped in width: for an extra this is the member's note, which can run
+     well past a pose name. */
   .body-photo-lightbox-label {
-    @apply absolute top-6 left-1/2 -translate-x-1/2 text-sm font-bold text-white/90;
+    @apply absolute top-6 left-1/2 max-w-[75vw] -translate-x-1/2 text-center text-sm font-bold text-white/90;
   }
   .body-photo-lightbox-message {
     @apply text-sm text-white/80;

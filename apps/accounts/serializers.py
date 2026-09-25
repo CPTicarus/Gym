@@ -491,6 +491,9 @@ class BodyPhotoSerializer(serializers.ModelSerializer):
     (that is the whole point of PRIVATE_MEDIA_ROOT) -- and exposing it
     would invite someone to try /media/body/... and wonder why it 404s.
     The URL given instead points at the permission-checked streaming view.
+
+    An extra needs nothing but the image -- what it shows is plain from the
+    photo. Its `note` is optional; the three main poses don't take one.
     """
 
     # Declaring the field explicitly (for write_only) means DRF does NOT
@@ -508,7 +511,7 @@ class BodyPhotoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BodyPhoto
-        fields = ["id", "pose", "pose_display", "image", "file_url", "uploaded_at"]
+        fields = ["id", "pose", "pose_display", "note", "image", "file_url", "uploaded_at"]
         read_only_fields = ["id", "pose_display", "file_url", "uploaded_at"]
 
     def get_file_url(self, obj):
@@ -516,24 +519,60 @@ class BodyPhotoSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         return request.build_absolute_uri(url) if request else url
 
+    def validate(self, attrs):
+        pose = attrs.get("pose", getattr(self.instance, "pose", None))
+        if self.instance is not None and pose != self.instance.pose:
+            raise serializers.ValidationError(
+                {"pose": "A photo's pose can't be changed -- upload it as the other pose instead."}
+            )
+
+        if pose != BodyPhoto.Pose.EXTRA:
+            if attrs.get("note"):
+                raise serializers.ValidationError({"note": "Only an extra photo takes a note."})
+            return attrs
+
+        if self.instance is None:
+            count = BodyPhoto.objects.filter(
+                user=self.context["request"].user, pose=BodyPhoto.Pose.EXTRA
+            ).count()
+            if count >= BodyPhoto.MAX_EXTRAS:
+                raise serializers.ValidationError(
+                    {"pose": f"At most {BodyPhoto.MAX_EXTRAS} extra photos -- delete one to add another."}
+                )
+        return attrs
+
     def create(self, validated_data):
-        """Upload-or-replace, keyed on the pose.
+        """Upload-or-replace, keyed on the pose -- for the main poses.
 
         A member re-taking their front photo is updating one thing, not
         adding a second front photo -- and the unique constraint would
         reject the second one anyway, turning an ordinary action into a
         400. The old file is deleted rather than left behind, because a
         replaced body photo is one the member no longer wants stored.
+
+        An extra is always a new photo: there can be several, so there's
+        nothing to key a replacement on. Replacing one is a PATCH to it.
         """
         user = validated_data["user"]
         pose = validated_data["pose"]
-        existing = BodyPhoto.objects.filter(user=user, pose=pose).first()
-        if existing:
-            existing.image.delete(save=False)
-            existing.image = validated_data["image"]
-            existing.save()
-            return existing
+        if pose != BodyPhoto.Pose.EXTRA:
+            existing = BodyPhoto.objects.filter(user=user, pose=pose).first()
+            if existing:
+                existing.image.delete(save=False)
+                existing.image = validated_data["image"]
+                existing.save()
+                return existing
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """PATCH: a new image for this photo, a note for an extra (blank
+        clears it), or both. Like a replacement in create(), the old file
+        goes."""
+        image = validated_data.pop("image", None)
+        if image is not None:
+            instance.image.delete(save=False)
+            instance.image = image
+        return super().update(instance, validated_data)
 
 
 class BodyPhotoExampleSerializer(serializers.ModelSerializer):
@@ -549,7 +588,7 @@ class BodyPhotoExampleSerializer(serializers.ModelSerializer):
     # replacement it is. Dropping the validator is safe because create()
     # looks the row up itself, and the database constraint is still there
     # for anything that bypasses this serializer.
-    pose = serializers.ChoiceField(choices=BodyPhoto.Pose.choices, validators=[])
+    pose = serializers.ChoiceField(choices=BodyPhoto.MAIN_POSE_CHOICES, validators=[])
     image = serializers.ImageField(
         write_only=True,
         validators=[

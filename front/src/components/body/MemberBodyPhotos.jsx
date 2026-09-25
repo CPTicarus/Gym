@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { listMemberBodyPhotos } from "../../api/body.js";
-import { BODY_POSES } from "../../constants/bodyPoses.js";
+import { BODY_POSES, EXTRA_POSE } from "../../constants/bodyPoses.js";
+import { toPersianDigits } from "../../utils/jalali.js";
 import { ExpandIcon } from "../common/icons.jsx";
 import BodyPhotoImage from "./BodyPhotoImage.jsx";
 import BodyPhotoLightbox from "./BodyPhotoLightbox.jsx";
@@ -20,26 +21,35 @@ import BodyPhotoLightbox from "./BodyPhotoLightbox.jsx";
  * A single click does nothing here — the photo has no other action to be
  * confused with, so there's no timer to disambiguate, unlike MoveCard.
  */
-function PhotoSlot({ pose, label, photo, onOpen }) {
+function PhotoSlot({ label, name = label, photo, onOpen }) {
+  // A member's note on an extra is what the trainer most needs to see
+  // alongside it — so it heads the full-screen view too.
+  const viewerLabel = photo.note || name;
   return (
     <div className="body-photo-slot">
-      <span className="body-photo-label">{label}</span>
+      {label && <span className="body-photo-label">{label}</span>}
 
       <div
         className="body-photo-zoomable"
-        onDoubleClick={() => onOpen(photo, label)}
-        title={`${label} — برای نمایش بزرگ دوبار ضربه بزنید`}
+        onDoubleClick={() => onOpen(photo, viewerLabel)}
+        title={`${name} — برای نمایش بزرگ دوبار ضربه بزنید`}
       >
-        <BodyPhotoImage photoId={photo.id} alt={label} />
+        <BodyPhotoImage photoId={photo.id} version={photo.uploaded_at} alt={name} />
         <button
           type="button"
           className="icon-btn icon-btn-sm body-photo-zoom-btn"
-          onClick={() => onOpen(photo, label)}
-          aria-label={`نمایش بزرگ ${label}`}
+          onClick={() => onOpen(photo, viewerLabel)}
+          aria-label={`نمایش بزرگ ${name}`}
         >
           <ExpandIcon size={15} />
         </button>
       </div>
+
+      {photo.note && (
+        <span className="body-photo-note" title={photo.note}>
+          {photo.note}
+        </span>
+      )}
     </div>
   );
 }
@@ -52,7 +62,9 @@ function PhotoSlot({ pose, label, photo, onOpen }) {
  *
  * Renders nothing when the member hasn't uploaded any — an empty
  * three-slot panel on every profile would be noise, and the request 403s
- * for accounting, who shouldn't see this section exists at all.
+ * for accounting, who shouldn't see this section exists at all. Extras
+ * (a lat spread, a side chest…) come after the main three under their own
+ * heading, with the member's note under any that has one.
  */
 export default function MemberBodyPhotos({ userId }) {
   const [photos, setPhotos] = useState([]);
@@ -74,7 +86,10 @@ export default function MemberBodyPhotos({ userId }) {
 
   if (photos.length === 0) return null;
 
-  const byPose = Object.fromEntries(photos.map((p) => [p.pose, p]));
+  const byPose = Object.fromEntries(photos.filter((p) => p.pose !== EXTRA_POSE).map((p) => [p.pose, p]));
+  const mainPoses = BODY_POSES.filter(([pose]) => byPose[pose]);
+  const extras = photos.filter((p) => p.pose === EXTRA_POSE);
+  const open = (photo, label) => setViewing({ photo, label });
 
   return (
     <section className="card plan-section">
@@ -84,21 +99,34 @@ export default function MemberBodyPhotos({ userId }) {
         اندازه کامل، روی آن دوبار ضربه بزنید یا دکمه بزرگ‌نمایی را بزنید.
       </p>
 
-      <div className="body-photo-grid">
-        {BODY_POSES.filter(([pose]) => byPose[pose]).map(([pose, label]) => (
-          <PhotoSlot
-            key={pose}
-            pose={pose}
-            label={label}
-            photo={byPose[pose]}
-            onOpen={(photo, poseLabel) => setViewing({ photo, label: poseLabel })}
-          />
-        ))}
-      </div>
+      {mainPoses.length > 0 && (
+        <div className="body-photo-grid">
+          {mainPoses.map(([pose, label]) => (
+            <PhotoSlot key={pose} label={label} photo={byPose[pose]} onOpen={open} />
+          ))}
+        </div>
+      )}
+
+      {extras.length > 0 && (
+        <>
+          <h3 className="section-heading">عکس‌های بیشتر</h3>
+          <div className="body-photo-grid">
+            {extras.map((photo, index) => (
+              <PhotoSlot
+                key={photo.id}
+                name={`عکس بیشتر ${toPersianDigits(index + 1)}`}
+                photo={photo}
+                onOpen={open}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       {viewing && (
         <BodyPhotoLightbox
           photoId={viewing.photo.id}
+          version={viewing.photo.uploaded_at}
           label={viewing.label}
           onClose={() => setViewing(null)}
         />

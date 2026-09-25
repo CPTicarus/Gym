@@ -16,8 +16,8 @@ import { useBodyPhotoUrl } from "../../hooks/useBodyPhotoUrl.js";
  * close button on open and returns to whatever opened it on close, so a
  * keyboard user isn't dropped back at the top of the page.
  */
-export default function BodyPhotoLightbox({ photoId, kind = "member", label, onClose }) {
-  const { url, hasFailed } = useBodyPhotoUrl(photoId, kind);
+export default function BodyPhotoLightbox({ photoId, kind = "member", version, label, onClose }) {
+  const { url, hasFailed } = useBodyPhotoUrl(photoId, kind, version);
   const closeRef = useRef(null);
   const openerRef = useRef(null);
 

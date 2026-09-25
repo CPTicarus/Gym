@@ -17,7 +17,12 @@ function ExampleSlot({ pose, label, example, isBusy, onPick, onDelete }) {
       <span className="body-photo-label">{label}</span>
 
       {example ? (
-        <BodyPhotoImage photoId={example.id} kind="example" alt={`نمونه ${label}`} />
+        <BodyPhotoImage
+          photoId={example.id}
+          kind="example"
+          version={example.updated_at}
+          alt={`نمونه ${label}`}
+        />
       ) : (
         <div className="body-photo-frame is-empty">نمونه‌ای ثبت نشده</div>
       )}

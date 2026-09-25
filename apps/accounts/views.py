@@ -197,7 +197,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="body-photos")
     def body_photos(self, request, pk=None):
-        """This member's front / side / back photos, for writing a plan.
+        """This member's front / side / back photos, and any extras, for
+        writing a plan.
 
           GET /api/users/{id}/body-photos/
 
@@ -267,17 +268,20 @@ class HealthConditionViewSet(viewsets.ModelViewSet):
 
 
 class BodyPhotoViewSet(viewsets.ModelViewSet):
-    """A member's own front / side / back photos.
+    """A member's own front / side / back photos, and any extras.
 
       GET    /api/me/body-photos/
-      POST   /api/me/body-photos/     multipart: pose=front, image=<file>
+      POST   /api/me/body-photos/       multipart: pose=front, image=<file>
+                                        or pose=extra, image=<file> (+ note)
+      PATCH  /api/me/body-photos/{id}/  multipart: image and/or note
       DELETE /api/me/body-photos/{id}/
 
     Self-service, like measurements and health conditions: a trainer needs
     to see these to write a sensible programme, but they are pictures of
     the member's body and only the member puts them there or takes them
-    down. POSTing a pose that already exists replaces it (see
-    BodyPhotoSerializer.create).
+    down. POSTing a main pose that already exists replaces it; POSTing an
+    extra adds one, up to BodyPhoto.MAX_EXTRAS, and PATCH is how an extra
+    gets replaced (see BodyPhotoSerializer).
 
     Staff read them through /api/users/{id}/body-photos/, which is
     restricted to trainers and admins -- deliberately NOT the IsStaff that
@@ -288,7 +292,7 @@ class BodyPhotoViewSet(viewsets.ModelViewSet):
     serializer_class = BodyPhotoSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
-    http_method_names = ["get", "post", "delete", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
         return BodyPhoto.objects.filter(user=self.request.user)
@@ -328,10 +332,11 @@ class BodyPhotoFileView(APIView):
         if not photo.image:
             raise Http404
         # no-store: nothing keeps a copy of someone's body photo lying
-        # around in a shared proxy or a browser cache.
-        return stream_private_image(
-            photo.image, photo.pose, cache_control="private, max-age=0, no-store"
-        )
+        # around in a shared proxy or a browser cache. A main pose is named
+        # after itself; extras by id, or a trainer saving three of them
+        # gets three files called extra.jpg.
+        name = f"extra-{photo.pk}" if photo.pose == BodyPhoto.Pose.EXTRA else photo.pose
+        return stream_private_image(photo.image, name, cache_control="private, max-age=0, no-store")
 
 
 class BodyPhotoExampleViewSet(viewsets.ModelViewSet):

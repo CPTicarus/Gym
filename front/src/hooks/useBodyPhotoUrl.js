@@ -28,8 +28,12 @@ const LOADERS = {
  * The URL is revoked on unmount. Without that, opening a few photos would
  * pin each one in memory for the life of the tab — worth avoiding for
  * these images on its own, never mind the leak.
+ *
+ * `version` is the photo's upload time. Replacing a photo swaps the file
+ * but keeps the id, so without it the effect below would never re-run and
+ * the old picture would stay on screen until a reload.
  */
-export function useBodyPhotoUrl(photoId, kind = "member") {
+export function useBodyPhotoUrl(photoId, kind = "member", version) {
   const [url, setUrl] = useState(null);
   const [hasFailed, setHasFailed] = useState(false);
 
@@ -40,7 +44,7 @@ export function useBodyPhotoUrl(photoId, kind = "member") {
     setUrl(null);
     setHasFailed(false);
 
-    LOADERS[kind](photoId)
+    LOADERS[kind](photoId, version)
       .then((blob) => {
         // Guard before creating the URL, not just before setting state — an
         // object URL created after unmount has nothing left to revoke it.
@@ -56,7 +60,7 @@ export function useBodyPhotoUrl(photoId, kind = "member") {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [photoId, kind]);
+  }, [photoId, kind, version]);
 
   return { url, hasFailed };
 }

@@ -335,17 +335,25 @@ def _body_photo_path(instance, filename):
 
 
 class BodyPhoto(models.Model):
-    """A member's front / side / back progress photo.
+    """A member's front / side / back progress photo -- or, for the few who
+    want to show more, an extra one.
 
     Trainers write better programmes when they can see posture and
     proportion -- where someone carries weight, how they stand -- which no
     tape measure captures. The member uploads them; only they and a
     trainer or admin can look at them.
 
-    Three rows at most, one per pose: this is "what does this person look
-    like right now", the reference a trainer works from. Re-uploading a
-    pose replaces it (see BodyPhotoSerializer), and the old file is
-    deleted rather than orphaned.
+    The three main poses are one row each at most: this is "what does this
+    person look like right now", the reference a trainer works from.
+    Re-uploading one replaces it (see BodyPhotoSerializer), and the old
+    file is deleted rather than orphaned.
+
+    Extras are for the serious lifters -- a back lat spread, a side chest,
+    whatever their trainer asked to see. There can be several (up to
+    MAX_EXTRAS), and they're just photos: what one shows is plain from the
+    picture, so the member isn't made to name it, though they can leave a
+    `note` for the trainer if they want. Most members never add one, and
+    the three main poses stay exactly as they were.
 
     Note the storage= argument. These files deliberately do NOT live under
     MEDIA_ROOT, because everything there is served as a static file to
@@ -356,9 +364,23 @@ class BodyPhoto(models.Model):
         FRONT = "front", "Front"
         SIDE = "side", "Side"
         BACK = "back", "Back"
+        EXTRA = "extra", "Extra"
+
+    # The three every member is asked for: one photo each, named by the
+    # pose itself. The gym's example photos exist for these only.
+    MAIN_POSES = [Pose.FRONT, Pose.SIDE, Pose.BACK]
+    MAIN_POSE_CHOICES = [(pose.value, pose.label) for pose in MAIN_POSES]
+
+    # Enough for every standard bodybuilding pose, and a bound on how much
+    # of someone's body one account can park on the server. Mirrored in
+    # front/src/constants/bodyPoses.js.
+    MAX_EXTRAS = 8
 
     user = models.ForeignKey(User, related_name="body_photos", on_delete=models.CASCADE)
     pose = models.CharField(max_length=10, choices=Pose.choices)
+    # Anything the member wants their trainer to know about an extra photo
+    # ("۸ هفته بعد از شروع کات"). Optional, and only on extras.
+    note = models.CharField(max_length=255, blank=True)
     image = models.ImageField(
         upload_to=_body_photo_path,
         storage=private_media_storage,
@@ -370,9 +392,15 @@ class BodyPhoto(models.Model):
     uploaded_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["pose"]
+        # Extras in the order they were added.
+        ordering = ["pose", "id"]
         constraints = [
-            models.UniqueConstraint(fields=["user", "pose"], name="unique_body_photo_per_pose")
+            # One photo per main pose; as many extras as MAX_EXTRAS allows.
+            models.UniqueConstraint(
+                fields=["user", "pose"],
+                condition=~models.Q(pose="extra"),
+                name="unique_body_photo_per_pose",
+            )
         ]
 
     def __str__(self):
@@ -418,7 +446,9 @@ class BodyPhotoExample(models.Model):
     anyone who never logged in.
     """
 
-    pose = models.CharField(max_length=10, choices=BodyPhoto.Pose.choices, unique=True)
+    # Main poses only -- an extra is whatever the member says it is, so
+    # there's no one picture of it for the gym to pose.
+    pose = models.CharField(max_length=10, choices=BodyPhoto.MAIN_POSE_CHOICES, unique=True)
     image = models.ImageField(
         upload_to=_body_photo_example_path,
         storage=private_media_storage,
