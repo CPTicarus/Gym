@@ -12,6 +12,7 @@ from apps.plan_copy import copy_name
 
 from .models import (
     DailyExercise,
+    Superset,
     WarmupExercise,
     WorkoutAssignment,
     WorkoutDay,
@@ -22,6 +23,7 @@ from .models import (
 from .serializers import (
     DailyExerciseSerializer,
     FinishWorkoutDaySerializer,
+    SupersetSerializer,
     WarmupExerciseSerializer,
     WorkoutAssignmentListSerializer,
     WorkoutAssignmentSerializer,
@@ -45,7 +47,7 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
     """
 
     queryset = WorkoutPlan.objects.all().select_related("created_by").prefetch_related(
-        "warmup_exercises__move", "days__exercises__move", "daily_exercises__move"
+        "warmup_exercises__move", "days__exercises__move", "days__supersets", "daily_exercises__move"
     )
     permission_classes = [IsTrainerOrAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter]
@@ -60,8 +62,8 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="duplicate")
     def duplicate(self, request, pk=None):
-        """Copy a plan whole — warmup, every training day and its
-        exercises, and the daily items.
+        """Copy a plan whole — warmup, every training day with its
+        exercises and supersets, and the daily items.
 
         This is the "same programme, one thing different" case: a member
         turns up with a bad knee and needs the existing plan minus the
@@ -102,9 +104,22 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
             )
             for day in source.days.all():
                 day_copy = WorkoutDay.objects.create(plan=copy, name=day.name, order=day.order)
+                # Each superset copied first, so the copied moves can point
+                # at their own day's copy rather than back at the source's.
+                superset_copies = {
+                    superset.id: Superset.objects.create(
+                        day=day_copy,
+                        name=superset.name,
+                        sets=superset.sets,
+                        rest_seconds=superset.rest_seconds,
+                        notes=superset.notes,
+                    )
+                    for superset in day.supersets.all()
+                }
                 WorkoutDayExercise.objects.bulk_create(
                     WorkoutDayExercise(
                         day=day_copy,
+                        superset=superset_copies.get(exercise.superset_id),
                         move_id=exercise.move_id,
                         sets=exercise.sets,
                         reps=exercise.reps,
@@ -186,7 +201,9 @@ class WorkoutDayViewSet(viewsets.ModelViewSet):
     permission_classes = [IsTrainerOrAdmin]
 
     def get_queryset(self):
-        return WorkoutDay.objects.filter(plan_id=self.kwargs["plan_pk"]).prefetch_related("exercises__move")
+        return WorkoutDay.objects.filter(plan_id=self.kwargs["plan_pk"]).prefetch_related(
+            "exercises__move", "supersets"
+        )
 
     def perform_create(self, serializer):
         plan = get_object_or_404(WorkoutPlan, pk=self.kwargs["plan_pk"])
@@ -203,6 +220,41 @@ class WorkoutDayExerciseViewSet(viewsets.ModelViewSet):
         return WorkoutDayExercise.objects.filter(
             day_id=self.kwargs["day_pk"], day__plan_id=self.kwargs["plan_pk"]
         ).select_related("move")
+
+    def perform_create(self, serializer):
+        day = get_object_or_404(WorkoutDay, pk=self.kwargs["day_pk"], plan_id=self.kwargs["plan_pk"])
+        serializer.save(day=day)
+
+    def perform_destroy(self, instance):
+        # Taking a move out of a superset can leave it with only one, which
+        # is no superset at all — see Superset.dissolve_if_alone.
+        superset = instance.superset
+        with transaction.atomic():
+            instance.delete()
+            if superset is not None:
+                superset.dissolve_if_alone()
+
+
+class SupersetViewSet(viewsets.ModelViewSet):
+    """Supersets within a training day:
+
+      GET/POST         /api/workout-plans/{plan_pk}/days/{day_pk}/supersets/
+      GET/PATCH/DELETE /api/workout-plans/{plan_pk}/days/{day_pk}/supersets/{id}/
+
+    POST takes the round and its moves together —
+    {"sets": 4, "rest_seconds": 90, "exercises": [{"move": 1, "reps": 10}, ...]}
+    — at least two moves. PATCH edits the round only; the moves are the
+    day's exercises, edited (or added, with "superset": <id>) there.
+    DELETE takes the superset's moves with it.
+    """
+
+    serializer_class = SupersetSerializer
+    permission_classes = [IsTrainerOrAdmin]
+
+    def get_queryset(self):
+        # scoping by both plan_pk and day_pk means a mismatched URL 404s
+        # instead of silently exposing another plan's day
+        return Superset.objects.filter(day_id=self.kwargs["day_pk"], day__plan_id=self.kwargs["plan_pk"])
 
     def perform_create(self, serializer):
         day = get_object_or_404(WorkoutDay, pk=self.kwargs["day_pk"], plan_id=self.kwargs["plan_pk"])
@@ -265,7 +317,10 @@ class MyWorkoutPlansView(generics.ListAPIView):
         return WorkoutAssignment.objects.filter(user=self.request.user).select_related(
             "plan", "assigned_by"
         ).prefetch_related(
-            "plan__warmup_exercises__move", "plan__days__exercises__move", "plan__daily_exercises__move"
+            "plan__warmup_exercises__move",
+            "plan__days__exercises__move",
+            "plan__days__supersets",
+            "plan__daily_exercises__move",
         )
 
 

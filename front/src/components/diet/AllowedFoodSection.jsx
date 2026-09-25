@@ -1,4 +1,5 @@
 import { FOOD_CATEGORIES } from "../../constants/foodOptions.js";
+import { nextOrder } from "../../utils/ordering.js";
 import FoodEntryForm from "./FoodEntryForm.jsx";
 import FoodEntryList from "./FoodEntryList.jsx";
 
@@ -70,7 +71,7 @@ export default function AllowedFoodSection({
           amountRequired={false}
           excludeIds={listedIds}
           submitLabel="+ افزودن به فهرست"
-          onSubmit={(payload) => onAdd({ ...payload, order: entries.length })}
+          onSubmit={(payload) => onAdd({ ...payload, order: nextOrder(entries) })}
           onFoodCreated={onFoodCreated}
         />
       )}

@@ -43,11 +43,22 @@ export function exerciseKey(section, id) {
   return `${section}-${id}`;
 }
 
-/** Flat, ordered list of everything in today's session, each with its key. */
+/**
+ * Flat, ordered list of everything in today's session, each with its key.
+ *
+ * A superset's moves have no sets of their own — the superset's rounds are
+ * their sets — so they're given the superset's here, and the totals below
+ * count "4 rounds of bench, curl and raise" as 4 sets of each.
+ */
 export function collectSessionExercises(plan, day) {
+  const roundsBySuperset = new Map((day?.supersets ?? []).map((superset) => [superset.id, superset.sets]));
   return [
     ...(plan?.warmup_exercises ?? []).map((ex) => ({ ...ex, key: exerciseKey("warmup", ex.id) })),
-    ...(day?.exercises ?? []).map((ex) => ({ ...ex, key: exerciseKey("day", ex.id) })),
+    ...(day?.exercises ?? []).map((ex) => ({
+      ...ex,
+      sets: ex.superset != null ? roundsBySuperset.get(ex.superset) ?? null : ex.sets,
+      key: exerciseKey("day", ex.id),
+    })),
     ...(plan?.daily_exercises ?? []).map((ex) => ({ ...ex, key: exerciseKey("daily", ex.id) })),
   ];
 }

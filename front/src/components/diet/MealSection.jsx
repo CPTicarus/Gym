@@ -1,4 +1,5 @@
 import { mealTotals } from "../../utils/nutrition.js";
+import { nextOrder } from "../../utils/ordering.js";
 import { TrashIcon } from "../common/icons.jsx";
 import FoodEntryForm from "./FoodEntryForm.jsx";
 import FoodEntryList from "./FoodEntryList.jsx";
@@ -69,7 +70,7 @@ export default function MealSection({
           foods={foods}
           amountRequired
           submitLabel="+ افزودن خوراکی"
-          onSubmit={(payload) => onAddItem({ ...payload, order: meal.items.length })}
+          onSubmit={(payload) => onAddItem({ ...payload, order: nextOrder(meal.items) })}
           onFoodCreated={onFoodCreated}
         />
       )}

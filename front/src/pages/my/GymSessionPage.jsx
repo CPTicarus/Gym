@@ -5,6 +5,7 @@ import { finishWorkoutDay, listMyWorkoutPlans } from "../../api/workouts.js";
 import { CheckIcon, ClockIcon } from "../../components/common/icons.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoveDetailModal from "../../components/moves/MoveDetailModal.jsx";
+import SupersetFrame from "../../components/plans/SupersetFrame.jsx";
 import { formatClock, formatDurationLong } from "../../utils/format.js";
 import {
   appendWorkoutLog,
@@ -18,54 +19,102 @@ import {
 } from "../../utils/gymSession.js";
 import { toPersianDigits } from "../../utils/jalali.js";
 import { formatExerciseDetail } from "../../utils/planFormat.js";
+import { dayBlocks } from "../../utils/supersets.js";
+
+function SessionCheckbox({ isChecked, label, onClick }) {
+  return (
+    <button
+      type="button"
+      className="session-exercise-checkbox-btn"
+      onClick={onClick}
+      aria-pressed={isChecked}
+      aria-label={`علامت زدن ${label}`}
+    >
+      <span className="session-exercise-checkbox">
+        <CheckIcon size={14} />
+      </span>
+    </button>
+  );
+}
+
+function SessionMoveInfo({ exercise, onViewMove }) {
+  return (
+    <button type="button" className="session-exercise-info" onClick={() => onViewMove(exercise.move)}>
+      <span className="exercise-name">{exercise.move_detail?.name ?? "—"}</span>
+      <span className="muted exercise-detail">{formatExerciseDetail(exercise)}</span>
+      {exercise.notes && <span className="muted exercise-notes">{exercise.notes}</span>}
+    </button>
+  );
+}
 
 /**
  * The checkbox and the name/details are two separate buttons (not one
  * nested inside the other — invalid HTML) so tapping the move name opens
  * its description/media without also toggling the checkmark.
  *
+ * A superset gets ONE checkbox for all its moves: its moves are done
+ * together, round after round, so they finish together too — ticking them
+ * off one by one afterwards would be three taps for one thing. The session
+ * still counts each move (the checkbox ticks every one of their keys), so
+ * "۷ از ۱۲" means moves whether or not some of them came as a superset.
+ *
  * `section` namespaces the checked-state key; see exerciseKey() for why.
  *
  * Memoised because the session clock ticks once a second and every tick
  * re-renders this page: without it, a phone would rebuild all three lists
  * sixty times a minute for a number that isn't even in them. Every prop
- * below is referentially stable between ticks (`onToggle` is a useCallback,
- * `onViewMove` a state setter), so the lists only re-render on a real tap.
+ * below is referentially stable between ticks (`onToggle` and
+ * `onToggleMany` are useCallbacks, `onViewMove` a state setter, the rest
+ * plan data), so the lists only re-render on a real tap.
  */
 const SessionExerciseList = memo(function SessionExerciseList({
   exercises,
+  supersets,
   emptyText,
   section,
   checkedKeys,
   onToggle,
+  onToggleMany,
   onViewMove,
 }) {
-  if (!exercises || exercises.length === 0) {
+  const blocks = dayBlocks({ exercises, supersets });
+  if (blocks.length === 0) {
     return <p className="muted exercise-empty">{emptyText}</p>;
   }
   return (
     <ul className="exercise-list">
-      {exercises.map((ex) => {
+      {blocks.map((block) => {
+        if (block.type === "superset") {
+          const { superset } = block;
+          const keys = superset.exercises.map((ex) => exerciseKey(section, ex.id));
+          const isChecked = keys.every((key) => checkedKeys.has(key));
+          return (
+            <SupersetFrame
+              key={block.key}
+              superset={superset}
+              isDone={isChecked}
+              leading={
+                <SessionCheckbox
+                  isChecked={isChecked}
+                  label={superset.name || "سوپرست"}
+                  onClick={() => onToggleMany(keys)}
+                />
+              }
+              renderMove={(exercise) => <SessionMoveInfo exercise={exercise} onViewMove={onViewMove} />}
+            />
+          );
+        }
+        const ex = block.exercise;
         const key = exerciseKey(section, ex.id);
         const isChecked = checkedKeys.has(key);
         return (
           <li key={key} className={`session-exercise-row${isChecked ? " is-checked" : ""}`}>
-            <button
-              type="button"
-              className="session-exercise-checkbox-btn"
+            <SessionCheckbox
+              isChecked={isChecked}
+              label={ex.move_detail?.name ?? "حرکت"}
               onClick={() => onToggle(key)}
-              aria-pressed={isChecked}
-              aria-label={`علامت زدن ${ex.move_detail?.name ?? "حرکت"}`}
-            >
-              <span className="session-exercise-checkbox">
-                <CheckIcon size={14} />
-              </span>
-            </button>
-            <button type="button" className="session-exercise-info" onClick={() => onViewMove(ex.move)}>
-              <span className="exercise-name">{ex.move_detail?.name ?? "—"}</span>
-              <span className="muted exercise-detail">{formatExerciseDetail(ex)}</span>
-              {ex.notes && <span className="muted exercise-notes">{ex.notes}</span>}
-            </button>
+            />
+            <SessionMoveInfo exercise={ex} onViewMove={onViewMove} />
           </li>
         );
       })}
@@ -346,6 +395,20 @@ export default function GymSessionPage() {
     });
   }, []);
 
+  // A superset's checkbox: all of its moves on, or — when they're all on
+  // already — all of them off.
+  const toggleMany = useCallback((keys) => {
+    setCheckedKeys((prev) => {
+      const next = new Set(prev);
+      const allChecked = keys.every((key) => next.has(key));
+      for (const key of keys) {
+        if (allChecked) next.delete(key);
+        else next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
   async function runFinish() {
     setIsConfirmOpen(false);
     setIsCompletePromptOpen(false);
@@ -435,10 +498,12 @@ export default function GymSessionPage() {
           <h2 className="plan-section-title">۲ — {day.name}</h2>
           <SessionExerciseList
             exercises={day.exercises}
+            supersets={day.supersets}
             emptyText="حرکتی ثبت نشده."
             section="day"
             checkedKeys={checkedKeys}
             onToggle={toggle}
+            onToggleMany={toggleMany}
             onViewMove={setViewMoveId}
           />
         </section>

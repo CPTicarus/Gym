@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     DailyExercise,
+    Superset,
     WarmupExercise,
     WorkoutAssignment,
     WorkoutDay,
@@ -30,6 +31,11 @@ class WorkoutDayExerciseInline(admin.TabularInline):
     extra = 1
 
 
+class SupersetInline(admin.TabularInline):
+    model = Superset
+    extra = 0
+
+
 @admin.register(WorkoutPlan)
 class WorkoutPlanAdmin(admin.ModelAdmin):
     list_display = ["name", "goal", "is_template", "created_by", "created_at"]
@@ -41,7 +47,7 @@ class WorkoutPlanAdmin(admin.ModelAdmin):
 @admin.register(WorkoutDay)
 class WorkoutDayAdmin(admin.ModelAdmin):
     list_display = ["plan", "name", "order"]
-    inlines = [WorkoutDayExerciseInline]
+    inlines = [SupersetInline, WorkoutDayExerciseInline]
 
 
 @admin.register(WorkoutAssignment)

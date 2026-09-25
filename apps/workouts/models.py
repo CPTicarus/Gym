@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from apps.moves.models import Move
@@ -159,11 +160,68 @@ class WorkoutDay(models.Model):
         return f"{self.plan.name} - {self.name}"
 
 
+class Superset(models.Model):
+    """Two or more moves of a training day done back to back as one round —
+    bench press, straight into curls, straight into front raises — with the
+    round repeated `sets` times and the rest taken after each round rather
+    than after each move.
+
+    The moves stay WorkoutDayExercise rows (pointing here through
+    `superset`), each with its own reps or duration, so everything that
+    walks a day's exercises — the session checklist, its totals, copying a
+    plan — still sees every move. What this adds is the grouping and the two
+    numbers that belong to the round rather than to any one move: how many
+    rounds, and the rest between them. A move in a superset therefore has no
+    `sets` of its own.
+
+    A superset never holds a single move — that's just a move — so it's
+    created with at least two (SupersetSerializer) and taking away its
+    second-to-last one turns what's left back into an ordinary exercise
+    (dissolve_if_alone).
+    """
+
+    day = models.ForeignKey(WorkoutDay, related_name="supersets", on_delete=models.CASCADE)
+    name = models.CharField(max_length=50, blank=True)  # "سوپرست سینه"
+    sets = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    rest_seconds = models.PositiveIntegerField(null=True, blank=True)  # after each round
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.day}: superset {self.name or self.pk}"
+
+    def dissolve_if_alone(self):
+        """Run after a move leaves. With one move left this isn't a superset
+        any more, just that move — so it becomes an ordinary exercise again,
+        taking the round's sets and rest as its own rather than losing
+        them. With none left, the superset simply goes."""
+        remaining = list(self.exercises.all()[:2])
+        if len(remaining) > 1:
+            return
+        if remaining:
+            move = remaining[0]
+            move.superset = None
+            move.sets = self.sets
+            if self.rest_seconds is not None:
+                move.rest_seconds = self.rest_seconds
+            move.save(update_fields=["superset", "sets", "rest_seconds"])
+        self.delete()
+
+
 class WorkoutDayExercise(_RepsOrDurationMixin, models.Model):
-    """A single move within a specific day, with its own sets/reps/rest."""
+    """A single move within a specific day, with its own sets/reps/rest —
+    or, inside a superset, its own reps/duration only (see Superset)."""
 
     day = models.ForeignKey(WorkoutDay, related_name="exercises", on_delete=models.CASCADE)
     move = models.ForeignKey(Move, on_delete=models.PROTECT, related_name="+")
+    # Set for a move done as part of a superset. Its sets then come from the
+    # superset, and `rest_seconds` would mean rest after this move within a
+    # round — normally none, which is the point of a superset.
+    superset = models.ForeignKey(
+        Superset, related_name="exercises", on_delete=models.CASCADE, null=True, blank=True
+    )
     sets = models.PositiveIntegerField(null=True, blank=True)
     reps = models.PositiveIntegerField(null=True, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
@@ -176,6 +234,14 @@ class WorkoutDayExercise(_RepsOrDurationMixin, models.Model):
 
     def __str__(self):
         return f"{self.day}: {self.move.name}"
+
+    def clean(self):
+        super().clean()
+        if self.superset_id is not None:
+            if self.superset.day_id != self.day_id:
+                raise ValidationError("A superset's moves belong to the superset's own day.")
+            if self.sets is not None:
+                raise ValidationError("A move in a superset takes its sets from the superset.")
 
 
 class DailyExercise(_RepsOrDurationMixin, models.Model):

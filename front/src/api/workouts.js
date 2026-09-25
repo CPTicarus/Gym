@@ -8,7 +8,7 @@ export async function listWorkoutPlans(params = {}) {
 
 export async function getWorkoutPlan(planId) {
   const { data } = await axiosClient.get(`/workout-plans/${planId}/`);
-  return data; // includes warmup_exercises, days[].exercises, daily_exercises
+  return data; // includes warmup_exercises, days[].exercises + days[].supersets, daily_exercises
 }
 
 export async function createWorkoutPlan(payload) {
@@ -70,6 +70,30 @@ export async function updateDayExercise(planId, dayId, exerciseId, payload) {
 
 export async function deleteDayExercise(planId, dayId, exerciseId) {
   await axiosClient.delete(`/workout-plans/${planId}/days/${dayId}/exercises/${exerciseId}/`);
+}
+
+// ---- Supersets within a day ----
+// Created together with their moves — { sets, rest_seconds, name, notes,
+// exercises: [{ move, reps | duration_seconds }, ...] }, at least two. After
+// that the round is edited here, and each move as a day exercise: add one
+// with `superset: <id>` to join it, and deleting down to a single move turns
+// that move back into an ordinary exercise.
+export async function addSuperset(planId, dayId, payload) {
+  const { data } = await axiosClient.post(`/workout-plans/${planId}/days/${dayId}/supersets/`, payload);
+  return data;
+}
+
+export async function updateSuperset(planId, dayId, supersetId, payload) {
+  const { data } = await axiosClient.patch(
+    `/workout-plans/${planId}/days/${dayId}/supersets/${supersetId}/`,
+    payload
+  );
+  return data;
+}
+
+/** Takes the superset's moves with it. */
+export async function deleteSuperset(planId, dayId, supersetId) {
+  await axiosClient.delete(`/workout-plans/${planId}/days/${dayId}/supersets/${supersetId}/`);
 }
 
 // ---- Section 3: daily items ----

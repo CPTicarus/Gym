@@ -31,6 +31,7 @@ import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { DIET_GOAL_LABELS, DIET_GOALS, DIET_PLAN_KIND_LABELS } from "../../constants/planOptions.js";
 import { getTodayWeekday, WEEKDAY_LABELS } from "../../constants/weekdays.js";
 import { dayTotals } from "../../utils/nutrition.js";
+import { nextOrder } from "../../utils/ordering.js";
 import { sortByName } from "../../utils/search.js";
 
 /** One weekday's block: the day's total, its meals, and the "add a meal to
@@ -47,7 +48,7 @@ function DayBlock({ day, foods, onAddMeal, onDeleteMeal, onAddItem, onUpdateItem
     setError(null);
     setIsAdding(true);
     try {
-      await onAddMeal({ name: name.trim(), time: time || null, order: day.meals.length });
+      await onAddMeal({ name: name.trim(), time: time || null, order: nextOrder(day.meals) });
       setName("");
       setTime("");
     } catch {

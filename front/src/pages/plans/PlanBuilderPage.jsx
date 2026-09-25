@@ -5,11 +5,13 @@ import { fetchAllMoves } from "../../api/moves.js";
 import {
   addDailyExercise,
   addDayExercise,
+  addSuperset,
   addWarmupExercise,
   addWorkoutDay,
   assignWorkoutPlan,
   deleteDailyExercise,
   deleteDayExercise,
+  deleteSuperset,
   deleteWarmupExercise,
   deleteWorkoutAssignment,
   deleteWorkoutDay,
@@ -19,6 +21,7 @@ import {
   listWorkoutAssignments,
   updateDailyExercise,
   updateDayExercise,
+  updateSuperset,
   updateWarmupExercise,
   updateWorkoutAssignment,
   updateWorkoutPlan,
@@ -31,6 +34,7 @@ import ExerciseSection from "../../components/plans/ExerciseSection.jsx";
 import PlanAssignments from "../../components/plans/PlanAssignments.jsx";
 import { WORKOUT_GOAL_LABELS, WORKOUT_GOALS } from "../../constants/planOptions.js";
 import { formatBmiWarning } from "../../utils/bmi.js";
+import { nextOrder } from "../../utils/ordering.js";
 
 export default function PlanBuilderPage() {
   const { planId } = useParams();
@@ -90,7 +94,7 @@ export default function PlanBuilderPage() {
     if (!newDayName.trim()) return;
     setIsAddingDay(true);
     try {
-      await addWorkoutDay(planId, { name: newDayName.trim(), order: plan.days.length });
+      await addWorkoutDay(planId, { name: newDayName.trim(), order: nextOrder(plan.days) });
       setNewDayName("");
       await reload();
     } catch {
@@ -218,6 +222,9 @@ export default function PlanBuilderPage() {
       {/* Section 2 — days */}
       <section className="card plan-section">
         <h2 className="plan-section-title">۲ — روزهای تمرین</h2>
+        <p className="muted plan-section-hint">
+          برای چند حرکتی که پشت سر هم و بدون استراحت انجام می‌شوند، «+ سوپرست» را بزنید.
+        </p>
 
         {plan.days.length === 0 && <p className="muted exercise-empty">هنوز روزی تعریف نشده.</p>}
 
@@ -236,6 +243,7 @@ export default function PlanBuilderPage() {
             </div>
             <ExerciseSection
               exercises={day.exercises}
+              supersets={day.supersets}
               moves={moves}
               withRest
               emptyText="هنوز حرکتی برای این روز اضافه نشده."
@@ -249,6 +257,18 @@ export default function PlanBuilderPage() {
               }}
               onDelete={async (ex) => {
                 await deleteDayExercise(planId, day.id, ex.id);
+                await reload();
+              }}
+              onAddSuperset={async (payload) => {
+                await addSuperset(planId, day.id, payload);
+                await reload();
+              }}
+              onUpdateSuperset={async (superset, payload) => {
+                await updateSuperset(planId, day.id, superset.id, payload);
+                await reload();
+              }}
+              onDeleteSuperset={async (superset) => {
+                await deleteSuperset(planId, day.id, superset.id);
                 await reload();
               }}
             />

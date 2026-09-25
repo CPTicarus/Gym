@@ -1,4 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.db.models import Max
 from rest_framework import serializers
 
 from apps.moves.models import Move
@@ -6,6 +8,7 @@ from apps.moves.serializers import MoveListSerializer
 
 from .models import (
     DailyExercise,
+    Superset,
     WarmupExercise,
     WorkoutAssignment,
     WorkoutDay,
@@ -53,13 +56,97 @@ class WarmupExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin,
 
 
 class WorkoutDayExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, serializers.ModelSerializer):
+    """A day's move. `superset` is the id of the superset it's done in, or
+    null for a move done on its own; it can be given when a move is ADDED to
+    an existing superset, but not changed afterwards — moving a move in or
+    out of a superset changes what its sets mean, so that's a delete and a
+    re-add rather than a quiet edit."""
+
+    superset = serializers.PrimaryKeyRelatedField(
+        queryset=Superset.objects.all(), required=False, allow_null=True
+    )
+
     class Meta:
         model = WorkoutDayExercise
         fields = [
-            "id", "move", "move_detail", "sets", "reps",
+            "id", "move", "move_detail", "superset", "sets", "reps",
             "duration_seconds", "rest_seconds", "order", "notes",
         ]
         read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance is not None:
+            if "superset" in attrs and attrs["superset"] != self.instance.superset:
+                raise serializers.ValidationError(
+                    {"superset": "A move can't be moved into or out of a superset once added."}
+                )
+            superset = self.instance.superset
+        else:
+            superset = attrs.get("superset")
+            if superset is not None and superset.day_id != self.context["view"].kwargs["day_pk"]:
+                raise serializers.ValidationError({"superset": "That superset belongs to another day."})
+        sets = attrs.get("sets", getattr(self.instance, "sets", None))
+        if superset is not None and sets is not None:
+            raise serializers.ValidationError(
+                {"sets": "A move in a superset takes its sets from the superset."}
+            )
+        return attrs
+
+
+class SupersetMoveSerializer(_RepsOrDurationValidationMixin, serializers.ModelSerializer):
+    """One move as it's written when a superset is created: which move, and
+    how many reps (or seconds) of it per round. The round's sets and rest
+    are the superset's, not the move's."""
+
+    move = serializers.PrimaryKeyRelatedField(queryset=Move.objects.all())
+
+    class Meta:
+        model = WorkoutDayExercise
+        fields = ["move", "reps", "duration_seconds", "notes"]
+
+
+class SupersetSerializer(serializers.ModelSerializer):
+    """Reads back as the round — name, sets, rest after each round. Its
+    moves aren't repeated here: they're in the day's `exercises`, each
+    pointing at this superset, which keeps one list of every move in the day.
+
+    Created WITH its moves, in one request, so a superset of fewer than two
+    never exists even between requests. Afterwards the round is edited here
+    and each move through the day's exercises endpoint, like any move.
+    """
+
+    exercises = SupersetMoveSerializer(many=True, write_only=True, required=False)
+
+    class Meta:
+        model = Superset
+        fields = ["id", "name", "sets", "rest_seconds", "notes", "exercises"]
+        read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        moves = attrs.get("exercises")
+        if self.instance is None:
+            if not moves or len(moves) < 2:
+                raise serializers.ValidationError({"exercises": "A superset needs at least two moves."})
+        elif moves is not None:
+            raise serializers.ValidationError(
+                {"exercises": "Edit a superset's moves through the day's exercises endpoint."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        moves = validated_data.pop("exercises")
+        day = validated_data["day"]
+        with transaction.atomic():
+            superset = Superset.objects.create(**validated_data)
+            # Appended after whatever the day already has, in the order given.
+            last = day.exercises.aggregate(last=Max("order"))["last"]
+            start = 0 if last is None else last + 1
+            WorkoutDayExercise.objects.bulk_create(
+                WorkoutDayExercise(day=day, superset=superset, order=start + index, **move)
+                for index, move in enumerate(moves)
+            )
+        return superset
 
 
 class DailyExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, serializers.ModelSerializer):
@@ -71,13 +158,19 @@ class DailyExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, 
 
 class WorkoutDaySerializer(serializers.ModelSerializer):
     """Used both to create a day (name + order) and to read it back with
-    its exercises nested (exercises are added via their own endpoint)."""
+    its exercises nested (exercises are added via their own endpoint).
+
+    `exercises` is every move of the day in order, superset moves included;
+    `supersets` holds each superset's round (sets, rest) for the moves that
+    point at it. A client groups them back together — see dayBlocks() in
+    front/src/utils/supersets.js."""
 
     exercises = WorkoutDayExerciseSerializer(many=True, read_only=True)
+    supersets = SupersetSerializer(many=True, read_only=True)
 
     class Meta:
         model = WorkoutDay
-        fields = ["id", "name", "order", "exercises"]
+        fields = ["id", "name", "order", "exercises", "supersets"]
         read_only_fields = ["id"]
 
 

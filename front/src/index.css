@@ -1086,7 +1086,8 @@
   .session-exercise-checkbox {
     @apply flex h-6 w-6 flex-none items-center justify-center rounded-none border-2 border-line text-transparent transition-colors;
   }
-  .session-exercise-row.is-checked .session-exercise-checkbox {
+  .session-exercise-row.is-checked .session-exercise-checkbox,
+  .superset-block.is-checked .session-exercise-checkbox {
     @apply border-success bg-success text-white;
   }
   .session-exercise-info {
@@ -1096,8 +1097,77 @@
     @apply bg-line;
   }
   .session-exercise-row.is-checked .exercise-name,
-  .session-exercise-row.is-checked .exercise-detail {
+  .session-exercise-row.is-checked .exercise-detail,
+  .superset-block.is-checked .superset-move .exercise-name,
+  .superset-block.is-checked .superset-move .exercise-detail {
     @apply text-muted line-through;
+  }
+
+  /* ---- Supersets ----
+     Moves done back to back as one round. One box with an accent rail
+     down its inline-start edge — the same in the builder, the member's
+     plan and the gym session — so the moves read as a single unit, and
+     numbered, because the order is part of the exercise. */
+  .superset-block {
+    @apply flex flex-col gap-2 border border-line bg-surface p-3;
+    border-inline-start: 4px solid var(--color-accent);
+  }
+  .superset-head {
+    @apply flex items-start justify-between gap-2;
+  }
+  .superset-heading {
+    @apply flex min-w-0 flex-1 flex-col gap-0.5;
+  }
+  .superset-title {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  .superset-badge {
+    @apply bg-accent px-2 py-0.5 text-xs font-bold text-accent-ink;
+  }
+  .superset-name {
+    @apply text-sm font-bold;
+  }
+  .superset-moves {
+    @apply m-0 flex list-none flex-col gap-1.5 p-0;
+  }
+  .superset-move {
+    @apply flex items-start gap-2 bg-neutral-soft px-3 py-2;
+  }
+  .superset-index {
+    @apply mt-0.5 flex h-6 w-6 flex-none items-center justify-center bg-ink text-xs font-bold text-canvas;
+  }
+  .superset-move-body {
+    @apply flex min-w-0 flex-1 items-start justify-between gap-2;
+  }
+  /* A move being edited inside the box: the row already frames the form. */
+  .superset-move-body > .exercise-add-form {
+    @apply mt-0 flex-1 border-t-0 pt-0;
+  }
+  .superset-form {
+    @apply mt-3 flex flex-col gap-2 border-t border-line pt-3;
+  }
+  /* Editing a round happens in the head of its own box, not under a list. */
+  .superset-form.is-edit {
+    @apply mt-0 border-t-0 pt-0;
+  }
+  .superset-form-title {
+    @apply text-sm font-bold;
+  }
+  .superset-form-round {
+    @apply grid grid-cols-1 gap-2 sm:grid-cols-2;
+  }
+  .superset-form-moves {
+    @apply m-0 flex list-none flex-col gap-2 p-0;
+  }
+  .superset-form-move {
+    @apply flex items-start gap-2;
+  }
+  .superset-form-move-fields {
+    @apply grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,11rem)];
+  }
+  /* The move search fills its column, like the dropdown under it. */
+  .superset-form-move-fields .move-combobox .input {
+    @apply w-full;
   }
 
   /* ---- Session progress, confirm and summary ----
@@ -1485,7 +1555,8 @@
     .assignment-row,
     .media-list-item,
     .nutrient-totals,
-    .allowed-group {
+    .allowed-group,
+    .superset-block {
       break-inside: avoid;
     }
     h1,

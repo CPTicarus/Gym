@@ -7,24 +7,42 @@ import MoveDetailModal from "../../components/moves/MoveDetailModal.jsx";
 import PrintButton from "../../components/common/PrintButton.jsx";
 import PrintHeader from "../../components/common/PrintHeader.jsx";
 import PlanHistoryList from "../../components/plans/PlanHistoryList.jsx";
+import SupersetFrame from "../../components/plans/SupersetFrame.jsx";
 import { WORKOUT_GOAL_LABELS } from "../../constants/planOptions.js";
 import { formatExerciseDetail } from "../../utils/planFormat.js";
+import { dayBlocks } from "../../utils/supersets.js";
 
-function ExerciseReadOnlyList({ exercises, emptyText, onViewMove }) {
-  if (!exercises || exercises.length === 0) {
+/** A move as a member reads it; tapping opens its description and media. */
+function MoveViewButton({ exercise, onViewMove }) {
+  return (
+    <button type="button" className="exercise-row-view-btn" onClick={() => onViewMove(exercise.move)}>
+      <span className="exercise-name">{exercise.move_detail?.name ?? "—"}</span>
+      <span className="muted exercise-detail">{formatExerciseDetail(exercise)}</span>
+      {exercise.notes && <span className="muted exercise-notes">{exercise.notes}</span>}
+    </button>
+  );
+}
+
+function ExerciseReadOnlyList({ exercises, supersets, emptyText, onViewMove }) {
+  const blocks = dayBlocks({ exercises, supersets });
+  if (blocks.length === 0) {
     return <p className="muted exercise-empty">{emptyText}</p>;
   }
   return (
     <ul className="exercise-list">
-      {exercises.map((ex) => (
-        <li key={ex.id} className="exercise-row">
-          <button type="button" className="exercise-row-view-btn" onClick={() => onViewMove(ex.move)}>
-            <span className="exercise-name">{ex.move_detail?.name ?? "—"}</span>
-            <span className="muted exercise-detail">{formatExerciseDetail(ex)}</span>
-            {ex.notes && <span className="muted exercise-notes">{ex.notes}</span>}
-          </button>
-        </li>
-      ))}
+      {blocks.map((block) =>
+        block.type === "superset" ? (
+          <SupersetFrame
+            key={block.key}
+            superset={block.superset}
+            renderMove={(exercise) => <MoveViewButton exercise={exercise} onViewMove={onViewMove} />}
+          />
+        ) : (
+          <li key={block.key} className="exercise-row">
+            <MoveViewButton exercise={block.exercise} onViewMove={onViewMove} />
+          </li>
+        )
+      )}
     </ul>
   );
 }
@@ -133,6 +151,7 @@ export default function MyWorkoutPlansPage() {
                       <h4 className="day-block-title">{day.name}</h4>
                       <ExerciseReadOnlyList
                         exercises={day.exercises}
+                        supersets={day.supersets}
                         emptyText="حرکتی ثبت نشده."
                         onViewMove={setViewMoveId}
                       />

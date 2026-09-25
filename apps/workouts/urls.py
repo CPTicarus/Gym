@@ -6,6 +6,7 @@ from .views import (
     FinishWorkoutDayView,
     MyWorkoutSessionsView,
     MyWorkoutPlansView,
+    SupersetViewSet,
     WarmupExerciseViewSet,
     WorkoutAssignmentViewSet,
     WorkoutDayExerciseViewSet,
@@ -33,6 +34,11 @@ day_exercise_detail = WorkoutDayExerciseViewSet.as_view(
     {"get": "retrieve", "patch": "partial_update", "put": "update", "delete": "destroy"}
 )
 
+superset_list = SupersetViewSet.as_view({"get": "list", "post": "create"})
+superset_detail = SupersetViewSet.as_view(
+    {"get": "retrieve", "patch": "partial_update", "put": "update", "delete": "destroy"}
+)
+
 daily_list = DailyExerciseViewSet.as_view({"get": "list", "post": "create"})
 daily_detail = DailyExerciseViewSet.as_view(
     {"get": "retrieve", "patch": "partial_update", "put": "update", "delete": "destroy"}
@@ -55,6 +61,16 @@ urlpatterns = router.urls + [
         "workout-plans/<int:plan_pk>/days/<int:day_pk>/exercises/<int:pk>/",
         day_exercise_detail,
         name="plan-day-exercise-detail",
+    ),
+    path(
+        "workout-plans/<int:plan_pk>/days/<int:day_pk>/supersets/",
+        superset_list,
+        name="plan-day-superset-list",
+    ),
+    path(
+        "workout-plans/<int:plan_pk>/days/<int:day_pk>/supersets/<int:pk>/",
+        superset_detail,
+        name="plan-day-superset-detail",
     ),
 
     # Section 3: daily items
