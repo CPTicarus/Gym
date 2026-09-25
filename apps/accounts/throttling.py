@@ -1,4 +1,14 @@
-from rest_framework.throttling import SimpleRateThrottle
+from rest_framework.throttling import SimpleRateThrottle, UserRateThrottle
+
+
+class PasswordChangeRateThrottle(UserRateThrottle):
+    """Per account, for the same reason as LoginRateThrottle below: changing
+    a password means checking a guess at the current one, and a member's
+    may be a 4-digit PIN. Whoever picks up an unlocked phone shouldn't get
+    10,000 tries at learning it. Counts every attempt, successful or not —
+    nobody changes their password ten times an hour on purpose."""
+
+    scope = "password_change"
 
 
 class LoginRateThrottle(SimpleRateThrottle):

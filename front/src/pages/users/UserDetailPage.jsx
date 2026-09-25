@@ -16,6 +16,7 @@ import {
 import { PencilIcon, TrashIcon } from "../../components/common/icons.jsx";
 import JalaliDateInput from "../../components/common/JalaliDateInput.jsx";
 import EditUserModal from "../../components/users/EditUserModal.jsx";
+import ExtendMembershipButton, { extendedMessage } from "../../components/users/ExtendMembershipButton.jsx";
 import {
   ASSIGNMENT_STATUSES,
   assignmentBadgeClass,
@@ -103,6 +104,9 @@ export default function UserDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [toast, setToast] = useState(null);
+  // Shown inside the membership card rather than in the page-top toast:
+  // the button is down there, and so is the person who just pressed it.
+  const [extendMessage, setExtendMessage] = useState(null);
 
   const loadAssignments = useCallback(async () => {
     const [w, d, s] = await Promise.all([
@@ -139,10 +143,20 @@ export default function UserDetailPage() {
     };
   }, [userId, loadAssignments]);
 
+  function handleExtended(updated) {
+    setUser((prev) => ({ ...prev, ...updated }));
+    // The date inputs below mirror the saved dates, so they move too.
+    setStartDate(updated.membership_start_date ?? "");
+    setEndDate(updated.membership_end_date ?? "");
+    setSaveError(null);
+    setExtendMessage(extendedMessage(updated));
+  }
+
   async function handleSaveMembership(e) {
     e.preventDefault();
     setSaveError(null);
     setToast(null);
+    setExtendMessage(null);
     setIsSaving(true);
     try {
       const updated = await updateUser(userId, {
@@ -340,6 +354,14 @@ export default function UserDetailPage() {
               {user.is_membership_active ? "فعال" : "غیرفعال"}
             </span>
           </div>
+
+          {canEditMembership && (
+            <div className="membership-extend">
+              <ExtendMembershipButton member={user} onExtended={handleExtended} onError={setSaveError} />
+              <span className="muted text-xs">تمدید سریع بعد از پرداخت — یا تاریخ‌ها را دستی تنظیم کنید.</span>
+            </div>
+          )}
+          {extendMessage && <p className="success-text">{extendMessage}</p>}
 
           {canEditMembership ? (
             <form onSubmit={handleSaveMembership}>

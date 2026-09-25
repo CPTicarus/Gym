@@ -1,3 +1,4 @@
+import { sortByName } from "../utils/search.js";
 import axiosClient from "./axiosClient.js";
 
 export async function listMoves(params = {}) {
@@ -6,23 +7,20 @@ export async function listMoves(params = {}) {
 }
 
 /**
- * Every move, across all pages — the plan builders need the whole library
- * in one <select>, but DRF paginates at 20 and the backend doesn't expose
- * a page_size query param, so we walk the pages.
- *
- * Capped at 25 pages (~500 moves) so a runaway loop can't hang the page.
- * If a gym ever outgrows that, the better fix is a search-as-you-type
- * picker rather than raising the cap.
+ * The whole library, in Persian alphabetical order — the move library page
+ * and the plan builder's picker both filter it in the browser. The moves
+ * endpoint takes a page_size (see apps/pagination.py), so this is one
+ * request for any realistic library; the page walk is only a backstop,
+ * capped so a runaway loop can't hang the page.
  */
 export async function fetchAllMoves() {
   const all = [];
-  for (let page = 1; page <= 25; page += 1) {
-    const data = await listMoves({ page });
-    const results = data.results ?? data;
-    all.push(...results);
+  for (let page = 1; page <= 20; page += 1) {
+    const data = await listMoves({ page, page_size: 1000 });
+    all.push(...(data.results ?? data));
     if (!data.next) break;
   }
-  return all;
+  return sortByName(all);
 }
 
 export async function getMove(moveId) {

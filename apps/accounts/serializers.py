@@ -373,6 +373,41 @@ class SetPasswordSerializer(serializers.Serializer):
         return attrs
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    """Someone changing their OWN password — any role.
+
+    Unlike SetPasswordSerializer (staff replacing someone else's), this asks
+    for the current password first: a phone left unlocked on a bench
+    shouldn't be enough to take the account over for good. The new one is
+    held to the policy for the person's own role, so a member may choose a
+    PIN and staff may not.
+    """
+
+    current_password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True)
+
+    def validate_current_password(self, value):
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        if attrs["password"] == attrs["current_password"]:
+            raise serializers.ValidationError(
+                {"password": ["The new password is the same as the current one."]}
+            )
+        validate_password_for_role(attrs["password"], user.role, user=user)
+        return attrs
+
+
+class ExtendMembershipSerializer(serializers.Serializer):
+    """How many days to add. 30 unless said otherwise; capped at a year so
+    a stray extra zero can't hand out a decade."""
+
+    days = serializers.IntegerField(default=30, min_value=1, max_value=365)
+
+
 class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
     """What a logged-in user sees/edits about themselves. Role and membership
     dates are read-only here — those only change via admin/accounting actions.

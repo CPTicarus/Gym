@@ -22,8 +22,12 @@ function initials(user) {
  * Pass `to` to make the row a link into that user's detail page. It stays
  * optional so a context without a detail view (or without permission to
  * reach one) can still render the same row as plain markup.
+ *
+ * `actions` are buttons for the row (accounting's "+۳۰ روز"). They sit
+ * beside the row rather than in it: a button inside a link is invalid
+ * HTML, and a tap on it would open the member's page as well.
  */
-export default function UserListItem({ user, to, children }) {
+export default function UserListItem({ user, to, actions, children }) {
   const name = fullName(user);
 
   const inner = (
@@ -42,13 +46,19 @@ export default function UserListItem({ user, to, children }) {
     </>
   );
 
-  if (to) {
-    return (
-      <Link to={to} className="user-row user-row-link">
-        {inner}
-      </Link>
-    );
-  }
+  const row = to ? (
+    <Link to={to} className="user-row user-row-link">
+      {inner}
+    </Link>
+  ) : (
+    <div className="user-row">{inner}</div>
+  );
 
-  return <div className="user-row">{inner}</div>;
+  if (!actions) return row;
+  return (
+    <div className="user-row-with-actions">
+      {row}
+      <div className="user-row-actions">{actions}</div>
+    </div>
+  );
 }

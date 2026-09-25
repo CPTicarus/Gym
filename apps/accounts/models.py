@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
@@ -103,6 +104,26 @@ class User(AbstractUser):
         if not self.membership_end_date:
             return False
         return self.membership_end_date >= timezone.now().date()
+
+    def extend_membership(self, days):
+        """Add `days` to the membership — the front desk's "they've paid for
+        another month".
+
+        While it's still running, the days go on after the current end
+        date, so paying a few days early doesn't cost the member those
+        days. Once it has lapsed (or was never set), counting from the old
+        end date would hand over fewer days than were paid for, so the new
+        stretch starts today — and so does the start date, since that's
+        when this membership begins. "Today" is the same date
+        is_membership_active compares against.
+        """
+        today = timezone.now().date()
+        if self.is_membership_active:
+            self.membership_end_date += timedelta(days=days)
+        else:
+            self.membership_start_date = today
+            self.membership_end_date = today + timedelta(days=days)
+        self.save(update_fields=["membership_start_date", "membership_end_date", "updated_at"])
 
     # Small convenience properties so views/permissions/templates read
     # `user.is_trainer` instead of `user.role == User.Role.TRAINER` everywhere.

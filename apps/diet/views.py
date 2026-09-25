@@ -6,11 +6,11 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
 from apps.moves.permissions import IsTrainerOrAdminOrReadOnly
+from apps.pagination import LibraryPagination
 from apps.plan_copy import copy_name
 
 from .models import AllowedFood, DietAssignment, DietDay, DietItem, DietPlan, Food, Meal
@@ -29,15 +29,6 @@ from .serializers import (
 # member's page both read the same tree, and missing a level here is a
 # query per food.
 PLAN_PREFETCH = ["days__meals__items__food", "allowed_foods__food"]
-
-
-class FoodPagination(PageNumberPagination):
-    """The builder's food picker filters the whole library in the browser
-    (like the move picker), so it asks for everything at once with
-    ?page_size= rather than walking 20-row pages a request at a time."""
-
-    page_size_query_param = "page_size"
-    max_page_size = 1000
 
 
 class FoodViewSet(viewsets.ModelViewSet):
@@ -60,7 +51,7 @@ class FoodViewSet(viewsets.ModelViewSet):
     queryset = Food.objects.all()
     serializer_class = FoodSerializer
     permission_classes = [IsTrainerOrAdminOrReadOnly]
-    pagination_class = FoodPagination
+    pagination_class = LibraryPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["category"]
     search_fields = ["name", "alias"]

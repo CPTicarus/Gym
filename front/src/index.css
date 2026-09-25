@@ -674,6 +674,20 @@
   .user-row-date {
     @apply text-xs;
   }
+  /* A row with buttons beside it — accounting's "+۳۰ روز". Beside, not
+     inside: the row is a link (see UserListItem). */
+  .user-row-with-actions {
+    @apply flex items-center gap-2;
+  }
+  .user-row-with-actions > .user-row {
+    @apply min-w-0 flex-1;
+  }
+  .user-row-actions {
+    @apply flex flex-none items-center;
+  }
+  .membership-extend {
+    @apply mb-3 flex flex-wrap items-center gap-2;
+  }
   .pagination {
     @apply mt-4 flex items-center justify-between gap-3;
   }

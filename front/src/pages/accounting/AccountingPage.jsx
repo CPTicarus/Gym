@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { listAccountingMembers } from "../../api/accounting.js";
+import ExtendMembershipButton, { extendedMessage } from "../../components/users/ExtendMembershipButton.jsx";
 import UserListItem from "../../components/users/UserListItem.jsx";
 import { formatDate } from "../../utils/format.js";
 
@@ -13,6 +14,7 @@ export default function AccountingPage() {
   const [hasPrev, setHasPrev] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -37,6 +39,26 @@ export default function AccountingPage() {
     setPage(1);
   }, [search]);
 
+  // Updated in place rather than re-fetched: the list is sorted by end
+  // date, and a row jumping to another page the moment it's renewed would
+  // leave whoever pressed the button looking for it.
+  function handleExtended(updated) {
+    setError(null);
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === updated.id
+          ? {
+              ...m,
+              membership_start_date: updated.membership_start_date,
+              membership_end_date: updated.membership_end_date,
+              is_membership_active: updated.is_membership_active,
+            }
+          : m
+      )
+    );
+    setToast(extendedMessage(updated));
+  }
+
   useEffect(() => {
     const timeout = setTimeout(load, 250);
     return () => clearTimeout(timeout);
@@ -47,7 +69,10 @@ export default function AccountingPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">حسابداری</h1>
-          <p className="page-subtitle">وضعیت عضویت اعضا، مرتب‌شده بر اساس نزدیک‌ترین تاریخ انقضا.</p>
+          <p className="page-subtitle">
+            وضعیت عضویت اعضا، مرتب‌شده بر اساس نزدیک‌ترین تاریخ انقضا. «+ ۳۰ روز» بعد از پرداخت، یک ماه به عضویت
+            اضافه می‌کند.
+          </p>
         </div>
       </div>
 
@@ -63,6 +88,7 @@ export default function AccountingPage() {
       </div>
 
       {error && <p className="error-text">{error}</p>}
+      {toast && <p className="success-text">{toast}</p>}
 
       {isLoading ? (
         <p className="muted">در حال بارگذاری…</p>
@@ -74,7 +100,12 @@ export default function AccountingPage() {
         <>
           <div className="user-list">
             {members.map((m) => (
-              <UserListItem key={m.id} user={m} to={`/users/${m.id}`}>
+              <UserListItem
+                key={m.id}
+                user={m}
+                to={`/users/${m.id}`}
+                actions={<ExtendMembershipButton member={m} onExtended={handleExtended} onError={setError} />}
+              >
                 <span className={`badge ${m.is_membership_active ? "badge-success badge-live" : "badge-danger"}`}>
                   {m.is_membership_active ? "فعال" : "غیرفعال"}
                 </span>

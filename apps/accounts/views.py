@@ -1,11 +1,12 @@
 import mimetypes
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.http import FileResponse, Http404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -21,12 +22,14 @@ from .permissions import (
     IsStaff,
     IsTrainerOrAdmin,
 )
-from .throttling import LoginRateThrottle
+from .throttling import LoginRateThrottle, PasswordChangeRateThrottle
 from .serializers import (
     BodyMeasurementSerializer,
     BodyPhotoExampleSerializer,
     BodyPhotoSerializer,
+    ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
+    ExtendMembershipSerializer,
     HealthConditionSerializer,
     MemberEditSerializer,
     MeSerializer,
@@ -99,6 +102,29 @@ class MeView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
+class ChangePasswordView(APIView):
+    """The signed-in user changes their own password.
+
+      POST /api/auth/change-password/   {"current_password": "...", "password": "..."}
+
+    Any role. Needs the current password (see ChangePasswordSerializer) and
+    is rate-limited per account (PasswordChangeRateThrottle). JWTs are
+    stateless, so sessions already signed in — this one included — carry
+    on until their tokens expire; what changes is what it takes to sign in
+    next time.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PasswordChangeRateThrottle]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        request.user.set_password(serializer.validated_data["password"])
+        request.user.save(update_fields=["password"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """
     The staff dashboard's user directory. Every staff role can reach it,
@@ -119,6 +145,9 @@ class UserViewSet(viewsets.ModelViewSet):
       POST /api/users/{id}/set-password/   {"password": "..."} — same rule
              as UPDATE. Sets a new password; nobody can read the existing
              one, here or anywhere else (it's a one-way hash).
+
+      POST /api/users/{id}/extend-membership/   {"days": 30} optional — same
+             rule as UPDATE, members only. See User.extend_membership.
 
       GET /api/users/?role=trainer   meaningful for admin; others are already scoped to members
       GET /api/users/?search=jane
@@ -149,7 +178,7 @@ class UserViewSet(viewsets.ModelViewSet):
         # it silently falls through to the IsStaff default below.
         if self.action == "body_photos":
             return [IsTrainerOrAdmin()]
-        if self.action in ("create", "partial_update", "update", "set_password"):
+        if self.action in ("create", "partial_update", "update", "set_password", "extend_membership"):
             # IsAdminOrAccounting is the coarse gate (who may write at all);
             # CanManageUser is the per-record one (whose record they may
             # touch), and only the second can see the target.
@@ -194,6 +223,28 @@ class UserViewSet(viewsets.ModelViewSet):
         target.set_password(serializer.validated_data["password"])
         target.save(update_fields=["password"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"], url_path="extend-membership")
+    def extend_membership(self, request, pk=None):
+        """Add days to a member's membership — 30 unless the body says otherwise.
+
+          POST /api/users/{id}/extend-membership/   {"days": 30} (optional)
+
+        Same who-may rule as editing the record (admin, or accounting for a
+        member). Where the new days count from is User.extend_membership's
+        call. The row is locked for the update, so a double-click at the
+        front desk adds 60 days on purpose or not at all — never 30 twice
+        read off the same stale end date.
+        """
+        member = self.get_object()  # runs CanManageUser against this record
+        if not member.is_member:
+            raise ValidationError({"detail": "Only a member has a membership to extend."})
+        serializer = ExtendMembershipSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            member = User.objects.select_for_update().get(pk=member.pk)
+            member.extend_membership(serializer.validated_data["days"])
+        return Response(self.get_serializer(member).data)
 
     @action(detail=True, methods=["get"], url_path="body-photos")
     def body_photos(self, request, pk=None):

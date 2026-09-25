@@ -155,8 +155,9 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
-    # Only the login view throttles — the rest of the API sits behind JWT
-    # and doesn't need a global limit.
+    # Only the two views that check a password throttle — login, and
+    # changing your own — the rest of the API sits behind JWT and doesn't
+    # need a global limit.
     #
     # This exists because member passwords are allowed to be short: a
     # 4-digit PIN is 10,000 guesses, which is seconds of scripted traffic
@@ -166,6 +167,8 @@ REST_FRAMEWORK = {
     # apps/accounts/throttling.py for why that matters in a gym.
     "DEFAULT_THROTTLE_RATES": {
         "login": config("LOGIN_THROTTLE_RATE", default="10/min"),
+        # Changing your own password — see PasswordChangeRateThrottle.
+        "password_change": config("PASSWORD_CHANGE_THROTTLE_RATE", default="10/hour"),
     },
 }
 

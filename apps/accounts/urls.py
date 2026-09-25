@@ -7,6 +7,7 @@ from .views import (
     BodyPhotoExampleViewSet,
     BodyPhotoFileView,
     BodyPhotoViewSet,
+    ChangePasswordView,
     CustomTokenObtainPairView,
     HealthConditionViewSet,
     MeView,
@@ -29,6 +30,7 @@ urlpatterns = [
     path("auth/login/", CustomTokenObtainPairView.as_view(), name="auth-login"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="auth-refresh"),
     path("auth/me/", MeView.as_view(), name="auth-me"),
+    path("auth/change-password/", ChangePasswordView.as_view(), name="auth-change-password"),
     path("auth/staff/", StaffCreateView.as_view(), name="auth-staff-create"),
     # The only route that reads a body photo back — see BodyPhotoFileView.
     path("body-photos/<int:pk>/file/", BodyPhotoFileView.as_view(), name="body-photo-file"),

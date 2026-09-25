@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import BodyPhotoExampleManager from "../../components/body/BodyPhotoExampleManager.jsx";
+import ChangePasswordForm from "../../components/users/ChangePasswordForm.jsx";
 import { ROLE_LABELS } from "../../constants/roles.js";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -99,6 +100,8 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <ChangePasswordForm />
 
       {/* Gym-wide, not part of this account — hence the separate card and
           its own heading. Trainers and admins set these; everyone else

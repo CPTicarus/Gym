@@ -7,6 +7,8 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
+from apps.pagination import LibraryPagination
+
 from .models import Move, MoveMedia, media_size_limits
 from .permissions import IsTrainerOrAdminOrReadOnly
 from .serializers import MoveListSerializer, MoveMediaSerializer, MoveSerializer
@@ -23,10 +25,12 @@ class MoveViewSet(viewsets.ModelViewSet):
     Filter/search:
       ?category=chest&difficulty=beginner
       ?search=press
+      ?page_size=1000        the whole library in one request (see LibraryPagination)
     """
 
     queryset = Move.objects.all().select_related("created_by").prefetch_related("media")
     permission_classes = [IsTrainerOrAdminOrReadOnly]
+    pagination_class = LibraryPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["category", "difficulty"]
     search_fields = ["name", "alias", "description"]

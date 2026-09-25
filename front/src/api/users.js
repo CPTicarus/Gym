@@ -41,3 +41,14 @@ export async function createUser(payload) {
 export async function setUserPassword(userId, password) {
   await axiosClient.post(`/users/${userId}/set-password/`, { password });
 }
+
+/**
+ * Add days (30 by default) to a member's membership — admin or accounting.
+ * The server decides where they count from: after the current end date
+ * while it's still running, from today once it has lapsed (see
+ * User.extend_membership). Returns the updated user.
+ */
+export async function extendMembership(userId, days = 30) {
+  const { data } = await axiosClient.post(`/users/${userId}/extend-membership/`, { days });
+  return data;
+}
