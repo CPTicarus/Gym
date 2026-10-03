@@ -5,7 +5,7 @@ and only override what actually differs (DEBUG, DATABASES, etc).
 from datetime import timedelta
 from pathlib import Path
 
-from decouple import Csv, config
+from decouple import Choices, Csv, config
 
 # gym_backend/settings/base.py -> up 3 levels = project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -83,6 +83,16 @@ AUTH_PASSWORD_VALIDATORS = [
 # wants a longer member PIN raises this without touching code.
 MEMBER_PASSWORD_MIN_LENGTH = config("MEMBER_PASSWORD_MIN_LENGTH", default=4, cast=int)
 
+# How member accounts come into being. One workflow per gym, chosen when
+# it's set up -- apps/accounts/signup.py has everything that follows from it:
+#   staff  the front desk creates every member account, and public sign-up
+#          is closed. The default, and how this app has always worked.
+#   self   people sign themselves up from the login page and enter their
+#          measurements; a trainer then assigns them a plan, which they
+#          can't open until they've paid.
+# Anything else stops the app at startup rather than quietly picking one.
+MEMBER_SIGNUP = config("MEMBER_SIGNUP", default="staff", cast=Choices(["staff", "self"]))
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -156,7 +166,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     # Only the two views that check a password throttle — login, and
-    # changing your own — the rest of the API sits behind JWT and doesn't
+    # changing your own — plus self sign-up, the one way to create an
+    # account without one. The rest of the API sits behind JWT and doesn't
     # need a global limit.
     #
     # This exists because member passwords are allowed to be short: a
@@ -169,6 +180,8 @@ REST_FRAMEWORK = {
         "login": config("LOGIN_THROTTLE_RATE", default="10/min"),
         # Changing your own password — see PasswordChangeRateThrottle.
         "password_change": config("PASSWORD_CHANGE_THROTTLE_RATE", default="10/hour"),
+        # Self sign-up, per IP address — see RegisterRateThrottle.
+        "register": config("REGISTER_THROTTLE_RATE", default="20/hour"),
     },
 }
 

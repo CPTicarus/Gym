@@ -8,7 +8,7 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
+from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin, PlansUnlocked
 from apps.moves.permissions import IsTrainerOrAdminOrReadOnly
 from apps.pagination import LibraryPagination
 from apps.plan_copy import copy_name
@@ -276,10 +276,13 @@ class MyDietPlansView(generics.ListAPIView):
 
       GET /api/my-diet-plans/
       GET /api/my-diet-plans/?status=active
+
+    402 instead, in a self sign-up gym, until the member has paid
+    (PlansUnlocked).
     """
 
     serializer_class = DietAssignmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, PlansUnlocked]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status"]
 

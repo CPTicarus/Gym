@@ -1,7 +1,7 @@
 import importlib
 
 from django.contrib.auth import get_user_model
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -178,6 +178,10 @@ class DietPlanKindTests(APITestCase):
             [(self.egg.pk, 2, "در روز")],
         )
 
+    # Pinned: this is about what a member sees, not whether they may see
+    # it -- in a self sign-up gym an unpaid member gets a 402 instead
+    # (apps/accounts/tests.py, PlanLockTests).
+    @override_settings(MEMBER_SIGNUP="staff")
     def test_member_sees_foods_nested_in_their_plan(self):
         allowed = DietPlan.objects.create(name="a", kind="allowed")
         AllowedFood.objects.create(plan=allowed, food=self.egg)

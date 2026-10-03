@@ -18,6 +18,15 @@ function IconBase({ size = 22, children, ...props }) {
   );
 }
 
+export function LockIcon(props) {
+  return (
+    <IconBase {...props}>
+      <rect x="4" y="11" width="16" height="10" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </IconBase>
+  );
+}
+
 export function DumbbellIcon(props) {
   return (
     <IconBase {...props}>

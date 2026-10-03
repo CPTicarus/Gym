@@ -1340,6 +1340,11 @@
   .checkbox-field {
     @apply mb-4 flex items-center gap-2 text-sm;
   }
+  /* The dashboard's "waiting for a plan" toggle, sitting in the filter
+     bar beside the search box rather than under a form field. */
+  .filter-checkbox {
+    @apply mb-0 flex-none whitespace-nowrap;
+  }
 
   /* ---- User detail ---- */
   .user-row-link {
@@ -1428,6 +1433,35 @@
   .form-subtitle {
     @apply mb-6 text-sm text-muted;
   }
+  /* "No account? Sign up" under the login form, and its mirror under the
+     sign-up form. Only rendered in a self sign-up gym. */
+  .auth-switch {
+    @apply mt-5 text-center text-sm text-muted;
+  }
+  .auth-switch a {
+    @apply font-semibold text-accent-dark underline underline-offset-4;
+  }
+
+  /* ---- Self sign-up: the welcome note on "my body" and the page that
+     stands in for a member's plans until they've paid ---- */
+  .notice {
+    @apply mb-5 border-2 border-accent bg-accent-soft px-4 py-3 text-sm leading-7;
+  }
+  .notice-title {
+    @apply mb-1 font-bold;
+  }
+  .notice a {
+    @apply font-semibold text-accent-dark underline underline-offset-4;
+  }
+  .plan-lock {
+    @apply flex flex-col items-center gap-3 px-6 py-10 text-center;
+  }
+  .plan-lock-icon {
+    @apply flex h-14 w-14 items-center justify-center bg-accent-soft text-accent-dark;
+  }
+  .plan-lock-text {
+    @apply max-w-[460px] text-sm leading-7;
+  }
 
   /* =====================================================================
      Desktop upgrade (min-width: 860px) — sidebar + persistent topbar
@@ -1491,8 +1525,13 @@
     .auth-screen {
       @apply flex-row;
     }
+    /* min-w-0: a flex item won't shrink below its content by default, and
+       the ticker's track is as wide as all its text in one line (w-max),
+       ~1600px. Without it this panel grew to fit, and below ~1940px wide
+       the form was pushed off the side of the screen. The strip clips
+       itself (overflow-hidden), so it can be as narrow as the panel. */
     .auth-brand {
-      @apply flex flex-1 flex-col items-stretch justify-center p-12 pb-0;
+      @apply flex min-w-0 flex-1 flex-col items-stretch justify-center p-12 pb-0;
     }
     .auth-marquee {
       @apply -mx-12 mt-12;

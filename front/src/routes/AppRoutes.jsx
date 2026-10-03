@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import AppLayout from "../layouts/AppLayout.jsx";
 import AccountingPage from "../pages/accounting/AccountingPage.jsx";
 import LoginPage from "../pages/auth/LoginPage.jsx";
+import SignupPage from "../pages/auth/SignupPage.jsx";
 import BlogFormPage from "../pages/blog/BlogFormPage.jsx";
 import BlogListPage from "../pages/blog/BlogListPage.jsx";
 import BlogPostPage from "../pages/blog/BlogPostPage.jsx";
@@ -25,6 +26,7 @@ import SettingsPage from "../pages/settings/SettingsPage.jsx";
 import SupplementBuilderPage from "../pages/supplements/SupplementBuilderPage.jsx";
 import SupplementListPage from "../pages/supplements/SupplementListPage.jsx";
 import UserDetailPage from "../pages/users/UserDetailPage.jsx";
+import PlansGate from "./PlansGate.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
 // Index route ("/") sends each role to its own home instead of a fixed
@@ -38,6 +40,8 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Only does anything in a self sign-up gym — see SignupPage. */}
+      <Route path="/signup" element={<SignupPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
@@ -71,10 +75,14 @@ export default function AppRoutes() {
 
           {/* Member-facing read-only views of what's assigned to them */}
           <Route element={<ProtectedRoute allowedRoles={["member"]} />}>
-            <Route path="/my-plans" element={<MyWorkoutPlansPage />} />
-            <Route path="/my-plans/session/:assignmentId" element={<GymSessionPage />} />
-            <Route path="/my-diet" element={<MyDietPlansPage />} />
-            <Route path="/my-supplements" element={<MySupplementsPage />} />
+            {/* Closed until paid in a self sign-up gym; see PlansGate. */}
+            <Route element={<PlansGate />}>
+              <Route path="/my-plans" element={<MyWorkoutPlansPage />} />
+              <Route path="/my-plans/session/:assignmentId" element={<GymSessionPage />} />
+              <Route path="/my-diet" element={<MyDietPlansPage />} />
+              <Route path="/my-supplements" element={<MySupplementsPage />} />
+            </Route>
+            {/* Never locked: measurements are what the plan is written from. */}
             <Route path="/my-body" element={<MyBodyPage />} />
           </Route>
 

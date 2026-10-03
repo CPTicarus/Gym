@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -157,6 +158,10 @@ class SupersetTests(APITestCase):
         self.assertNotEqual(copied_id, Superset.objects.filter(day=self.day).get().pk)
         self.assertEqual({e["superset"] for e in day["exercises"]}, {copied_id})
 
+    # Pinned: this is about what a member sees, not whether they may see
+    # it -- in a self sign-up gym an unpaid member gets a 402 instead
+    # (apps/accounts/tests.py, PlanLockTests).
+    @override_settings(MEMBER_SIGNUP="staff")
     def test_member_sees_supersets_on_the_active_day(self):
         self._superset()
         member = make_user(User.Role.MEMBER, "member")

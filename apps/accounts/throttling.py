@@ -1,4 +1,4 @@
-from rest_framework.throttling import SimpleRateThrottle, UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle, UserRateThrottle
 
 
 class PasswordChangeRateThrottle(UserRateThrottle):
@@ -40,3 +40,16 @@ class LoginRateThrottle(SimpleRateThrottle):
             "scope": self.scope,
             "ident": username or self.get_ident(request),
         }
+
+
+class RegisterRateThrottle(AnonRateThrottle):
+    """Self sign-up, counted per IP address.
+
+    The choice LoginRateThrottle turns down, made here for want of another:
+    a sign-up has no account yet to count against. So the default rate is
+    loose enough for a crowd behind one address -- the gym's WiFi, or a
+    mobile carrier putting thousands of phones behind each public IP -- and
+    still stops a script opening accounts by the thousand.
+    """
+
+    scope = "register"

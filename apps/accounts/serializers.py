@@ -147,6 +147,9 @@ class UserSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
     or a member looking up a trainer's basic info."""
 
     is_membership_active = serializers.BooleanField(read_only=True)
+    # So staff can see which members can't open their plans until they pay.
+    # Always false in a staff-managed gym (see User.plans_locked).
+    plans_locked = serializers.BooleanField(read_only=True)
     # Read-only here on purpose: a trainer needs to know about a bad knee
     # before writing a programme, but it's the member's own health record
     # and only they edit it (see HealthConditionViewSet).
@@ -158,12 +161,13 @@ class UserSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
             "id", "username", "national_id", "email", "first_name", "last_name",
             "role", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
-            "is_membership_active", "height_cm", "latest_weight_kg", "latest_waist_cm",
-            "latest_hips_cm", "latest_chest_cm", "latest_arm_cm", "latest_thigh_cm",
-            "whr", "whtr", "bmi", "health_conditions", "created_at",
+            "is_membership_active", "plans_locked", "height_cm", "latest_weight_kg",
+            "latest_waist_cm", "latest_hips_cm", "latest_chest_cm", "latest_arm_cm",
+            "latest_thigh_cm", "whr", "whtr", "bmi", "health_conditions", "created_at",
         ]
         read_only_fields = [
-            "id", "role", "national_id", "created_at", "is_membership_active", "height_cm",
+            "id", "role", "national_id", "created_at", "is_membership_active", "plans_locked",
+            "height_cm",
         ]
 
 
@@ -177,6 +181,7 @@ class UserAdminSerializer(_NationalIdFieldMixin, _BodyMetricsFieldsMixin, serial
     behalf by an admin."""
 
     is_membership_active = serializers.BooleanField(read_only=True)
+    plans_locked = serializers.BooleanField(read_only=True)
     health_conditions = HealthConditionSerializer(many=True, read_only=True)
 
     class Meta:
@@ -185,11 +190,13 @@ class UserAdminSerializer(_NationalIdFieldMixin, _BodyMetricsFieldsMixin, serial
             "id", "username", "national_id", "email", "first_name", "last_name",
             "role", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
-            "is_membership_active", "height_cm", "latest_weight_kg", "latest_waist_cm",
-            "latest_hips_cm", "latest_chest_cm", "latest_arm_cm", "latest_thigh_cm",
-            "whr", "whtr", "bmi", "health_conditions", "is_active", "created_at",
+            "is_membership_active", "plans_locked", "height_cm", "latest_weight_kg",
+            "latest_waist_cm", "latest_hips_cm", "latest_chest_cm", "latest_arm_cm",
+            "latest_thigh_cm", "whr", "whtr", "bmi", "health_conditions", "is_active", "created_at",
         ]
-        read_only_fields = ["id", "username", "created_at", "is_membership_active", "height_cm"]
+        read_only_fields = [
+            "id", "username", "created_at", "is_membership_active", "plans_locked", "height_cm",
+        ]
 
 
 class MemberEditSerializer(_NationalIdFieldMixin, serializers.ModelSerializer):
@@ -205,15 +212,18 @@ class MemberEditSerializer(_NationalIdFieldMixin, serializers.ModelSerializer):
     """
 
     is_membership_active = serializers.BooleanField(read_only=True)
+    # Echoed back so a page that just changed the dates knows whether that
+    # unlocked the member's plans.
+    plans_locked = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = User
         fields = [
             "id", "username", "national_id", "email", "first_name", "last_name",
             "role", "phone_number", "date_of_birth", "gender",
-            "membership_start_date", "membership_end_date", "is_membership_active",
+            "membership_start_date", "membership_end_date", "is_membership_active", "plans_locked",
         ]
-        read_only_fields = ["id", "username", "role", "is_membership_active"]
+        read_only_fields = ["id", "username", "role", "is_membership_active", "plans_locked"]
 
     def validate_phone_number(self, value):
         return normalize_digits(value).strip()
@@ -291,7 +301,13 @@ class UserCreateSerializer(_RequiredIdentityFieldsMixin, serializers.ModelSerial
 
 class RegisterSerializer(_RequiredIdentityFieldsMixin, serializers.ModelSerializer):
     """Public self sign-up. Always creates a MEMBER — trainer/admin/accounting
-    accounts are created by an admin via StaffCreateSerializer instead."""
+    accounts are created by an admin via StaffCreateSerializer instead.
+
+    Gender and date of birth are asked for here, both optional. In a gym
+    where the front desk makes the account, that's where they get filled
+    in; someone signing themselves up has no front desk to ask, and the
+    member's own pages don't edit them.
+    """
 
     password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
@@ -300,7 +316,7 @@ class RegisterSerializer(_RequiredIdentityFieldsMixin, serializers.ModelSerializ
         model = User
         fields = [
             "username", "national_id", "email", "password", "password_confirm",
-            "first_name", "last_name", "phone_number",
+            "first_name", "last_name", "phone_number", "gender", "date_of_birth",
         ]
 
     def validate(self, attrs):
@@ -416,6 +432,11 @@ class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
     over time rather than as a single value."""
 
     is_membership_active = serializers.BooleanField(read_only=True)
+    # Self sign-up only (see apps/accounts/signup.py): whether the plan
+    # pages are closed to this member until they pay, and if so, whether a
+    # trainer has assigned anything yet — see get_plan_ready.
+    plans_locked = serializers.BooleanField(read_only=True)
+    plan_ready = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -423,9 +444,9 @@ class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
             "id", "username", "national_id", "email", "first_name", "last_name",
             "role", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
-            "is_membership_active", "height_cm", "latest_weight_kg", "latest_waist_cm",
-            "latest_hips_cm", "latest_chest_cm", "latest_arm_cm", "latest_thigh_cm",
-            "whr", "whtr", "bmi",
+            "is_membership_active", "plans_locked", "plan_ready", "height_cm",
+            "latest_weight_kg", "latest_waist_cm", "latest_hips_cm", "latest_chest_cm",
+            "latest_arm_cm", "latest_thigh_cm", "whr", "whtr", "bmi",
         ]
         # national_id is shown but not self-editable: correcting one is an
         # identity change, which belongs with an admin, not with the person
@@ -434,6 +455,27 @@ class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
             "id", "username", "national_id", "role",
             "membership_start_date", "membership_end_date", "is_membership_active",
         ]
+
+    def get_plan_ready(self, user):
+        """While plans are locked, whether there's an active one of any kind
+        waiting behind the lock — the difference between "your plan is
+        ready, pay to open it" and "your trainer is still writing it".
+        Whether one exists, never what's in it. Null when nothing is
+        locked, where the question doesn't arise.
+
+        Through the reverse relations rather than the three plan apps'
+        models, all of which already import this one.
+        """
+        if not user.plans_locked:
+            return None
+        return any(
+            assignments.filter(status="active").exists()
+            for assignments in (
+                user.workout_assignments,
+                user.diet_assignments,
+                user.supplement_assignments,
+            )
+        )
 
     def validate_height_cm(self, value):
         if value is not None and value <= 0:

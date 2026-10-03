@@ -6,6 +6,10 @@ const baseURL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api"
 
 const axiosClient = axios.create({ baseURL });
 
+// Fired when a plan endpoint answers 402: in a self sign-up gym the member
+// hasn't paid (PlansUnlocked on the backend). AuthContext listens for it.
+export const PAYMENT_REQUIRED_EVENT = "gym:payment-required";
+
 axiosClient.interceptors.request.use((config) => {
   const { access } = getTokens();
   if (access) {
@@ -55,6 +59,14 @@ axiosClient.interceptors.response.use(
           window.location.href = "/login";
         }
       }
+    }
+
+    // The profile the app holds can be behind the server here, e.g. a
+    // membership that lapsed after it was fetched. Saying so lets
+    // AuthContext re-read it, so the plan pages show the locked page
+    // instead of a load error.
+    if (response?.status === 402) {
+      window.dispatchEvent(new Event(PAYMENT_REQUIRED_EVENT));
     }
 
     return Promise.reject(error);

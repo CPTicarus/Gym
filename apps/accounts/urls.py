@@ -11,6 +11,7 @@ from .views import (
     CustomTokenObtainPairView,
     HealthConditionViewSet,
     MeView,
+    PublicConfigView,
     RegisterView,
     StaffCreateView,
     UserViewSet,
@@ -26,6 +27,8 @@ router.register("me/body-photos", BodyPhotoViewSet, basename="body-photo")
 router.register("body-photo-examples", BodyPhotoExampleViewSet, basename="body-photo-example")
 
 urlpatterns = [
+    # Read by the app before anyone signs in — see PublicConfigView.
+    path("config/", PublicConfigView.as_view(), name="public-config"),
     path("auth/register/", RegisterView.as_view(), name="auth-register"),
     path("auth/login/", CustomTokenObtainPairView.as_view(), name="auth-login"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="auth-refresh"),

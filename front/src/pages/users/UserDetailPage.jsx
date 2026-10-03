@@ -355,6 +355,15 @@ export default function UserDetailPage() {
             </span>
           </div>
 
+          {/* Self sign-up gyms only (User.plans_locked): the member can't
+              open any plan until a payment is recorded here. */}
+          {user.plans_locked && (
+            <p className="muted plan-section-hint">
+              این عضو تا ثبت پرداخت، برنامه‌هایش را نمی‌بیند.
+              {canEditMembership && " بعد از دریافت پرداخت، عضویت را تمدید کنید تا باز شوند."}
+            </p>
+          )}
+
           {canEditMembership && (
             <div className="membership-extend">
               <ExtendMembershipButton member={user} onExtended={handleExtended} onError={setSaveError} />

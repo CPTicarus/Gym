@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listUsers } from "../../api/users.js";
 import AddUserModal from "../../components/users/AddUserModal.jsx";
 import UserListItem from "../../components/users/UserListItem.jsx";
+import { useAppConfig } from "../../hooks/useAppConfig.js";
 import { useAuth } from "../../hooks/useAuth.js";
 
 const ROLE_FILTER_OPTIONS = [
@@ -19,10 +20,14 @@ export default function DashboardPage() {
   // Member intake is a front-desk/billing job — trainers get read-only
   // access here. Flip this to include "trainer" if your gym works differently.
   const canAddUser = isAdmin || role === "accounting";
+  // In a self sign-up gym nobody walks a new member over to a trainer, so
+  // the directory doubles as the queue of people still waiting for a plan.
+  const { isSelfSignup } = useAppConfig();
 
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [waitingOnly, setWaitingOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
@@ -37,7 +42,10 @@ export default function DashboardPage() {
     try {
       const params = { page };
       if (search) params.search = search;
-      if (isAdmin && roleFilter) params.role = roleFilter;
+      // Members with no active workout plan, longest-waiting first. Only
+      // members ever wait, so a role picked earlier doesn't apply.
+      if (waitingOnly) params.waiting_for_plan = "true";
+      else if (isAdmin && roleFilter) params.role = roleFilter;
       const data = await listUsers(params);
       const results = data.results ?? data;
       setUsers(results);
@@ -49,12 +57,12 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, roleFilter, page, isAdmin]);
+  }, [search, roleFilter, waitingOnly, page, isAdmin]);
 
   // Any filter change should reset back to page 1.
   useEffect(() => {
     setPage(1);
-  }, [search, roleFilter]);
+  }, [search, roleFilter, waitingOnly]);
 
   useEffect(() => {
     const timeout = setTimeout(load, 250); // debounce search typing
@@ -66,7 +74,13 @@ export default function DashboardPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">داشبورد</h1>
-          <p className="page-subtitle">{isAdmin ? "فهرست همهٔ کاربران باشگاه." : "فهرست اعضای باشگاه."}</p>
+          <p className="page-subtitle">
+            {waitingOnly
+              ? "اعضایی که هنوز برنامه تمرینی فعالی ندارند؛ هر که زودتر ثبت‌نام کرده، اول."
+              : isAdmin
+                ? "فهرست همهٔ کاربران باشگاه."
+                : "فهرست اعضای باشگاه."}
+          </p>
         </div>
         {canAddUser && (
           <button className="btn btn-primary" onClick={() => setIsAddOpen(true)}>
@@ -84,7 +98,7 @@ export default function DashboardPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        {isAdmin && (
+        {isAdmin && !waitingOnly && (
           <select className="select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
             {ROLE_FILTER_OPTIONS.map(([value, label]) => (
               <option key={value} value={value}>
@@ -92,6 +106,12 @@ export default function DashboardPage() {
               </option>
             ))}
           </select>
+        )}
+        {isSelfSignup && (
+          <label className="checkbox-field filter-checkbox">
+            <input type="checkbox" checked={waitingOnly} onChange={(e) => setWaitingOnly(e.target.checked)} />
+            <span>فقط اعضای منتظر برنامه</span>
+          </label>
         )}
       </div>
 
@@ -101,7 +121,7 @@ export default function DashboardPage() {
         <p className="muted">در حال بارگذاری کاربران…</p>
       ) : users.length === 0 ? (
         <div className="empty-state">
-          <p>کاربری با این مشخصات پیدا نشد.</p>
+          <p>{waitingOnly && !search ? "کسی منتظر برنامه نیست." : "کاربری با این مشخصات پیدا نشد."}</p>
         </div>
       ) : (
         <>
@@ -113,6 +133,14 @@ export default function DashboardPage() {
                     {u.is_membership_active ? "فعال" : "غیرفعال"}
                   </span>
                 )}
+                {/* Signed up, never paid — their plans stay locked until
+                    they do (User.plans_locked; never set in a
+                    staff-managed gym). */}
+                {u.plans_locked && !u.membership_end_date && (
+                  <span className="badge badge-accent">پرداخت‌نشده</span>
+                )}
+                {/* Height and weight are what a plan is written from. */}
+                {waitingOnly && u.bmi == null && <span className="badge badge-neutral">بدون قد و وزن</span>}
               </UserListItem>
             ))}
           </div>

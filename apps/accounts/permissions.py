@@ -1,4 +1,8 @@
+from rest_framework import status
+from rest_framework.exceptions import APIException
 from rest_framework.permissions import SAFE_METHODS, BasePermission
+
+from .signup import self_signup_enabled
 
 
 class IsAdmin(BasePermission):
@@ -112,3 +116,37 @@ class CanManageUser(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return can_manage_user(request.user, obj)
+
+
+class SelfSignupOpen(BasePermission):
+    """The public sign-up door, open only in a gym that takes self sign-ups
+    (see apps/accounts/signup.py). Everywhere else the front desk makes
+    member accounts, and anyone who finds the endpoint gets a 403."""
+
+    message = "Self sign-up is closed: this gym creates member accounts at the front desk."
+
+    def has_permission(self, request, view):
+        return self_signup_enabled()
+
+
+class PaymentRequired(APIException):
+    status_code = status.HTTP_402_PAYMENT_REQUIRED
+    default_detail = "Your plans unlock once your payment has been recorded."
+    default_code = "payment_required"
+
+
+class PlansUnlocked(BasePermission):
+    """Holds a member's plans back until they've paid, in a self sign-up
+    gym (User.plans_locked). Goes on every member endpoint that returns a
+    plan or acts on one.
+
+    Raises a 402 instead of returning False, which DRF would turn into a
+    403 like every other refusal. The app has to tell "you haven't paid"
+    apart from "you may not", because only the first gets the page that
+    says how to unlock them.
+    """
+
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.plans_locked:
+            raise PaymentRequired()
+        return True

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   addHealthCondition,
@@ -21,6 +22,7 @@ import { useAuth } from "../../hooks/useAuth.js";
 import { getBmiCategory, getWhrCategory, getWhtrCategory } from "../../utils/bmi.js";
 import { formatDate } from "../../utils/format.js";
 import { toPersianDigits } from "../../utils/jalali.js";
+import { planLockStage } from "../../utils/planAccess.js";
 
 function formatApiError(data) {
   if (typeof data === "string") return data;
@@ -194,6 +196,10 @@ export default function MyBodyPage() {
   }
 
   const flagged = new Set(conditions.map((c) => c.condition));
+  // Null unless this member's plans are locked (self sign-up gyms only).
+  // For a newcomer this page is where joining starts, so the notes below
+  // are for them; someone whose membership has lapsed gets none here.
+  const lockStage = planLockStage(user);
 
   return (
     <div>
@@ -205,6 +211,26 @@ export default function MyBodyPage() {
           </p>
         </div>
       </div>
+
+      {lockStage === "measurements" && (
+        <div className="notice">
+          <p className="notice-title">به باشگاه خوش آمدید!</p>
+          <p>
+            مربی برنامه‌تان را از روی همین صفحه می‌نویسد. قد و وزنتان را حتماً ثبت کنید. اندازه‌های دیگر، عکس‌های
+            بدن و مشکلات پزشکی هم کمک می‌کنند برنامه دقیق‌تر باشد.
+          </p>
+        </div>
+      )}
+      {(lockStage === "preparing" || lockStage === "ready") && (
+        <div className="notice">
+          <p>
+            {lockStage === "ready"
+              ? "برنامه شما آماده است."
+              : "قد و وزن شما ثبت شد و مربی می‌تواند برنامه‌تان را بنویسد."}{" "}
+            <Link to="/my-plans">وضعیت برنامه</Link>
+          </p>
+        </div>
+      )}
 
       {error && <p className="error-text">{error}</p>}
 

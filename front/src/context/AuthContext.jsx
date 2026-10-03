@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
 import { fetchMe, loginRequest, updateMe } from "../api/auth.js";
+import { PAYMENT_REQUIRED_EVENT } from "../api/axiosClient.js";
 import { clearTokens, getTokens, setTokens } from "../api/tokenStorage.js";
 import { fullName } from "../utils/format.js";
 import { clearGreeting, ensureGreeting, formatGreeting, pickGreeting } from "../utils/greeting.js";
@@ -84,6 +85,19 @@ export function AuthProvider({ children }) {
     const profile = await fetchMe();
     setUser(profile);
     return profile;
+  }, []);
+
+  // A plan endpoint said the member hasn't paid (see axiosClient). Re-read
+  // the profile so `plans_locked` catches up, and PlansGate shows the
+  // locked page instead of whatever was about to fail.
+  useEffect(() => {
+    function handlePaymentRequired() {
+      fetchMe()
+        .then(setUser)
+        .catch(() => {});
+    }
+    window.addEventListener(PAYMENT_REQUIRED_EVENT, handlePaymentRequired);
+    return () => window.removeEventListener(PAYMENT_REQUIRED_EVENT, handlePaymentRequired);
   }, []);
 
   const value = useMemo(

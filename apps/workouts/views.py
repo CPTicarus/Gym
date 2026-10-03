@@ -7,7 +7,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
+from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin, PlansUnlocked
 from apps.plan_copy import copy_name
 
 from .models import (
@@ -306,10 +306,13 @@ class MyWorkoutPlansView(generics.ListAPIView):
 
       GET /api/my-workout-plans/
       GET /api/my-workout-plans/?status=active
+
+    402 instead, in a self sign-up gym, until the member has paid
+    (PlansUnlocked).
     """
 
     serializer_class = WorkoutAssignmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, PlansUnlocked]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status"]
 
@@ -329,9 +332,12 @@ class FinishWorkoutDayView(APIView):
     session view shows next time (wraps to the first day after the last).
 
       POST /api/my-workout-plans/{assignment_id}/finish-day/
+
+    Locked along with the plan (PlansUnlocked): a session can't be logged
+    against a plan its member isn't allowed to read.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, PlansUnlocked]
 
     def post(self, request, assignment_pk):
         assignment = get_object_or_404(WorkoutAssignment, pk=assignment_pk, user=request.user)

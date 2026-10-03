@@ -12,6 +12,8 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
+from .signup import self_signup_enabled
+
 # Body photos are stored here instead of MEDIA_ROOT so that no static file
 # handler can serve them -- see PRIVATE_MEDIA_ROOT in settings/base.py and
 # BodyPhotoFileView, which is the only way to read one back.
@@ -104,6 +106,19 @@ class User(AbstractUser):
         if not self.membership_end_date:
             return False
         return self.membership_end_date >= timezone.now().date()
+
+    @property
+    def plans_locked(self):
+        """Whether this member has to pay before they can see their plans.
+
+        Only ever true in a self sign-up gym (see apps/accounts/signup.py),
+        and there for any member whose membership isn't running: never
+        paid, or paid and since lapsed. Their plans still exist and can
+        still be assigned; the member endpoints just won't hand them over
+        (PlansUnlocked). A staff-managed gym takes payment at the front
+        desk and never locks anything, exactly as before.
+        """
+        return self_signup_enabled() and self.is_member and not self.is_membership_active
 
     def extend_membership(self, days):
         """Add `days` to the membership — the front desk's "they've paid for

@@ -1,5 +1,6 @@
 import mimetypes
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.http import FileResponse, Http404
@@ -21,8 +22,9 @@ from .permissions import (
     IsAdminOrAccounting,
     IsStaff,
     IsTrainerOrAdmin,
+    SelfSignupOpen,
 )
-from .throttling import LoginRateThrottle, PasswordChangeRateThrottle
+from .throttling import LoginRateThrottle, PasswordChangeRateThrottle, RegisterRateThrottle
 from .serializers import (
     BodyMeasurementSerializer,
     BodyPhotoExampleSerializer,
@@ -77,11 +79,40 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class RegisterView(generics.CreateAPIView):
-    """Public self-registration — always creates a MEMBER account."""
+    """Public self-registration — always creates a MEMBER account.
+
+    Open only in a self sign-up gym (SelfSignupOpen); in the default,
+    staff-managed one the front desk creates members and this answers 403.
+
+    No authentication classes, on purpose. A stored token, stale or not,
+    has nothing to do with signing up, and with nothing to authenticate
+    against, a closed door reads as the 403 it is instead of a 401 asking
+    for credentials.
+    """
 
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
+    authentication_classes = []
+    permission_classes = [SelfSignupOpen]
+    throttle_classes = [RegisterRateThrottle]
+
+
+class PublicConfigView(APIView):
+    """What the app needs to know about this gym before anyone signs in.
+
+      GET /api/config/   {"member_signup": "staff" | "self"}
+
+    MEMBER_SIGNUP is set in one place, here on the backend, which is also
+    where it's enforced. The frontend asks instead of keeping its own copy,
+    since two settings for one decision would sooner or later disagree.
+    Public, because the login page is the first thing that needs it.
+    """
+
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response({"member_signup": settings.MEMBER_SIGNUP})
 
 
 class StaffCreateView(generics.CreateAPIView):
@@ -151,6 +182,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
       GET /api/users/?role=trainer   meaningful for admin; others are already scoped to members
       GET /api/users/?search=jane
+      GET /api/users/?waiting_for_plan=true   members with no active workout
+             plan, longest-waiting first: the trainer's queue in a self
+             sign-up gym, where nobody walks a new member over to them
 
     Deliberately no DELETE: removing a user would cascade into their workout
     and diet assignments and lose history. Deactivate via `is_active` instead.
@@ -166,9 +200,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_gym_admin:
-            return User.objects.all()
-        return User.objects.filter(role=User.Role.MEMBER)
+        queryset = User.objects.all() if user.is_gym_admin else User.objects.filter(role=User.Role.MEMBER)
+        if self.action == "list" and self.request.query_params.get("waiting_for_plan") == "true":
+            # Through the reverse relation's name rather than importing the
+            # workouts app, which already depends on this one. `id` breaks
+            # ties between sign-ups saved within the same clock tick.
+            queryset = (
+                queryset.filter(role=User.Role.MEMBER)
+                .exclude(workout_assignments__status="active")
+                .order_by("created_at", "id")
+            )
+        return queryset
 
     def get_permissions(self):
         # This override is the authority on permissions for the whole

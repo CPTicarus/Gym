@@ -7,12 +7,18 @@ from pathlib import Path
 from django.core.cache import cache
 from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.utils import timezone
 from PIL import Image
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from apps.diet.models import DietAssignment, DietPlan
+from apps.supplements.models import SupplementAssignment, SupplementPlan
+from apps.workouts.models import WorkoutAssignment, WorkoutDay, WorkoutPlan, WorkoutSession
+
 from .models import BodyPhoto, User
+from .throttling import RegisterRateThrottle
 
 
 def make_user(role, username):
@@ -251,3 +257,207 @@ class ExtendMembershipTests(APITestCase):
         # Accounting can't even see staff records.
         self.client.force_authenticate(self.accounting)
         self.assertEqual(self._extend(user=trainer).status_code, status.HTTP_404_NOT_FOUND)
+
+
+SIGNUP = {
+    "username": "newbie",
+    "national_id": "0012345678",
+    "password": "4821",
+    "password_confirm": "4821",
+    "first_name": "Sara",
+    "last_name": "Rahimi",
+    "phone_number": "09121234567",
+}
+
+
+@override_settings(MEMBER_SIGNUP="staff")
+class StaffManagedGymTests(APITestCase):
+    """The default: the front desk makes every member account, and nothing
+    is ever locked. Sign-up used to be open here regardless — now it isn't."""
+
+    def test_sign_up_is_closed(self):
+        response = self.client.post("/api/auth/register/", SIGNUP, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(User.objects.filter(username="newbie").exists())
+
+    def test_closed_reads_as_403_even_with_a_stale_token(self):
+        # A browser can still hold an old session's token. That mustn't
+        # turn "closed" into "please log in".
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer stale.token.value")
+        response = self.client.post("/api/auth/register/", SIGNUP, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_the_app_is_told_which_workflow_this_is(self):
+        response = self.client.get("/api/config/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"member_signup": "staff"})
+
+    def test_a_member_without_a_membership_still_sees_their_plans(self):
+        member = make_user(User.Role.MEMBER, "member")
+        WorkoutAssignment.objects.create(plan=WorkoutPlan.objects.create(name="Push"), user=member)
+        self.client.force_authenticate(member)
+        response = self.client.get("/api/my-workout-plans/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+        me = self.client.get("/api/auth/me/").data
+        self.assertEqual((me["plans_locked"], me["plan_ready"]), (False, None))
+
+
+@override_settings(MEMBER_SIGNUP="self")
+class SelfSignupTests(APITestCase):
+    def setUp(self):
+        cache.clear()  # the sign-up throttle counts in the cache
+
+    def _signup(self, **changes):
+        return self.client.post("/api/auth/register/", {**SIGNUP, **changes}, format="json")
+
+    def test_signing_up_makes_a_member_who_can_sign_in(self):
+        response = self._signup()
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("password", response.data)
+        self.assertEqual(User.objects.get(username="newbie").role, User.Role.MEMBER)
+        login = self.client.post("/api/auth/login/", {"username": "newbie", "password": "4821"})
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+    def test_nobody_signs_themselves_up_as_staff(self):
+        self._signup(role="admin")
+        self.assertEqual(User.objects.get(username="newbie").role, User.Role.MEMBER)
+
+    def test_gender_and_birth_date_can_come_along(self):
+        self.assertEqual(self._signup(gender="female", date_of_birth="1995-04-12").status_code, 201)
+        user = User.objects.get(username="newbie")
+        self.assertEqual((user.gender, str(user.date_of_birth)), ("female", "1995-04-12"))
+
+    def test_the_usual_identity_rules_apply(self):
+        self._signup()
+        same_id = self._signup(username="someone-else")
+        self.assertEqual(same_id.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("national_id", same_id.data)
+        mismatch = self._signup(username="third", national_id="0098765432", password_confirm="1111")
+        self.assertIn("password_confirm", mismatch.data)
+
+    def test_rate_limited_per_address(self):
+        allowed = RegisterRateThrottle().num_requests
+        # Empty forms are refused as invalid, but every attempt still counts.
+        codes = {self.client.post("/api/auth/register/", {}).status_code for _ in range(allowed)}
+        self.assertEqual(codes, {status.HTTP_400_BAD_REQUEST})
+        self.assertEqual(self._signup().status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_the_app_is_told_which_workflow_this_is(self):
+        self.assertEqual(self.client.get("/api/config/").data, {"member_signup": "self"})
+
+
+@override_settings(MEMBER_SIGNUP="self")
+class PlanLockTests(APITestCase):
+    """In a self sign-up gym a member sees none of their plans until they've
+    paid — which, until there's a payment gateway, means an active
+    membership."""
+
+    PLAN_ENDPOINTS = ["/api/my-workout-plans/", "/api/my-diet-plans/", "/api/my-supplement-plans/"]
+
+    def setUp(self):
+        self.today = timezone.now().date()
+        self.member = make_user(User.Role.MEMBER, "member")
+        workout = WorkoutPlan.objects.create(name="Push")
+        WorkoutDay.objects.create(plan=workout, name="Chest")
+        self.assignment = WorkoutAssignment.objects.create(plan=workout, user=self.member)
+        DietAssignment.objects.create(plan=DietPlan.objects.create(name="Cut"), user=self.member)
+        SupplementAssignment.objects.create(
+            plan=SupplementPlan.objects.create(name="Creatine"), user=self.member
+        )
+        self.client.force_authenticate(self.member)
+
+    def _membership(self, start, end):
+        User.objects.filter(pk=self.member.pk).update(membership_start_date=start, membership_end_date=end)
+        # force_authenticate hands every request this same object, where a
+        # real (JWT) request loads the user afresh.
+        self.member.refresh_from_db()
+
+    def _finish_day(self):
+        return self.client.post(f"/api/my-workout-plans/{self.assignment.pk}/finish-day/", {}, format="json")
+
+    def _me(self):
+        data = self.client.get("/api/auth/me/").data
+        return data["plans_locked"], data["plan_ready"]
+
+    def test_before_paying_no_plan_comes_back(self):
+        for url in self.PLAN_ENDPOINTS:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, status.HTTP_402_PAYMENT_REQUIRED, url)
+            self.assertNotIn("results", response.data)
+        self.assertEqual(self._finish_day().status_code, status.HTTP_402_PAYMENT_REQUIRED)
+        self.assertFalse(WorkoutSession.objects.exists())
+
+    def test_the_member_is_told_whether_a_plan_is_waiting(self):
+        self.assertEqual(self._me(), (True, True))
+        WorkoutAssignment.objects.update(status="completed")
+        DietAssignment.objects.all().delete()
+        self.assertEqual(self._me(), (True, True))  # the supplement protocol is still waiting
+        SupplementAssignment.objects.all().delete()
+        self.assertEqual(self._me(), (True, False))  # a finished plan isn't a ready one
+
+    def test_paying_opens_every_plan(self):
+        self._membership(self.today, self.today + timedelta(days=30))
+        for url in self.PLAN_ENDPOINTS:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, status.HTTP_200_OK, url)
+            self.assertEqual(len(response.data["results"]), 1, url)
+        self.assertEqual(self._finish_day().status_code, status.HTTP_200_OK)
+        self.assertEqual(self._me(), (False, None))
+
+    def test_the_desk_recording_a_payment_opens_them(self):
+        # Today's way of recording a payment: "+30 days" on the member's page.
+        self.client.force_authenticate(make_user(User.Role.ACCOUNTING, "desk"))
+        extended = self.client.post(f"/api/users/{self.member.pk}/extend-membership/")
+        self.assertFalse(extended.data["plans_locked"])
+        self.member.refresh_from_db()
+        self.client.force_authenticate(self.member)
+        self.assertEqual(self.client.get("/api/my-workout-plans/").status_code, status.HTTP_200_OK)
+
+    def test_they_lock_again_when_the_membership_lapses(self):
+        self._membership(self.today - timedelta(days=60), self.today - timedelta(days=1))
+        self.assertEqual(self.client.get("/api/my-workout-plans/").status_code, 402)
+        self._membership(self.today - timedelta(days=30), self.today)  # the last day still counts
+        self.assertEqual(self.client.get("/api/my-workout-plans/").status_code, 200)
+
+    def test_the_rest_of_the_member_side_stays_open(self):
+        # Measurements are what the trainer writes the plan from, and past
+        # sessions are the member's own history.
+        self.assertEqual(self.client.post("/api/me/measurements/", {"weight_kg": 80}).status_code, 201)
+        self.assertEqual(self.client.get("/api/my-workout-sessions/").status_code, 200)
+        self.assertEqual(self.client.get("/api/moves/").status_code, 200)
+
+    def test_staff_are_not_locked_and_can_see_who_is(self):
+        self.client.force_authenticate(make_user(User.Role.TRAINER, "coach"))
+        self.assertEqual(self._me(), (False, None))
+        plan = self.client.get(f"/api/workout-plans/{self.assignment.plan_id}/")
+        self.assertEqual(plan.status_code, status.HTTP_200_OK)
+        self.assertTrue(self.client.get(f"/api/users/{self.member.pk}/").data["plans_locked"])
+
+
+class WaitingForPlanTests(APITestCase):
+    """The trainer's queue: members with no active workout plan, the one
+    who has waited longest first."""
+
+    def setUp(self):
+        self.first, self.second, self.planned = (
+            make_user(User.Role.MEMBER, name) for name in ("first", "second", "planned")
+        )
+        plan = WorkoutPlan.objects.create(name="Push")
+        WorkoutAssignment.objects.create(plan=plan, user=self.planned)
+        # A finished plan doesn't take someone out of the queue.
+        WorkoutAssignment.objects.create(plan=plan, user=self.second, status="completed")
+        self.client.force_authenticate(make_user(User.Role.TRAINER, "coach"))
+
+    def _usernames(self, **params):
+        return [u["username"] for u in self.client.get("/api/users/", params).data["results"]]
+
+    def test_members_without_an_active_plan_longest_waiting_first(self):
+        self.assertEqual(self._usernames(waiting_for_plan="true"), ["first", "second"])
+
+    def test_staff_never_queue_even_in_the_admins_view(self):
+        self.client.force_authenticate(make_user(User.Role.ADMIN, "boss"))
+        self.assertEqual(self._usernames(waiting_for_plan="true"), ["first", "second"])
+
+    def test_without_it_the_directory_is_unchanged(self):
+        self.assertEqual(self._usernames(), ["planned", "second", "first"])

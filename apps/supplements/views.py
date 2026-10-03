@@ -6,7 +6,7 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin
+from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin, PlansUnlocked
 from apps.plan_copy import copy_name
 
 from .models import SupplementAssignment, SupplementItem, SupplementPlan
@@ -153,10 +153,13 @@ class MySupplementPlansView(generics.ListAPIView):
 
       GET /api/my-supplement-plans/
       GET /api/my-supplement-plans/?status=active
+
+    402 instead, in a self sign-up gym, until the member has paid
+    (PlansUnlocked).
     """
 
     serializer_class = SupplementAssignmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, PlansUnlocked]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status"]
 
