@@ -59,6 +59,25 @@ class WorkoutPlan(models.Model):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def names_using(cls, move):
+        """Names of the plans that use `move` anywhere: the warmup, a
+        training day (supersets included), or the daily items. It's what a
+        trainer needs to hear when the move can't be deleted
+        (MoveViewSet.destroy), as Food.plan_names is for foods. Here rather
+        than on Move because this app imports the moves app, not the other
+        way round."""
+        return list(
+            cls.objects.filter(
+                models.Q(warmup_exercises__move=move)
+                | models.Q(days__exercises__move=move)
+                | models.Q(daily_exercises__move=move)
+            )
+            .distinct()
+            .order_by("name")
+            .values_list("name", flat=True)
+        )
+
 
 class WorkoutAssignment(models.Model):
     """Who currently has this plan, and its lifecycle for that person.

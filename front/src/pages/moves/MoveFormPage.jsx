@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   addMoveMedia,
   createMove,
+  deleteMove,
   deleteMoveMedia,
   getMediaLimits,
   getMove,
@@ -18,6 +19,7 @@ import {
   MEDIA_ACCEPT,
   mediaTypeForFile,
 } from "../../constants/moveOptions.js";
+import { inUseMessage } from "../../utils/inUse.js";
 import { toPersianDigits } from "../../utils/jalali.js";
 
 function formatApiError(data) {
@@ -95,6 +97,8 @@ export default function MoveFormPage() {
   // Separate from mediaError so a failed reorder reports next to the list
   // rather than down inside the add-media form.
   const [reorderError, setReorderError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   const nameInputRef = useRef(null);
 
@@ -239,6 +243,25 @@ export default function MoveFormPage() {
       setReorderError("حذف رسانه با مشکل مواجه شد. دوباره امتحان کنید.");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  /** Remove the move from the library, media and all. The server refuses
+   * while a workout plan still uses it and names those plans; replace
+   * keeps Back from returning to the edit page of a move that's gone. */
+  async function handleDeleteMove() {
+    if (!window.confirm(`«${move.name}» با همه عکس‌ها و ویدیوهایش از کتابخانه حذف شود؟ این کار قابل بازگشت نیست.`)) {
+      return;
+    }
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      await deleteMove(move.id);
+      navigate("/moves", { replace: true });
+    } catch (err) {
+      const plans = err?.response?.status === 409 ? err.response.data?.plans : null;
+      setDeleteError(plans?.length ? inUseMessage("این حرکت", plans) : "حذف حرکت با مشکل مواجه شد.");
+      setIsDeleting(false);
     }
   }
 
@@ -463,11 +486,26 @@ export default function MoveFormPage() {
       )}
 
       {isEditMode && (
-        <div className="form-actions">
-          <button className="btn btn-ghost" onClick={() => navigate("/moves")}>
-            بازگشت به کتابخانه
-          </button>
-        </div>
+        <>
+          {deleteError && (
+            <p className="error-text" role="alert">
+              {deleteError}
+            </p>
+          )}
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-danger me-auto"
+              onClick={handleDeleteMove}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "در حال حذف…" : "حذف حرکت"}
+            </button>
+            <button className="btn btn-ghost" onClick={() => navigate("/moves")}>
+              بازگشت به کتابخانه
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

@@ -7,24 +7,13 @@ import {
   FOOD_UNITS,
   NUTRIENTS,
 } from "../../constants/foodOptions.js";
-import { toPersianDigits } from "../../utils/jalali.js";
+import { inUseMessage } from "../../utils/inUse.js";
 import Modal from "../common/Modal.jsx";
-
-// How many plan names a "can't delete" message lists before summarising.
-const MAX_PLANS_NAMED = 5;
 
 function nutrientFields(food) {
   return Object.fromEntries(
     NUTRIENTS.map(({ key }) => [key, food?.[key] != null ? String(food[key]) : ""])
   );
-}
-
-function inUseMessage(plans) {
-  const named = plans.slice(0, MAX_PLANS_NAMED).map((name) => `«${name}»`).join("، ");
-  const rest = plans.length - MAX_PLANS_NAMED;
-  const list = rest > 0 ? `${named} و ${toPersianDigits(rest)} برنامه دیگر` : named;
-  const [noun, these] = plans.length === 1 ? ["برنامه", "این برنامه"] : ["برنامه‌های", "این برنامه‌ها"];
-  return `این خوراکی در ${noun} ${list} استفاده شده و قابل حذف نیست. اول آن را از ${these} بردارید.`;
 }
 
 /**
@@ -135,7 +124,7 @@ export default function FoodFormModal({
       onClose();
     } catch (err) {
       const plans = err?.response?.status === 409 ? err.response.data?.plans : null;
-      setError(plans?.length ? inUseMessage(plans) : "حذف خوراکی با مشکل مواجه شد.");
+      setError(plans?.length ? inUseMessage("این خوراکی", plans) : "حذف خوراکی با مشکل مواجه شد.");
       setIsDeleting(false);
     }
   }

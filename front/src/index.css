@@ -1511,14 +1511,6 @@
     .move-grid {
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     }
-    /* Double-click does the job with a mouse — drop the button and the
-       space it was reserving. */
-    .move-card-edit {
-      @apply hidden;
-    }
-    .move-card-editable {
-      @apply pe-4;
-    }
     .brand-mark-lg {
       @apply text-4xl;
     }

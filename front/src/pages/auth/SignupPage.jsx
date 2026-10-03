@@ -209,7 +209,7 @@ export default function SignupPage() {
             dir="ltr"
             inputMode="numeric"
             autoComplete="off"
-            placeholder="۱۰ رقم"
+            placeholder="012346789"
             value={form.national_id}
             onChange={(e) => setNationalId(e.target.value)}
             required

@@ -39,6 +39,14 @@ export async function updateMove(moveId, payload) {
 }
 
 /**
+ * Takes the move's media with it. Refused with a 409 while any workout
+ * plan uses the move; the response's `plans` then lists their names.
+ */
+export async function deleteMove(moveId) {
+  await axiosClient.delete(`/moves/${moveId}/`);
+}
+
+/**
  * Attach one media item to a move. Pass either `file` (uploaded directly —
  * sent as multipart/form-data) or `externalUrl` (e.g. an unlisted
  * YouTube/Vimeo link — sent as JSON), never both.

@@ -1,5 +1,6 @@
+from django.db.models import ProtectedError
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.filters import SearchFilter
@@ -8,6 +9,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.pagination import LibraryPagination
+from apps.workouts.models import WorkoutPlan
 
 from .models import Move, MoveMedia, media_size_limits
 from .permissions import IsTrainerOrAdminOrReadOnly
@@ -20,7 +22,7 @@ class MoveViewSet(viewsets.ModelViewSet):
     POST   /api/moves/            trainer/admin
     GET    /api/moves/{id}/       any authenticated user
     PATCH  /api/moves/{id}/       trainer/admin
-    DELETE /api/moves/{id}/       trainer/admin
+    DELETE /api/moves/{id}/       trainer/admin — 409 while a workout plan uses it
 
     Filter/search:
       ?category=chest&difficulty=beginner
@@ -40,6 +42,26 @@ class MoveViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        """Refused while any workout plan uses the move, since the plans'
+        exercise rows PROTECT it. Without this the refusal surfaced as a 500.
+        Like FoodViewSet.destroy, it names those plans, because "in use"
+        alone leaves the trainer hunting for where. The move's media goes
+        with it, files included (delete_media_file).
+        """
+        move = self.get_object()
+        try:
+            move.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    "detail": "This move is used in workout plans and can't be deleted.",
+                    "plans": WorkoutPlan.names_using(move),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, url_path="media-limits")
     def media_limits(self, request):

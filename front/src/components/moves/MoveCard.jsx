@@ -16,9 +16,10 @@ const DIFFICULTY_VARIANT = {
 // whether a second one follows before treating it as "view", so editing
 // doesn't flash the detail modal open first.
 //
-// Double-click is a mouse gesture though — a phone has no reliable
-// equivalent, so below the desktop breakpoint editable cards also carry an
-// explicit edit button (hidden again at >=860px, see index.css).
+// Double-click is only a shortcut, though. Nothing on screen says it's
+// there, and a phone has no reliable equivalent, so editable cards always
+// carry an explicit edit button too. It used to be hidden on desktop, and
+// trainers took that to mean moves couldn't be edited at all.
 const CLICK_DELAY_MS = 250;
 
 export default function MoveCard({ move, editable, onView }) {

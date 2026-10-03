@@ -183,7 +183,7 @@ export default function AddUserModal({ canCreateStaff, onClose, onCreated }) {
             autoComplete="off"
             value={form.national_id}
             onChange={(e) => setNationalId(e.target.value)}
-            placeholder="۱۰ رقم"
+            placeholder="012346789"
             required
           />
         </label>
