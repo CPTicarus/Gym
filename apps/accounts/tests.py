@@ -267,6 +267,8 @@ SIGNUP = {
     "first_name": "Sara",
     "last_name": "Rahimi",
     "phone_number": "09121234567",
+    "gender": "female",
+    "date_of_birth": "1995-04-12",
 }
 
 
@@ -323,8 +325,17 @@ class SelfSignupTests(APITestCase):
         self._signup(role="admin")
         self.assertEqual(User.objects.get(username="newbie").role, User.Role.MEMBER)
 
-    def test_gender_and_birth_date_can_come_along(self):
-        self.assertEqual(self._signup(gender="female", date_of_birth="1995-04-12").status_code, 201)
+    def test_sex_and_birth_date_are_required(self):
+        # The trainer writes the plan around both, and nobody else will ask.
+        without = {k: v for k, v in SIGNUP.items() if k not in ("gender", "date_of_birth")}
+        missing = self.client.post("/api/auth/register/", without, format="json")
+        self.assertEqual(missing.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(set(missing.data), {"gender", "date_of_birth"})
+        self.assertIn("gender", self._signup(gender="").data)
+        self.assertIn("date_of_birth", self._signup(date_of_birth=str(timezone.localdate())).data)
+        self.assertFalse(User.objects.filter(username="newbie").exists())
+
+        self.assertEqual(self._signup().status_code, status.HTTP_201_CREATED)
         user = User.objects.get(username="newbie")
         self.assertEqual((user.gender, str(user.date_of_birth)), ("female", "1995-04-12"))
 

@@ -303,14 +303,17 @@ class RegisterSerializer(_RequiredIdentityFieldsMixin, serializers.ModelSerializ
     """Public self sign-up. Always creates a MEMBER — trainer/admin/accounting
     accounts are created by an admin via StaffCreateSerializer instead.
 
-    Gender and date of birth are asked for here, both optional. In a gym
-    where the front desk makes the account, that's where they get filled
-    in; someone signing themselves up has no front desk to ask, and the
-    member's own pages don't edit them.
+    Sex and date of birth are required here, though optional on the account
+    itself: a workout plan is written differently for different ages and
+    for men and women, and the trainer writes this person's plan from what
+    they enter. Where the front desk makes accounts it can ask in person;
+    here nobody else will, and the member's own pages don't edit them.
     """
 
     password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
+    gender = serializers.ChoiceField(choices=User.Gender.choices)
+    date_of_birth = serializers.DateField()
 
     class Meta:
         model = User
@@ -318,6 +321,13 @@ class RegisterSerializer(_RequiredIdentityFieldsMixin, serializers.ModelSerializ
             "username", "national_id", "email", "password", "password_confirm",
             "first_name", "last_name", "phone_number", "gender", "date_of_birth",
         ]
+
+    def validate_date_of_birth(self, value):
+        # Today or later can only be a slip in the calendar, which opens on
+        # today's date.
+        if value >= timezone.localdate():
+            raise serializers.ValidationError("Date of birth must be in the past.")
+        return value
 
     def validate(self, attrs):
         if attrs["password"] != attrs.pop("password_confirm"):

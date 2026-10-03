@@ -82,7 +82,9 @@ class User(AbstractUser):
     # Optional: blank means not stated, which is why there's no "other"
     # option — an optional field doesn't need one to avoid forcing an
     # answer. Choices rather than free text so the value stays comparable
-    # (it's already "male"/"female" in existing rows).
+    # (it's already "male"/"female" in existing rows). Self sign-up is the
+    # exception and requires it (RegisterSerializer): the trainer writes the
+    # plan around it, and there's no front desk there to ask.
     gender = models.CharField(max_length=10, choices=Gender.choices, blank=True)
     profile_picture = models.ImageField(upload_to="profiles/", null=True, blank=True)
 

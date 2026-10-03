@@ -3,7 +3,9 @@
 //
 // Both gender and date of birth are optional: an empty gender means "not
 // stated", which is also why there's no "other" option — an optional field
-// doesn't need one to avoid forcing an answer.
+// doesn't need one to avoid forcing an answer. Self sign-up is the exception
+// and requires both, since the trainer writes the plan around age and sex
+// (see SignupPage).
 export const GENDERS = [
   ["male", "مرد"],
   ["female", "زن"],

@@ -40,6 +40,11 @@ function derivedUsername(nationalId) {
   return toEnglishDigits(nationalId).replace(/\D/g, "");
 }
 
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /**
  * Self sign-up, in a gym set up for it (MEMBER_SIGNUP=self). Anywhere else
  * this page sends people to the login screen, and the server refuses the
@@ -97,6 +102,15 @@ export default function SignupPage() {
       setError("شماره تماس الزامی است.");
       return;
     }
+    if (!form.gender || !form.date_of_birth) {
+      setError("جنسیت و تاریخ تولد الزامی است — مربی برنامه را بر اساس سن و جنسیت شما می‌نویسد.");
+      return;
+    }
+    // The calendar opens on today, so this is the likeliest slip.
+    if (form.date_of_birth >= todayIso()) {
+      setError("تاریخ تولد را درست انتخاب کنید — امروز یا بعد از آن نمی‌شود.");
+      return;
+    }
     if (!form.username.trim() || !form.password) {
       setError("نام کاربری و رمز عبور الزامی است.");
       return;
@@ -106,10 +120,7 @@ export default function SignupPage() {
       return;
     }
     setIsSubmitting(true);
-    // A blank date must be left out, not sent as "" — DRF rejects empty
-    // strings for nullable date fields.
     const payload = { ...form, username: form.username.trim() };
-    if (!payload.date_of_birth) delete payload.date_of_birth;
     try {
       await registerRequest(payload);
     } catch (err) {
@@ -230,14 +241,18 @@ export default function SignupPage() {
           />
         </label>
 
-        {/* Optional, but the trainer reads both: some body measures are
-            judged differently for men and women. There's no front desk
-            here to fill them in later. */}
+        {/* Required here, unlike at the front desk: the trainer writes the
+            plan around age and sex, and nobody else will ask for them. */}
         <div className="field-row">
           <label className="field">
-            <span className="label">جنسیت (اختیاری)</span>
-            <select className="select" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
-              <option value="">—</option>
+            <span className="label">جنسیت*</span>
+            <select
+              className="select"
+              value={form.gender}
+              onChange={(e) => set("gender", e.target.value)}
+              required
+            >
+              <option value="">— انتخاب کنید —</option>
               {GENDERS.map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -246,7 +261,7 @@ export default function SignupPage() {
             </select>
           </label>
           <label className="field">
-            <span className="label">تاریخ تولد (اختیاری)</span>
+            <span className="label">تاریخ تولد*</span>
             <JalaliDateInput value={form.date_of_birth} onChange={(value) => set("date_of_birth", value)} />
           </label>
         </div>
