@@ -7,7 +7,9 @@ from pathlib import Path
 from django.core.cache import cache
 from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from PIL import Image
 from rest_framework import status
@@ -472,3 +474,44 @@ class WaitingForPlanTests(APITestCase):
 
     def test_without_it_the_directory_is_unchanged(self):
         self.assertEqual(self._usernames(), ["planned", "second", "first"])
+
+
+class EnsureAdminCommandTests(TestCase):
+    """The container makes the gym's first admin with this on every start
+    (docker/entrypoint.sh), so the second run has to be harmless."""
+
+    def _run(self, **options):
+        options = {
+            "username": "owner",
+            "national_id": "۰۰۱۲۳۴۵۶۷۸",
+            "password": "Gym-owner-2026",
+            **options,
+        }
+        call_command("ensure_admin", stdout=io.StringIO(), **options)
+
+    def test_makes_an_admin_for_the_panel_and_the_admin_site(self):
+        self._run()
+        owner = User.objects.get(username="owner")
+        self.assertEqual(owner.role, User.Role.ADMIN)
+        self.assertTrue(owner.is_staff and owner.is_superuser)
+        self.assertEqual(owner.national_id, "0012345678")
+        self.assertTrue(owner.check_password("Gym-owner-2026"))
+
+    def test_an_existing_username_is_left_alone(self):
+        self._run()
+        self._run(password="Another-password-2027")
+        self.assertTrue(User.objects.get(username="owner").check_password("Gym-owner-2026"))
+
+    def test_staff_password_rules_apply(self):
+        with self.assertRaises(CommandError):
+            self._run(password="1234")
+        self.assertFalse(User.objects.filter(username="owner").exists())
+
+    def test_the_national_id_is_checked(self):
+        with self.assertRaises(CommandError):
+            self._run(national_id="12345")
+        member = make_user(User.Role.MEMBER, "member")
+        User.objects.filter(pk=member.pk).update(national_id="0012345678")
+        with self.assertRaises(CommandError):
+            self._run()  # someone else's ID
+        self.assertFalse(User.objects.filter(username="owner").exists())

@@ -19,6 +19,18 @@ from .signup import self_signup_enabled
 # BodyPhotoFileView, which is the only way to read one back.
 private_media_storage = FileSystemStorage(location=settings.PRIVATE_MEDIA_ROOT)
 
+
+def get_private_media_storage():
+    """What the photo fields below take instead of the storage itself.
+
+    Given the storage, a migration records its location -- the value of
+    PRIVATE_MEDIA_ROOT on whichever machine ran makemigrations, a path that
+    is wrong everywhere else, and that made every other environment report
+    an unmigrated change. Given a callable, it records only this name.
+    """
+    return private_media_storage
+
+
 _BYTES_PER_MB = 1024 * 1024
 
 
@@ -421,7 +433,7 @@ class BodyPhoto(models.Model):
     note = models.CharField(max_length=255, blank=True)
     image = models.ImageField(
         upload_to=_body_photo_path,
-        storage=private_media_storage,
+        storage=get_private_media_storage,
         validators=[
             FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"]),
             validate_body_photo_size,
@@ -489,7 +501,7 @@ class BodyPhotoExample(models.Model):
     pose = models.CharField(max_length=10, choices=BodyPhoto.MAIN_POSE_CHOICES, unique=True)
     image = models.ImageField(
         upload_to=_body_photo_example_path,
-        storage=private_media_storage,
+        storage=get_private_media_storage,
         validators=[
             FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"]),
             validate_body_photo_size,

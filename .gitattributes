@@ -1,0 +1,4 @@
+# The container's scripts and configs run on Linux. Keep them LF in a
+# Windows checkout too (core.autocrlf), or bash fails on the first line.
+Dockerfile text eol=lf
+docker/** text eol=lf

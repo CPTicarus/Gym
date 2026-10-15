@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Put back a backup made by `backup`, replacing what's there now:
+#
+#   docker exec gym restore /data/backups/gym-full-20261015-030000.tar.gz
+#   docker exec gym restore /data/backups/gym-db-20261015-030000.dump
+#
+# A full backup brings back the database and the uploads, a .dump just the
+# database. The app is stopped while it runs, and a backup from an older
+# version is migrated forward afterwards. One made elsewhere has to be
+# copied in first: docker cp <file> gym:/data/backups/
+set -Eeuo pipefail
+
+archive=${1:?usage: restore <backup file>}
+if [ ! -f "$archive" ]; then
+    echo "No such file: $archive" >&2
+    exit 1
+fi
+
+as() {
+    local user=$1
+    shift
+    setpriv --reuid="$user" --regid="$user" --init-groups -- "$@"
+}
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+case "$archive" in
+    *.tar.gz)
+        tar --extract --gzip --file="$archive" --directory="$work"
+        dump=$work/database.dump
+        ;;
+    *.dump)
+        dump=$archive
+        ;;
+    *)
+        echo "Expected a .tar.gz or .dump made by backup." >&2
+        exit 1
+        ;;
+esac
+if [ ! -s "$dump" ]; then
+    echo "There's no database dump in $archive." >&2
+    exit 1
+fi
+
+trap 'echo "Restore failed; the app is stopped. Fix the cause and run restore again." >&2' ERR
+
+echo "Stopping the app"
+supervisorctl stop gunicorn >/dev/null
+
+echo "Replacing the database"
+as postgres dropdb --host=/run/postgresql --force --if-exists gym
+as postgres createdb --host=/run/postgresql --owner=gym gym
+as gym pg_restore --host=/run/postgresql --dbname=gym --no-owner --no-privileges --exit-on-error < "$dump"
+
+if [ -d "$work/media" ]; then
+    echo "Replacing the uploads"
+    for tree in media private_media; do
+        find "/data/$tree" -mindepth 1 -delete
+        cp -a "$work/$tree/." "/data/$tree/"
+        chown -R gym:gym "/data/$tree"
+    done
+fi
+
+echo "Bringing the database up to this version"
+manage migrate --noinput
+manage createcachetable
+
+supervisorctl start gunicorn >/dev/null
+echo "Restored $archive"

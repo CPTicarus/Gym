@@ -1,0 +1,24 @@
+# Only what the Dockerfile copies belongs in the build context; anything
+# else slows the build down, or ends up somewhere it shouldn't.
+.git
+.claude
+**/__pycache__
+**/*.pyc
+venv
+.venv
+**/node_modules
+front/dist
+db.sqlite3
+media
+private_media
+staticfiles
+release
+.env
+**/.env.local
+**/gym.env
+**/*.md
+
+# Settings for runserver and for the old non-container deployment. The
+# image runs gym_backend/settings/container.py; nothing else should ship.
+gym_backend/settings/dev.py
+gym_backend/settings/prod.py

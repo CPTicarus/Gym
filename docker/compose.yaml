@@ -1,0 +1,37 @@
+# Runs the gym app on a server: one container, one volume. Keep gym.env
+# (copied from gym.env.example) next to this file, load the image from the
+# file docker/build.ps1 made, then:
+#
+#   docker compose up -d
+#
+# DEPLOY.md has the rest. The server never needs the source code.
+name: gym
+
+services:
+  gym:
+    image: gym:${GYM_VERSION:-latest}
+    container_name: gym
+    restart: unless-stopped
+    env_file: gym.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - data:/data
+      # For https with Let's Encrypt (DEPLOY.md):
+      # - /var/www/acme:/var/www/acme:ro
+      # - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Or a certificate from anywhere else, as fullchain.pem and privkey.pem:
+      # - ./certs:/certs:ro
+    # Room for Postgres's shared memory; Docker's 64 MB default is tight.
+    shm_size: 256mb
+    # Nginx, gunicorn and Postgres stop one after another; give them time.
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
+
+volumes:
+  data:

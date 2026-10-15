@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# supervisord starts Postgres and gunicorn together; give the database a
+# moment to accept connections before the first request can need it.
+set -euo pipefail
+
+for _ in $(seq 60); do
+    pg_isready --quiet --host=/run/postgresql && break
+    sleep 1
+done
+
+exec gunicorn --config=/etc/gym/gunicorn.conf.py --chdir=/app gym_backend.wsgi:application

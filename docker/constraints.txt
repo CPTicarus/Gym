@@ -1,0 +1,21 @@
+# Exact versions the image is built with -- the ones the test suite passes
+# against. requirements.txt keeps its ranges for development; this file
+# keeps a rebuild next month from quietly shipping a different DRF.
+# After upgrading in your venv, refresh it with `pip freeze` (keep the two
+# container-only entries at the bottom).
+asgiref==3.12.1
+Django==5.1.15
+django-cors-headers==4.9.0
+django-filter==25.1
+djangorestframework==3.17.2
+djangorestframework_simplejwt==5.5.1
+pillow==12.3.0
+psycopg2-binary==2.9.12
+PyJWT==2.13.0
+python-decouple==3.8
+sqlparse==0.5.5
+tzdata==2026.3
+
+# Only in the container: the WSGI server and the process supervisor.
+gunicorn==26.2.0
+supervisor==4.3.0

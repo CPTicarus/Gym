@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# The automatic database backup, run by supervisord: `backup --db-only`
+# every BACKUP_INTERVAL_HOURS (default 24; 0 turns it off), keeping the
+# newest BACKUP_KEEP of them (default 14). It goes by the age of the newest
+# dump, so restarting the container neither skips a backup nor adds one.
+set -uo pipefail
+
+hours=${BACKUP_INTERVAL_HOURS:-24}
+keep=${BACKUP_KEEP:-14}
+
+if [ "$hours" -eq 0 ]; then
+    echo "[backups] automatic backups are off (BACKUP_INTERVAL_HOURS=0)"
+    exec sleep infinity
+fi
+
+sleep 60  # the database is starting alongside
+
+while true; do
+    newest=$(ls -1t /data/backups/gym-db-*.dump 2>/dev/null | head -n 1)
+    last=0
+    if [ -n "$newest" ]; then
+        last=$(stat -c %Y "$newest")
+    fi
+    now=$(date +%s)
+    wait=$((last + hours * 3600 - now))
+
+    if [ "$wait" -gt 0 ]; then
+        sleep $((wait < 3600 ? wait : 3600))
+    elif out=$(backup --db-only); then
+        echo "[backups] wrote $out"
+        ls -1t /data/backups/gym-db-*.dump | tail -n +"$((keep + 1))" | xargs -r rm -f --
+    else
+        echo "[backups] the automatic backup failed; trying again in an hour" >&2
+        sleep 3600
+    fi
+done

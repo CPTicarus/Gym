@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# A backup into /data/backups; prints the file when it's done.
+#
+#   docker exec gym backup            the database and every upload (.tar.gz)
+#   docker exec gym backup --db-only  the database alone (.dump) -- what the
+#                                     automatic daily backup takes
+#
+# Copy them off the server (DEPLOY.md): a backup on the same disk goes down
+# with the disk. `restore` puts either kind back.
+set -Eeuo pipefail
+
+dir=/data/backups
+stamp=$(date -u +%Y%m%d-%H%M%S)
+umask 077
+mkdir -p "$dir"
+
+dump_database() {
+    setpriv --reuid=gym --regid=gym --init-groups -- \
+        pg_dump --host=/run/postgresql --dbname=gym --format=custom --no-owner --no-privileges
+}
+
+case "${1:-}" in
+    --db-only) out=$dir/gym-db-$stamp.dump ;;
+    "") out=$dir/gym-full-$stamp.tar.gz ;;
+    *) echo "usage: backup [--db-only]" >&2; exit 2 ;;
+esac
+
+work=$(mktemp -d)
+trap 'rm -rf "$work" "$out.part"' EXIT
+
+if [ "${1:-}" = --db-only ]; then
+    dump_database > "$out.part"
+else
+    dump_database > "$work/database.dump"
+    tar --create --gzip --file="$out.part" \
+        --directory="$work" database.dump \
+        --directory=/data media private_media
+fi
+
+mv "$out.part" "$out"
+echo "$out"

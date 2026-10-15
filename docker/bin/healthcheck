@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Docker's HEALTHCHECK: the database, Django (straight through gunicorn) and
+# Nginx all answering.
+set -euo pipefail
+
+# Not before the entrypoint has handed over: until then the only Postgres
+# is the one it migrates against, and poking that one just logs errors.
+[ -e /run/gym-started ]
+
+# As a user Postgres will let in: a refused one is logged as a FATAL error,
+# which every 30 seconds would bury the real ones.
+setpriv --reuid=postgres --regid=postgres --init-groups -- \
+    pg_isready --quiet --host=/run/postgresql --username=postgres --dbname=postgres
+curl --fail --silent --show-error --output /dev/null --max-time 5 \
+    --header "Host: localhost" http://127.0.0.1:8000/api/config/
+curl --fail --silent --show-error --output /dev/null --max-time 5 http://127.0.0.1/healthz

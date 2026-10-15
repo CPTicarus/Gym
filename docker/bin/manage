@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Django's manage.py, run as the app's own user:
+#
+#   docker exec -it gym manage ensure_admin --help
+#   docker exec -it gym manage shell
+#
+# Running it as root instead would fail to reach the database (peer
+# authentication maps the OS user to the database role) and could leave
+# files in /data the app can't touch.
+set -euo pipefail
+cd /app
+
+if [ "$(id -u)" -eq 0 ]; then
+    exec setpriv --reuid=gym --regid=gym --init-groups -- python manage.py "$@"
+fi
+exec python manage.py "$@"
