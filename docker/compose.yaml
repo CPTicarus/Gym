@@ -10,6 +10,7 @@ name: gym
 services:
   gym:
     image: gym:${GYM_VERSION:-latest}
+    pull_policy: never
     container_name: gym
     restart: unless-stopped
     env_file: gym.env

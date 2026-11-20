@@ -22,7 +22,7 @@ as() {
 }
 
 manage() {
-    (cd /app && as "$APP_USER" python manage.py "$@")
+    (cd /app && as "$APP_USER" python -m django "$@")
 }
 
 # A directory in the volume, with its owner. A volume restored from another

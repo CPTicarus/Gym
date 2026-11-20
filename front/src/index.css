@@ -2,6 +2,22 @@
 
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/fonts/Vazirmatn-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lalezar";
+  src: url("/fonts/Lalezar-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 /* Tailwind's dark: variant follows our ThemeContext's data-theme
    attribute (see src/context/ThemeContext.jsx) rather than
    prefers-color-scheme directly — the in-app toggle and the

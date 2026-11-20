@@ -14,9 +14,9 @@ Everything that has to survive an upgrade lives in the volume, mounted at
 `/data`: the database, uploads, the generated secret key and backups. The
 image itself holds nothing you'd lose by replacing it.
 
-You build the image **on your own machine** and copy only the image to the
-server. The source code never goes there, and what the server runs is
-machine code, not Python you could open and read.
+Build the image on your machine and copy the release folder to the server.
+Nginx serves the production JavaScript, CSS and fonts locally. The app's
+Python modules run as stripped native extensions.
 
 ---
 
@@ -25,15 +25,16 @@ machine code, not Python you could open and read.
 With Docker Desktop running, from the project folder:
 
 ```powershell
-.\docker\build.ps1 1.0.0
+.\docker\build.ps1 1.1.0
 ```
 
 That builds the image, runs the full test suite against the compiled
 backend on Postgres (a failing test stops the build), and puts everything a
-server needs in `release\gym-1.0.0\`:
+server needs in `release\gym-1.1.0\`:
 
 ```
-gym-1.0.0.tar.gz     the image (gym:1.0.0 and gym:latest)
+gym-1.1.0.tar.gz     the image (gym:1.1.0 and gym:latest)
+SHA256SUMS           SHA-256 digest of the image archive
 compose.yaml         how to run it
 gym.env.example      its settings
 DEPLOY.md            this file
@@ -43,11 +44,8 @@ The first build downloads base images and packages and takes several
 minutes. Later builds reuse most of that. `-SkipTests` skips the test run
 while you're iterating, but don't ship a build made that way.
 
-> **Migrations:** this repo's `.gitignore` excludes the `migrations/`
-> folders, but the image needs them: they're compiled in, and the build
-> refuses to continue if they don't match the models. Build on the machine
-> that has them, which is this one. Committing them to git is safer
-> still, now that a production database depends on their exact history.
+The image includes the database migration history. Include new migrations
+with model changes so future images can upgrade an existing data volume.
 
 ## 2. First install on the server
 
@@ -56,11 +54,12 @@ access to Docker Hub, PyPI or npm.
 
 ```bash
 # from your machine
-scp -r release/gym-1.0.0 root@SERVER:/opt/gym
+scp -r release/gym-1.1.0 root@SERVER:/opt/gym
 
 # on the server
 cd /opt/gym
-docker load -i gym-1.0.0.tar.gz
+sha256sum -c SHA256SUMS
+docker load -i gym-1.1.0.tar.gz
 cp gym.env.example gym.env
 nano gym.env          # ALLOWED_HOSTS, MEMBER_SIGNUP and the three ADMIN_ lines
 docker compose up -d
@@ -185,21 +184,17 @@ All in `gym.env`, all optional except as noted in step 2.
 
 Nginx's upload limit follows the largest `MEDIA_MAX_*_MB` by itself.
 
-## What "compiled" protects, and what it doesn't
+## Code in the release
 
-- **The backend is protected.** Every module in `apps/` and `gym_backend/`
-  is a native extension (`.so`), stripped, with docstrings left out. The
-  image has no `.py` and no `.pyc` of the app. Someone with the image can
-  still see class and field names (Python needs them at run time), but
-  not the code.
-- **Django, DRF and the other libraries are stock open source.** There's
-  nothing to protect there, so they stay as they are.
-- **The frontend can't be hidden.** It's JavaScript the browser runs. It's
-  minified, with no source maps shipped, which is as far as any web app
-  can go.
-- **Compiling isn't licensing.** Whoever has the image can run copies of
-  it. Stopping that takes a licence check, which would be a separate
-  feature.
+The Django application and its migrations ship as stripped native Linux
+extensions. Empty Python package markers, deployment scripts, server
+configuration and third-party runtime libraries remain readable. Browsers
+receive minified JavaScript without source maps.
+
+Native compilation makes casual inspection and editing harder. Someone who
+controls the host can still inspect binaries, modify the image or replace
+it. To verify a transferred archive, compare its SHA-256 with a digest
+received from the builder through a trusted channel.
 
 ## For development
 

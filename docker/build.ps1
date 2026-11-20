@@ -40,7 +40,11 @@ $source = [IO.File]::OpenRead($tar)
 $target = [IO.File]::Create("$tar.gz")
 $gzip = New-Object IO.Compression.GZipStream($target, [IO.Compression.CompressionLevel]::Optimal)
 try { $source.CopyTo($gzip) } finally { $gzip.Dispose(); $target.Dispose(); $source.Dispose() }
-Remove-Item $tar
+Remove-Item -LiteralPath $tar
+
+$archive = Get-Item -LiteralPath "$tar.gz"
+$sha256 = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+[IO.File]::WriteAllText((Join-Path $out "SHA256SUMS"), "$sha256  $($archive.Name)`n", [Text.Encoding]::ASCII)
 
 Copy-Item -Path (Join-Path $PSScriptRoot "compose.yaml"), (Join-Path $PSScriptRoot "gym.env.example"), (Join-Path $root "DEPLOY.md") -Destination $out
 Write-Host "Ready: $out"

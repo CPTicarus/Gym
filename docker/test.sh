@@ -29,4 +29,4 @@ as postgres psql --no-psqlrc --quiet --host=/run/postgresql --dbname=postgres \
     --command="CREATE ROLE gym LOGIN CREATEDB"
 
 cd /app
-as gym python manage.py test apps --noinput
+as gym python -m django test apps --noinput

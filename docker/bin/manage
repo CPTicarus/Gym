@@ -11,6 +11,6 @@ set -euo pipefail
 cd /app
 
 if [ "$(id -u)" -eq 0 ]; then
-    exec setpriv --reuid=gym --regid=gym --init-groups -- python manage.py "$@"
+    exec setpriv --reuid=gym --regid=gym --init-groups -- python -m django "$@"
 fi
-exec python manage.py "$@"
+exec python -m django "$@"

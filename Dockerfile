@@ -41,7 +41,6 @@ RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install -r /tmp/requirements.txt gunicorn supervisor -c /tmp/constraints.txt
 
 WORKDIR /src
-COPY manage.py ./
 COPY gym_backend/ gym_backend/
 COPY apps/ apps/
 ENV DJANGO_SETTINGS_MODULE=gym_backend.settings.container
@@ -49,7 +48,7 @@ ENV DJANGO_SETTINGS_MODULE=gym_backend.settings.container
 # exactly: better a failed build here than a crash on the server. (There's
 # no database to check the history against yet, hence the -W.)
 RUN SECRET_KEY=build-time-only /opt/venv/bin/python -W ignore::RuntimeWarning \
-        manage.py makemigrations --check --dry-run
+        -m django makemigrations --check --dry-run
 # The tests stay source, set aside for the test stage below. They never ship.
 RUN mkdir /tests \
  && find apps -name tests.py -exec cp --parents {} /tests/ \; \
@@ -58,8 +57,8 @@ COPY docker/compile.py /tmp/compile.py
 RUN python /tmp/compile.py /src apps gym_backend
 # The first imports of the compiled code, the way the server will do them.
 RUN export SECRET_KEY=build-time-only \
- && /opt/venv/bin/python manage.py check \
- && /opt/venv/bin/python manage.py collectstatic --noinput --verbosity=0
+ && /opt/venv/bin/python -m django check \
+ && /opt/venv/bin/python -m django collectstatic --noinput --verbosity=0
 
 
 # ---- runtime: what ships ----------------------------------------------------
