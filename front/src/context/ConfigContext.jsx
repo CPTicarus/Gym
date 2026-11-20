@@ -1,6 +1,7 @@
 import { createContext, useEffect, useMemo, useState } from "react";
 
-import { fetchPublicConfig } from "../api/config.js";
+import { fetchPublicConfig, updateBranding } from "../api/config.js";
+import { DEFAULT_BRANDING } from "../config/brand.js";
 
 export const ConfigContext = createContext(null);
 
@@ -18,14 +19,15 @@ export const ConfigContext = createContext(null);
  * the answer hasn't come back yet.
  */
 export function ConfigProvider({ children }) {
-  const [memberSignup, setMemberSignup] = useState("staff");
+  const [config, setConfig] = useState(null);
+  const [attempt, setAttempt] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetchPublicConfig()
       .then((config) => {
-        if (!cancelled) setMemberSignup(config.member_signup);
+        if (!cancelled) setConfig(config);
       })
       .catch(() => {})
       .finally(() => {
@@ -34,12 +36,32 @@ export function ConfigProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
-  const value = useMemo(
-    () => ({ isSelfSignup: memberSignup === "self", isLoaded }),
-    [memberSignup, isLoaded]
-  );
+  const branding = useMemo(() => ({ ...DEFAULT_BRANDING, ...config?.branding }), [config?.branding]);
 
+  useEffect(() => {
+    if (isLoaded) document.title = `${branding.name} — پنل مدیریت باشگاه`;
+  }, [isLoaded, branding.name]);
+
+  async function saveBranding(changes) {
+    const overrides = await updateBranding(changes);
+    setConfig((current) => ({ ...current, branding: overrides }));
+    return { ...DEFAULT_BRANDING, ...overrides };
+  }
+
+  function retryConfig() {
+    setIsLoaded(false);
+    setAttempt((n) => n + 1);
+  }
+
+  const value = {
+    isSelfSignup: config?.member_signup === "self",
+    isLoaded,
+    branding,
+    hasBranding: Boolean(config?.branding),
+    retryConfig,
+    saveBranding,
+  };
   return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
 }

@@ -294,7 +294,7 @@ class StaffManagedGymTests(APITestCase):
     def test_the_app_is_told_which_workflow_this_is(self):
         response = self.client.get("/api/config/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, {"member_signup": "staff"})
+        self.assertEqual(response.data, {"member_signup": "staff", "branding": {}})
 
     def test_a_member_without_a_membership_still_sees_their_plans(self):
         member = make_user(User.Role.MEMBER, "member")
@@ -357,7 +357,7 @@ class SelfSignupTests(APITestCase):
         self.assertEqual(self._signup().status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
     def test_the_app_is_told_which_workflow_this_is(self):
-        self.assertEqual(self.client.get("/api/config/").data, {"member_signup": "self"})
+        self.assertEqual(self.client.get("/api/config/").data, {"member_signup": "self", "branding": {}})
 
 
 @override_settings(MEMBER_SIGNUP="self")

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { LogOutIcon, MenuIcon, MoonIcon, SunIcon, XIcon } from "../components/common/icons.jsx";
-import { BRAND_NAME } from "../config/brand.js";
+import { useAppConfig } from "../hooks/useAppConfig.js";
 import { NAV_ITEMS } from "../constants/navigation.js";
 import { ROLE_LABELS } from "../constants/roles.js";
 import { useAuth } from "../hooks/useAuth.js";
@@ -14,6 +14,7 @@ const ICON_SIZE = 18;
 
 export default function AppLayout() {
   const { role, greeting, logout } = useAuth();
+  const { branding } = useAppConfig();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -40,7 +41,7 @@ export default function AppLayout() {
     <div className="app-shell">
       {/* Desktop sidebar — always visible at the desktop breakpoint, hidden on mobile */}
       <aside className="sidebar">
-        <span className="brand-mark">{BRAND_NAME}</span>
+        <span className="brand-mark">{branding.name}</span>
         <nav className="nav">
           {items.map(({ to, label, Icon }) => (
             <NavLink key={to} to={to} className={navLinkClass}>
@@ -66,7 +67,7 @@ export default function AppLayout() {
             >
               <MenuIcon size={ICON_SIZE} />
             </button>
-            <span className="brand-mark topbar-brand">{BRAND_NAME}</span>
+            <span className="brand-mark topbar-brand">{branding.name}</span>
           </div>
 
           <div className="user-chip">
@@ -96,7 +97,7 @@ export default function AppLayout() {
         <div className="drawer-backdrop" onClick={() => setIsDrawerOpen(false)}>
           <nav className="drawer-panel" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-header">
-              <span className="brand-mark">{BRAND_NAME}</span>
+              <span className="brand-mark">{branding.name}</span>
               <button
                 type="button"
                 className="icon-btn"

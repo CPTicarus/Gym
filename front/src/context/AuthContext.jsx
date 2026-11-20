@@ -3,6 +3,7 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import { fetchMe, loginRequest, updateMe } from "../api/auth.js";
 import { PAYMENT_REQUIRED_EVENT } from "../api/axiosClient.js";
 import { clearTokens, getTokens, setTokens } from "../api/tokenStorage.js";
+import { useAppConfig } from "../hooks/useAppConfig.js";
 import { fullName } from "../utils/format.js";
 import { clearGreeting, ensureGreeting, formatGreeting, pickGreeting } from "../utils/greeting.js";
 import { decodeJwt } from "../utils/jwt.js";
@@ -10,6 +11,7 @@ import { decodeJwt } from "../utils/jwt.js";
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const { branding: { greetings } } = useAppConfig();
   const [user, setUser] = useState(null); // full profile from /auth/me/
   const [role, setRole] = useState(null); // quick claim from the JWT, available before /me/ resolves
   const [isLoading, setIsLoading] = useState(true);
@@ -108,13 +110,13 @@ export function AuthProvider({ children }) {
       isLoading,
       // Resolved here rather than in the top bar so the name is filled in
       // from the same profile every other consumer reads.
-      greeting: greetingIndex === null ? "" : formatGreeting(greetingIndex, fullName(user)),
+      greeting: greetingIndex === null ? "" : formatGreeting(greetings, greetingIndex, fullName(user)),
       login,
       logout,
       updateProfile,
       refreshProfile,
     }),
-    [user, role, isLoading, greetingIndex, login, logout, updateProfile, refreshProfile]
+    [user, role, isLoading, greetings, greetingIndex, login, logout, updateProfile, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

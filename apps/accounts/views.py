@@ -15,6 +15,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from apps.branding.models import GymBranding
+
 from .models import BodyMeasurement, BodyPhoto, BodyPhotoExample, HealthCondition
 from .permissions import (
     CanManageUser,
@@ -100,7 +102,7 @@ class RegisterView(generics.CreateAPIView):
 class PublicConfigView(APIView):
     """What the app needs to know about this gym before anyone signs in.
 
-      GET /api/config/   {"member_signup": "staff" | "self"}
+      GET /api/config/   Sign-up workflow and public branding overrides.
 
     MEMBER_SIGNUP is set in one place, here on the backend, which is also
     where it's enforced. The frontend asks instead of keeping its own copy,
@@ -112,7 +114,7 @@ class PublicConfigView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        return Response({"member_signup": settings.MEMBER_SIGNUP})
+        return Response({"member_signup": settings.MEMBER_SIGNUP, "branding": GymBranding.current()})
 
 
 class StaffCreateView(generics.CreateAPIView):

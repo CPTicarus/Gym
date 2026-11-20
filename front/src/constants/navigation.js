@@ -50,6 +50,7 @@ export const NAV_ITEMS = [
     Icon: SettingsIcon,
     roles: ["member", "trainer", "admin", "accounting"],
   },
+  { to: "/system-settings", label: "تنظیمات سیستم", Icon: SettingsIcon, roles: ["admin"] },
 ];
 
 // Staff roles land on the user dashboard; members land on their own plan.

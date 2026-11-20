@@ -1,5 +1,3 @@
-import { GREETINGS } from "../config/brand.js";
-
 const STORAGE_KEY = "gym_greeting";
 
 /**
@@ -13,8 +11,9 @@ const STORAGE_KEY = "gym_greeting";
  */
 function readIndex() {
   try {
-    const index = Number(localStorage.getItem(STORAGE_KEY));
-    return Number.isInteger(index) && index >= 0 && index < GREETINGS.length ? index : null;
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const index = Number(stored);
+    return stored !== null && Number.isSafeInteger(index) && index >= 0 ? index : null;
   } catch {
     return null;
   }
@@ -30,7 +29,8 @@ function writeIndex(index) {
 
 /** Draw a new line. Called on login, so each sign-in feels different. */
 export function pickGreeting() {
-  const index = Math.floor(Math.random() * GREETINGS.length);
+  // Draw independently of config loading. The same draw also works after a list edit.
+  const index = Math.floor(Math.random() * 0x80000000);
   writeIndex(index);
   return index;
 }
@@ -55,10 +55,11 @@ export function clearGreeting() {
  * unchanged; if there's no name to use, the placeholder and the comma
  * leading up to it are dropped rather than leaving a dangling "، ".
  */
-export function formatGreeting(index, name) {
-  const template = GREETINGS[index];
+export function formatGreeting(greetings, index, name) {
+  if (!greetings.length) return "";
+  const template = greetings[index % greetings.length];
   if (!template) return "";
   if (!template.includes("{name}")) return template;
-  if (!name) return template.replace(/[،,]?\s*\{name\}/, "").trim();
-  return template.replace("{name}", name);
+  if (!name) return template.replace(/[،,]?\s*\{name\}/g, "").trim();
+  return template.replaceAll("{name}", () => name);
 }

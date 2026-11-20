@@ -1,20 +1,4 @@
-/* =======================================================================
-   REBRAND THIS FILE TO REUSE THE APP FOR A DIFFERENT GYM
-   ---------------------------------------------------------------------
-   Everything below the @theme block is component styling built from
-   these tokens via Tailwind's @apply — change a color here and every
-   button/card/badge/nav that uses it updates automatically, in both
-   light and dark mode, with no other file touching a color value.
-
-   Why this works with Tailwind specifically: in Tailwind v4, @theme
-   doesn't bake colors into the generated utility CSS the way v3's
-   tailwind.config.js did. `bg-accent` compiles to
-   `background-color: var(--color-accent)` — a *reference*, not a
-   literal value — so the exact same compiled CSS can be re-themed at
-   runtime just by changing what --color-accent resolves to. That's
-   also exactly how the light/dark split below works: same variable
-   name, different value depending on [data-theme].
-======================================================================= */
+/* System Settings selects the screen palette. Print uses its own ink colors. */
 
 @import "tailwindcss";
 
@@ -55,52 +39,126 @@
   --default-transition-duration: 80ms;
   --default-transition-timing-function: linear;
 
-  /* ---- Light theme (default) ---- */
-  --color-canvas: #f5f6f3;
-  --color-surface: #ffffff;
-  --color-ink: #15181b;
-  --color-muted: #6b7280;
-  --color-line: #e4e6e1;
-
-  --color-accent: #ff4b2b;
-  --color-accent-ink: #ffffff;
-  --color-accent-dark: #c7371c;
-  --color-accent-soft: #ff4b2b1f;
-
-  --color-success: #1f9d55;
-  --color-success-soft: #e8f6ee;
-  --color-danger: #d92d20;
-  --color-danger-soft: #fdecea;
-  --color-neutral-soft: #eef0ec;
-
-  /* Sidebar / bottom-nav / auth panel — a constant dark "frame" that
-     does NOT flip with the theme (see [data-theme="dark"] below: these
-     two are deliberately absent from that override). */
-  --color-chrome: #15181b;
-  --color-chrome-ink: #f5f6f3;
-
   --shadow-card: 0 1px 2px rgba(15, 18, 20, 0.06), 0 8px 24px -14px rgba(15, 18, 20, 0.18);
 }
 
-[data-theme="dark"] {
-  --color-canvas: #111214;
-  --color-surface: #1a1c1f;
-  --color-ink: #f2f3f1;
-  --color-muted: #9aa0a6;
-  --color-line: #2b2e32;
+@theme inline {
+  --color-canvas: var(--gym-canvas);
+  --color-surface: var(--gym-surface);
+  --color-ink: var(--gym-ink);
+  --color-muted: var(--gym-muted);
+  --color-line: var(--gym-line);
+  --color-accent: var(--gym-accent);
+  --color-accent-ink: var(--gym-accent-ink);
+  --color-accent-dark: var(--gym-accent-dark);
+  --color-accent-soft: var(--gym-accent-soft);
+  --color-success: var(--gym-success);
+  --color-success-soft: var(--gym-success-soft);
+  --color-danger: var(--gym-danger);
+  --color-danger-soft: var(--gym-danger-soft);
+  --color-neutral-soft: var(--gym-neutral-soft);
+  --color-chrome: var(--gym-chrome);
+  --color-chrome-ink: var(--gym-chrome-ink);
+}
 
-  --color-accent: #ff6a4d;
-  --color-accent-ink: #16110e;
-  --color-accent-dark: #e14f32;
-  --color-accent-soft: #ff6a4d29;
+@layer theme {
+  :root, .palette-preview {
+    /* ---- Light theme (default) ---- */
+    --gym-canvas: #f5f6f3;
+    --gym-surface: #ffffff;
+    --gym-ink: #15181b;
+    --gym-muted: #6b7280;
+    --gym-line: #e4e6e1;
 
-  --color-success: #34d399;
-  --color-success-soft: #34d39924;
-  --color-danger: #f87171;
-  --color-danger-soft: #f8717124;
-  --color-neutral-soft: #24262a;
+    --gym-accent: #ff4b2b;
+    --gym-accent-ink: #ffffff;
+    --gym-accent-dark: #c7371c;
+    --gym-accent-soft: #ff4b2b1f;
 
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 26px -18px rgba(0, 0, 0, 0.6);
+    --gym-success: #1f9d55;
+    --gym-success-soft: #e8f6ee;
+    --gym-danger: #d92d20;
+    --gym-danger-soft: #fdecea;
+    --gym-neutral-soft: #eef0ec;
+
+    /* The sidebar, drawer and sign-in panel share these frame colors. */
+    --gym-chrome: #15181b;
+    --gym-chrome-ink: #f5f6f3;
+  }
+
+  [data-theme="dark"] {
+    --gym-canvas: #111214;
+    --gym-surface: #1a1c1f;
+    --gym-ink: #f2f3f1;
+    --gym-muted: #9aa0a6;
+    --gym-line: #2b2e32;
+
+    --gym-accent: #ff6a4d;
+    --gym-accent-ink: #16110e;
+    --gym-accent-dark: #e14f32;
+    --gym-accent-soft: #ff6a4d29;
+
+    --gym-success: #34d399;
+    --gym-success-soft: #34d39924;
+    --gym-danger: #f87171;
+    --gym-danger-soft: #f8717124;
+    --gym-neutral-soft: #24262a;
+
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 26px -18px rgba(0, 0, 0, 0.6);
+  }
+
+  [data-scheme="ocean"] {
+    --gym-canvas: #f0f6fa;
+    --gym-surface: #ffffff;
+    --gym-ink: #142d42;
+    --gym-muted: #506a7a;
+    --gym-line: #cddde7;
+    --gym-neutral-soft: #e3eef5;
+    --gym-accent: #17648d;
+    --gym-accent-ink: #ffffff;
+    --gym-accent-dark: #104967;
+    --gym-accent-soft: #dceef8;
+    --gym-chrome: #102e43;
+    --gym-chrome-ink: #f1f8fc;
+  }
+  [data-scheme="ocean"][data-theme="dark"] {
+    --gym-canvas: #101c27;
+    --gym-surface: #182937;
+    --gym-ink: #e5f3fb;
+    --gym-muted: #a0b9ca;
+    --gym-line: #32495a;
+    --gym-neutral-soft: #213645;
+    --gym-accent: #79c8ed;
+    --gym-accent-ink: #102e43;
+    --gym-accent-dark: #57b2df;
+    --gym-accent-soft: #79c8ed24;
+  }
+  [data-scheme="forest"] {
+    --gym-canvas: #f3f6ee;
+    --gym-surface: #fefffb;
+    --gym-ink: #1f3024;
+    --gym-muted: #546a58;
+    --gym-line: #d5dfcf;
+    --gym-neutral-soft: #e6edde;
+    --gym-accent: #377148;
+    --gym-accent-ink: #ffffff;
+    --gym-accent-dark: #285436;
+    --gym-accent-soft: #e1efdc;
+    --gym-chrome: #1c3528;
+    --gym-chrome-ink: #f4f8ed;
+  }
+  [data-scheme="forest"][data-theme="dark"] {
+    --gym-canvas: #131f19;
+    --gym-surface: #1d2d22;
+    --gym-ink: #edf5e7;
+    --gym-muted: #aec2ac;
+    --gym-line: #344c3a;
+    --gym-neutral-soft: #263b2c;
+    --gym-accent: #a2cf87;
+    --gym-accent-ink: #18271b;
+    --gym-accent-dark: #87bd6b;
+    --gym-accent-soft: #a2cf8724;
+  }
 }
 
 /* =======================================================================
@@ -137,7 +195,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--gym-accent);
     outline-offset: 2px;
   }
 }
@@ -235,29 +293,14 @@
   .main {
     @apply flex min-w-0 flex-1 flex-col;
   }
-  /* ---- The always-dark panels ----
-     The sidebar, the mobile drawer and the auth brand panel keep a dark
-     background in BOTH themes — that's the deliberate "constant frame"
-     the @theme block describes. The trouble is that generic components
-     get dropped inside them, and those read --color-ink, --color-muted
-     and --color-line, which in LIGHT mode resolve to near-black on
-     near-black: the drawer's close button, its logout button, the
-     sidebar footer and the brand mark all disappear.
-
-     Rather than give each one an "-inverse" variant and remember to
-     apply it every time something new is added here, the panels re-point
-     those tokens for their own subtree. Everything inside is then
-     rendering against a dark surface as far as the tokens are concerned,
-     and comes out right in either theme — including components that
-     don't exist yet. The values are the dark-theme ones, because that's
-     exactly the situation these panels are permanently in. */
+  /* Reuse the selected navigation colors for controls inside these panels. */
   .sidebar,
   .drawer-panel,
   .auth-brand {
-    --color-ink: var(--color-chrome-ink);
-    --color-muted: #9aa0a6;
-    --color-line: rgb(255 255 255 / 0.25);
-    --color-neutral-soft: rgb(255 255 255 / 0.1);
+    --gym-ink: var(--gym-chrome-ink);
+    --gym-muted: color-mix(in srgb, var(--gym-chrome-ink) 68%, var(--gym-chrome));
+    --gym-line: color-mix(in srgb, var(--gym-chrome-ink) 25%, transparent);
+    --gym-neutral-soft: color-mix(in srgb, var(--gym-chrome-ink) 10%, transparent);
   }
 
   .sidebar {
@@ -267,13 +310,13 @@
     @apply flex flex-col gap-1;
   }
   .nav-link {
-    @apply flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-white/85 no-underline;
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-chrome-ink/85 no-underline;
   }
   .nav-link:hover {
-    @apply bg-white/10 text-white;
+    @apply bg-chrome-ink/10 text-chrome-ink;
   }
   .nav-link.is-active {
-    @apply bg-accent text-white;
+    @apply bg-accent text-accent-ink;
   }
   .sidebar-footer {
     @apply mt-auto text-xs;
@@ -291,7 +334,7 @@
     @apply sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface px-4 py-3;
   }
   .topbar-start {
-    @apply flex items-center gap-2;
+    @apply flex min-w-0 items-center gap-2;
   }
   .topbar-menu-btn {
     @apply inline-flex;
@@ -327,7 +370,7 @@
     @apply mb-1 flex items-center justify-between;
   }
   .drawer-footer {
-    @apply mt-auto flex items-center justify-between gap-2 border-t border-white/10 pt-4;
+    @apply mt-auto flex items-center justify-between gap-2 border-t border-chrome-ink/10 pt-4;
   }
 
   /* ---- Brand ---- */
@@ -338,6 +381,10 @@
      (either one) breaks it in the other. */
   .brand-mark {
     @apply font-brand text-lg font-normal;
+    overflow-wrap: anywhere;
+  }
+  .topbar .topbar-brand {
+    @apply min-w-0 truncate;
   }
   .brand-mark-lg {
     @apply text-2xl;
@@ -391,7 +438,7 @@
     @apply bg-neutral-soft;
   }
   .icon-btn-inverse {
-    @apply border-white/25 text-white;
+    @apply border-chrome-ink/25 text-chrome-ink;
   }
   /* Deleting a row is the one destructive control in these lists, and it
      sits right next to edit — it reads as danger rather than as another
@@ -403,7 +450,7 @@
     @apply bg-danger-soft;
   }
   .icon-btn-inverse:hover {
-    @apply bg-white/10;
+    @apply bg-chrome-ink/10;
   }
 
   /* ---- Forms ---- */
@@ -508,10 +555,7 @@
     animation: led-flicker 1.6s steps(1, end) infinite;
   }
 
-  /* ---- Marquee banner ----
-     Gym-floor signage: a hard-edged strip of moving text. Content comes
-     from BRAND_TICKER in config/brand.js, so a gym edits its own
-     announcements in the same file it sets its name in. */
+  /* ---- Marquee banner ---- */
   .marquee {
     @apply flex overflow-hidden border-y-2 border-accent bg-chrome text-chrome-ink;
   }
@@ -526,7 +570,7 @@
      rather than one long run-on sentence. */
   .marquee-item + .marquee-item::before {
     content: "";
-    @apply -ms-5 me-5 h-3 w-px flex-none bg-white/25;
+    @apply -ms-5 me-5 h-3 w-px flex-none bg-chrome-ink/25;
   }
 
   /* ---- Page layout helpers ---- */
@@ -581,7 +625,7 @@
      (view for everyone, plus edit via double-click for trainer/admin). */
   .move-card {
     @apply relative touch-manipulation cursor-pointer rounded-lg border border-line bg-surface p-4 shadow-card transition-colors;
-    border-inline-start: 4px solid var(--color-ink);
+    border-inline-start: 4px solid var(--gym-ink);
   }
   .move-card:hover {
     @apply bg-neutral-soft;
@@ -721,7 +765,7 @@
   }
   .plan-card {
     @apply flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 no-underline shadow-card transition-colors;
-    border-inline-start: 4px solid var(--color-accent);
+    border-inline-start: 4px solid var(--gym-accent);
   }
   .plan-card:hover {
     @apply bg-neutral-soft;
@@ -1023,7 +1067,7 @@
     @apply border-accent bg-accent-soft;
   }
   .kind-option:has(:focus-visible) {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--gym-accent);
     outline-offset: 2px;
   }
   .kind-option-title {
@@ -1040,7 +1084,7 @@
   }
   .food-card {
     @apply relative flex flex-col items-start gap-1 border border-line bg-surface p-4 shadow-card transition-colors;
-    border-inline-start: 4px solid var(--color-ink);
+    border-inline-start: 4px solid var(--gym-ink);
   }
   .food-card:hover {
     @apply bg-neutral-soft;
@@ -1061,7 +1105,7 @@
     outline: none;
   }
   .food-card:has(.food-card-open:focus-visible) {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--gym-accent);
     outline-offset: 2px;
   }
   .food-card-alias {
@@ -1158,7 +1202,7 @@
      numbered, because the order is part of the exercise. */
   .superset-block {
     @apply flex flex-col gap-2 border border-line bg-surface p-3;
-    border-inline-start: 4px solid var(--color-accent);
+    border-inline-start: 4px solid var(--gym-accent);
   }
   .superset-head {
     @apply flex items-start justify-between gap-2;
@@ -1414,12 +1458,14 @@
   }
   .auth-tagline {
     @apply mt-2.5 text-base font-semibold text-chrome-ink;
+    overflow-wrap: anywhere;
   }
   .auth-rule {
     @apply my-4 h-1 w-12 rounded-sm bg-accent;
   }
   .auth-note {
-    @apply text-[13px] leading-8 text-white/70;
+    @apply text-[13px] leading-8 text-chrome-ink/70;
+    overflow-wrap: anywhere;
   }
   .auth-form-panel {
     @apply flex flex-1 items-start justify-center bg-canvas px-5 pb-10 pt-7;
@@ -1560,22 +1606,22 @@
        the distinction was never load-bearing on paper. */
     :root,
     :root[data-theme="dark"] {
-      --color-canvas: #ffffff;
-      --color-surface: #ffffff;
-      --color-ink: #000000;
-      --color-muted: #3d3d3d;
-      --color-line: #9a9a9a;
-      --color-neutral-soft: #f2f2f2;
-      --color-accent: #000000;
-      --color-accent-dark: #000000;
-      --color-accent-ink: #ffffff;
-      --color-accent-soft: #f0f0f0;
-      --color-success: #000000;
-      --color-success-soft: #f0f0f0;
-      --color-danger: #000000;
-      --color-danger-soft: #f0f0f0;
-      --color-chrome: #ffffff;
-      --color-chrome-ink: #000000;
+      --gym-canvas: #ffffff;
+      --gym-surface: #ffffff;
+      --gym-ink: #000000;
+      --gym-muted: #3d3d3d;
+      --gym-line: #9a9a9a;
+      --gym-neutral-soft: #f2f2f2;
+      --gym-accent: #000000;
+      --gym-accent-dark: #000000;
+      --gym-accent-ink: #ffffff;
+      --gym-accent-soft: #f0f0f0;
+      --gym-success: #000000;
+      --gym-success-soft: #f0f0f0;
+      --gym-danger: #000000;
+      --gym-danger-soft: #f0f0f0;
+      --gym-chrome: #ffffff;
+      --gym-chrome-ink: #000000;
       --shadow-card: none;
     }
 

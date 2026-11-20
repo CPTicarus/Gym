@@ -59,13 +59,13 @@ export default function MeasurementTrend({ entries, field, unit, label }) {
         <polyline
           points={coords.map(([x, y]) => `${x},${y}`).join(" ")}
           fill="none"
-          stroke="var(--color-accent)"
+          stroke="var(--gym-accent)"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         {coords.map(([x, y], i) => (
-          <circle key={points[i].id} cx={x} cy={y} r="2.5" fill="var(--color-accent)" />
+          <circle key={points[i].id} cx={x} cy={y} r="2.5" fill="var(--gym-accent)" />
         ))}
       </svg>
     </div>

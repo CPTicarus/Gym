@@ -1,4 +1,4 @@
-import { BRAND_NAME } from "../../config/brand.js";
+import { useAppConfig } from "../../hooks/useAppConfig.js";
 import { useAuth } from "../../hooks/useAuth.js";
 import { formatDate, fullName } from "../../utils/format.js";
 
@@ -19,10 +19,11 @@ function todayIso() {
  */
 export default function PrintHeader({ title }) {
   const { user } = useAuth();
+  const { branding } = useAppConfig();
 
   return (
     <div className="print-only print-header">
-      <span className="print-brand">{BRAND_NAME}</span>
+      <span className="print-brand">{branding.name}</span>
       <span className="print-owner">
         {fullName(user)} — {title}
       </span>

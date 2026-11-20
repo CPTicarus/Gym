@@ -23,6 +23,7 @@ import MyWorkoutPlansPage from "../pages/my/MyWorkoutPlansPage.jsx";
 import PlanBuilderPage from "../pages/plans/PlanBuilderPage.jsx";
 import PlanListPage from "../pages/plans/PlanListPage.jsx";
 import SettingsPage from "../pages/settings/SettingsPage.jsx";
+import SystemSettingsPage from "../pages/settings/SystemSettingsPage.jsx";
 import SupplementBuilderPage from "../pages/supplements/SupplementBuilderPage.jsx";
 import SupplementListPage from "../pages/supplements/SupplementListPage.jsx";
 import UserDetailPage from "../pages/users/UserDetailPage.jsx";
@@ -46,6 +47,10 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<RoleHome />} />
+
+          <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+            <Route path="/system-settings" element={<SystemSettingsPage />} />
+          </Route>
 
           {/* Staff-only: user dashboard */}
           <Route element={<ProtectedRoute allowedRoles={["trainer", "admin", "accounting"]} />}>
