@@ -6,6 +6,7 @@ import { CheckIcon, ClockIcon } from "../../components/common/icons.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import MoveDetailModal from "../../components/moves/MoveDetailModal.jsx";
 import SupersetFrame from "../../components/plans/SupersetFrame.jsx";
+import ExerciseDetail from "../../components/plans/ExerciseDetail.jsx";
 import { formatClock, formatDurationLong } from "../../utils/format.js";
 import {
   appendWorkoutLog,
@@ -18,7 +19,6 @@ import {
   summarizeSession,
 } from "../../utils/gymSession.js";
 import { toPersianDigits } from "../../utils/jalali.js";
-import { formatExerciseDetail } from "../../utils/planFormat.js";
 import { dayBlocks } from "../../utils/supersets.js";
 
 function SessionCheckbox({ isChecked, label, onClick }) {
@@ -41,7 +41,7 @@ function SessionMoveInfo({ exercise, onViewMove }) {
   return (
     <button type="button" className="session-exercise-info" onClick={() => onViewMove(exercise.move)}>
       <span className="exercise-name">{exercise.move_detail?.name ?? "—"}</span>
-      <span className="muted exercise-detail">{formatExerciseDetail(exercise)}</span>
+      <ExerciseDetail exercise={exercise} />
       {exercise.notes && <span className="muted exercise-notes">{exercise.notes}</span>}
     </button>
   );

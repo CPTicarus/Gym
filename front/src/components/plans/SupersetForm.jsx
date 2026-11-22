@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 
+import { getSetTargets, parseExerciseAmount } from "../../utils/exerciseAmount.js";
 import { toPersianDigits } from "../../utils/jalali.js";
 import { TrashIcon } from "../common/icons.jsx";
+import ExerciseAmountField from "./ExerciseAmountField.jsx";
 import MoveCombobox from "./MoveCombobox.jsx";
 
 // One move on its own is just a move — see Superset in apps/workouts/models.py.
@@ -42,6 +44,19 @@ export default function SupersetForm({ moves, superset, onSubmit, onCancel }) {
       setError("برای هر ردیف یک حرکت انتخاب کنید.");
       return;
     }
+    if (isEdit && setCount !== superset.sets && superset.exercises.some((move) => getSetTargets(move)?.length)) {
+      setError("برای تغییر تعداد ست سوپرست، ابتدا برای حرکات با تکرار یا زمان متغیر یک مقدار ثابت وارد کنید.");
+      return;
+    }
+    const exercises = [];
+    for (const row of rows) {
+      const prescription = parseExerciseAmount(row.amount, row.amountType, setCount);
+      if (prescription.error) {
+        setError(`حرکت ${toPersianDigits(exercises.length + 1)} — ${prescription.error}`);
+        return;
+      }
+      exercises.push({ move: Number(row.moveId), ...prescription });
+    }
     setIsSaving(true);
     try {
       await onSubmit({
@@ -49,17 +64,7 @@ export default function SupersetForm({ moves, superset, onSubmit, onCancel }) {
         sets: setCount,
         rest_seconds: rest === "" ? null : Number(rest),
         notes: notes.trim(),
-        ...(!isEdit && {
-          exercises: rows.map((row) => {
-            // A move is counted in reps or held for seconds, never both.
-            const amount = row.amount === "" ? null : Number(row.amount);
-            return {
-              move: Number(row.moveId),
-              reps: row.amountType === "reps" ? amount : null,
-              duration_seconds: row.amountType === "duration" ? amount : null,
-            };
-          }),
-        }),
+        ...(!isEdit && { exercises }),
       });
     } catch {
       setError(isEdit ? "ذخیره سوپرست با مشکل مواجه شد." : "ساخت سوپرست با مشکل مواجه شد.");
@@ -134,27 +139,13 @@ export default function SupersetForm({ moves, superset, onSubmit, onCancel }) {
                     onChange={(moveId) => updateRow(row.key, { moveId })}
                     placeholder={`حرکت ${toPersianDigits(index + 1)} — جستجو…`}
                   />
-                  <div className="exercise-amount-field">
-                    <input
-                      className="input"
-                      type="number"
-                      min="0"
-                      dir="auto"
-                      placeholder="مقدار"
-                      aria-label={`مقدار حرکت ${index + 1}`}
-                      value={row.amount}
-                      onChange={(e) => updateRow(row.key, { amount: e.target.value })}
-                    />
-                    <select
-                      className="select"
-                      aria-label={`نوع مقدار حرکت ${index + 1}`}
-                      value={row.amountType}
-                      onChange={(e) => updateRow(row.key, { amountType: e.target.value })}
-                    >
-                      <option value="reps">تکرار</option>
-                      <option value="duration">ثانیه</option>
-                    </select>
-                  </div>
+                  <ExerciseAmountField
+                    label={`مقدار حرکت ${index + 1}`}
+                    amount={row.amount}
+                    amountType={row.amountType}
+                    onAmountChange={(amount) => updateRow(row.key, { amount })}
+                    onTypeChange={(amountType) => updateRow(row.key, { amountType })}
+                  />
                 </div>
                 {rows.length > MIN_MOVES && (
                   <button

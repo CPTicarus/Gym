@@ -74,7 +74,7 @@ export async function deleteDayExercise(planId, dayId, exerciseId) {
 
 // ---- Supersets within a day ----
 // Created together with their moves — { sets, rest_seconds, name, notes,
-// exercises: [{ move, reps | duration_seconds }, ...] }, at least two. After
+// exercises: [{ move, reps | reps_per_set | duration_seconds | seconds_per_set }, ...] }, at least two. After
 // that the round is edited here, and each move as a day exercise: add one
 // with `superset: <id>` to join it, and deleting down to a single move turns
 // that move back into an ordinary exercise.

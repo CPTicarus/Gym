@@ -158,6 +158,11 @@ export function appendWorkoutLog(entry) {
 
 /* ----------------------------------------------------------------- totals */
 
+function totalForSets(sets, fixedAmount, targets) {
+  if (targets?.length) return targets.reduce((sum, target) => sum + target, 0);
+  return (sets || 1) * (fixedAmount ?? 0);
+}
+
 /**
  * What's been completed so far. Sets and reps are the only volume this
  * schema can express — no exercise model carries a weight field, so there's
@@ -176,8 +181,8 @@ export function summarizeSession(exercises, checkedKeys) {
     if (!checkedKeys.has(ex.key)) continue;
     done += 1;
     sets += ex.sets ?? 0;
-    if (ex.reps) reps += (ex.sets || 1) * ex.reps;
-    if (ex.duration_seconds) seconds += (ex.sets || 1) * ex.duration_seconds;
+    reps += totalForSets(ex.sets, ex.reps, ex.reps_per_set);
+    seconds += totalForSets(ex.sets, ex.duration_seconds, ex.seconds_per_set);
   }
   return { done, total: exercises.length, sets, reps, seconds };
 }

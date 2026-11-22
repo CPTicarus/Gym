@@ -1,22 +1,14 @@
 import { useState } from "react";
 
+import { formatExerciseAmount, getSetTargets, parseExerciseAmount } from "../../utils/exerciseAmount.js";
 import { nextOrder } from "../../utils/ordering.js";
-import { formatExerciseDetail } from "../../utils/planFormat.js";
 import { dayBlocks } from "../../utils/supersets.js";
 import { PencilIcon, TrashIcon } from "../common/icons.jsx";
+import ExerciseAmountField from "./ExerciseAmountField.jsx";
+import ExerciseDetail from "./ExerciseDetail.jsx";
 import MoveCombobox from "./MoveCombobox.jsx";
 import SupersetForm from "./SupersetForm.jsx";
 import SupersetFrame from "./SupersetFrame.jsx";
-
-/** A move is measured one way or the other — counted reps, or held for a
- *  duration (a plank) — never both, so an exercise maps onto one value
- *  plus a type rather than two separate inputs. */
-function amountFieldsFrom(exercise) {
-  if (exercise?.duration_seconds != null) {
-    return { amount: String(exercise.duration_seconds), amountType: "duration" };
-  }
-  return { amount: exercise?.reps != null ? String(exercise.reps) : "", amountType: "reps" };
-}
 
 /**
  * The fields for one exercise, used BOTH to add a new one and to edit an
@@ -27,15 +19,15 @@ function amountFieldsFrom(exercise) {
  * dismissible and is unmounted by its parent on save, so it doesn't reset
  * itself; the add form stays mounted and clears after each submit.
  *
- * `inSuperset` drops sets and rest: inside a superset both belong to the
- * round, not to the move.
+ * A superset supplies the move's set count and rest.
  */
-function ExerciseForm({ moves, exercise, withRest, inSuperset = false, submitLabel, onSubmit, onCancel }) {
-  const initialAmount = amountFieldsFrom(exercise);
+function ExerciseForm({ moves, exercise, withRest, superset, submitLabel, onSubmit, onCancel }) {
   const [moveId, setMoveId] = useState(exercise?.move ? String(exercise.move) : "");
   const [sets, setSets] = useState(exercise?.sets != null ? String(exercise.sets) : "");
-  const [amount, setAmount] = useState(initialAmount.amount);
-  const [amountType, setAmountType] = useState(initialAmount.amountType);
+  const [amount, setAmount] = useState(() => formatExerciseAmount(exercise));
+  const [amountType, setAmountType] = useState(
+    exercise?.duration_seconds != null || exercise?.seconds_per_set != null ? "duration" : "reps"
+  );
   const [rest, setRest] = useState(
     exercise?.rest_seconds != null ? String(exercise.rest_seconds) : ""
   );
@@ -47,7 +39,7 @@ function ExerciseForm({ moves, exercise, withRest, inSuperset = false, submitLab
   const [comboKey, setComboKey] = useState(0);
 
   const isEdit = Boolean(onCancel);
-  const hasRest = withRest && !inSuperset;
+  const hasRest = withRest && !superset;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -56,16 +48,20 @@ function ExerciseForm({ moves, exercise, withRest, inSuperset = false, submitLab
       setError("یک حرکت انتخاب کنید.");
       return;
     }
+    const setCount = superset?.sets ?? (sets === "" ? null : Number(sets));
+    const prescription = parseExerciseAmount(amount, amountType, setCount);
+    if (prescription.error) {
+      setError(prescription.error);
+      return;
+    }
     setIsSaving(true);
     try {
       // Empty strings must become null, not "" — DRF rejects "" for
       // nullable integer fields.
-      const amountValue = amount === "" ? null : Number(amount);
       await onSubmit({
         move: Number(moveId),
-        ...(!inSuperset && { sets: sets === "" ? null : Number(sets) }),
-        reps: amountType === "reps" ? amountValue : null,
-        duration_seconds: amountType === "duration" ? amountValue : null,
+        ...(!superset && { sets: setCount ?? getSetTargets(prescription)?.length ?? null }),
+        ...prescription,
         ...(hasRest && { rest_seconds: rest === "" ? null : Number(rest) }),
         notes: notes.trim(),
       });
@@ -89,8 +85,8 @@ function ExerciseForm({ moves, exercise, withRest, inSuperset = false, submitLab
     <form className="exercise-add-form" onSubmit={handleSubmit}>
       <MoveCombobox key={comboKey} moves={moves} value={moveId} onChange={setMoveId} />
 
-      <div className="exercise-add-numbers">
-        {!inSuperset && (
+      <div className="exercise-prescription-fields">
+        {!superset && (
           <input
             className="input"
             type="number"
@@ -102,27 +98,12 @@ function ExerciseForm({ moves, exercise, withRest, inSuperset = false, submitLab
             onChange={(e) => setSets(e.target.value)}
           />
         )}
-        <div className="exercise-amount-field">
-          <input
-            className="input"
-            type="number"
-            min="0"
-            dir="auto"
-            placeholder="مقدار"
-            aria-label="مقدار"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <select
-            className="select"
-            aria-label="نوع مقدار"
-            value={amountType}
-            onChange={(e) => setAmountType(e.target.value)}
-          >
-            <option value="reps">تکرار</option>
-            <option value="duration">ثانیه</option>
-          </select>
-        </div>
+        <ExerciseAmountField
+          amount={amount}
+          amountType={amountType}
+          onAmountChange={setAmount}
+          onTypeChange={setAmountType}
+        />
         {hasRest && (
           <input
             className="input"
@@ -170,7 +151,7 @@ function ExerciseSummary({ exercise }) {
   return (
     <div className="exercise-row-main">
       <span className="exercise-name">{exercise.move_detail?.name ?? "—"}</span>
-      <span className="muted exercise-detail">{formatExerciseDetail(exercise)}</span>
+      <ExerciseDetail exercise={exercise} />
       {exercise.notes && <span className="muted exercise-notes">{exercise.notes}</span>}
     </div>
   );
@@ -231,7 +212,7 @@ export default function ExerciseSection({
   const appendOrder = nextOrder(exercises);
 
   /** A move's row contents — or, while it's being edited, its form. */
-  function exerciseContent(exercise, inSuperset) {
+  function exerciseContent(exercise, superset) {
     const key = `exercise-${exercise.id}`;
     if (openForm === key) {
       return (
@@ -239,7 +220,7 @@ export default function ExerciseSection({
           moves={moves}
           exercise={exercise}
           withRest={withRest}
-          inSuperset={inSuperset}
+          superset={superset}
           submitLabel="ذخیره"
           onCancel={() => setOpenForm(null)}
           onSubmit={async (payload) => {
@@ -271,7 +252,7 @@ export default function ExerciseSection({
       <SupersetFrame
         key={roundKey}
         superset={superset}
-        renderMove={(exercise) => <div className="superset-move-body">{exerciseContent(exercise, true)}</div>}
+        renderMove={(exercise) => <div className="superset-move-body">{exerciseContent(exercise, superset)}</div>}
         editor={
           openForm === roundKey ? (
             <SupersetForm
@@ -301,7 +282,7 @@ export default function ExerciseSection({
           (openForm === joinKey ? (
             <ExerciseForm
               moves={moves}
-              inSuperset
+              superset={superset}
               submitLabel="+ افزودن به سوپرست"
               onCancel={() => setOpenForm(null)}
               onSubmit={async (payload) => {
@@ -337,7 +318,7 @@ export default function ExerciseSection({
                 key={block.key}
                 className={`exercise-row${openForm === block.key ? " flex-col items-stretch" : ""}`}
               >
-                {exerciseContent(block.exercise, false)}
+                {exerciseContent(block.exercise)}
               </li>
             )
           )}

@@ -15,6 +15,7 @@ from .models import (
     WorkoutDayExercise,
     WorkoutPlan,
     WorkoutSession,
+    validate_exercise_amount,
 )
 
 User = get_user_model()
@@ -34,28 +35,29 @@ class _MoveFieldsMixin(serializers.Serializer):
     move = serializers.PrimaryKeyRelatedField(queryset=Move.objects.all())
 
 
-class _RepsOrDurationValidationMixin:
-    """A move is measured one way or the other — counted reps, or held for
-    a duration (e.g. a plank) — never both. Mirrors MoveMediaSerializer's
-    file-vs-external_url pattern: falls back to the existing instance's
-    values on a PATCH so a partial update can't sneak past this."""
-
+class _ExerciseAmountValidationMixin:
     def validate(self, attrs):
-        reps = attrs.get("reps", getattr(self.instance, "reps", None))
-        duration = attrs.get("duration_seconds", getattr(self.instance, "duration_seconds", None))
-        if reps is not None and duration is not None:
-            raise serializers.ValidationError("Provide either reps or a duration, not both.")
+        def value(field):
+            return attrs[field] if field in attrs else getattr(self.instance, field, None)
+
+        superset = value("superset")
+        validate_exercise_amount(
+            superset.sets if superset else value("sets"),
+            value("reps"), value("duration_seconds"), value("reps_per_set"), value("seconds_per_set"),
+        )
         return attrs
 
 
-class WarmupExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, serializers.ModelSerializer):
+class WarmupExerciseSerializer(_MoveFieldsMixin, _ExerciseAmountValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = WarmupExercise
-        fields = ["id", "move", "move_detail", "sets", "reps", "duration_seconds", "order", "notes"]
+        fields = [
+            "id", "move", "move_detail", "sets", "reps", "reps_per_set", "duration_seconds", "seconds_per_set", "order", "notes",
+        ]
         read_only_fields = ["id"]
 
 
-class WorkoutDayExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, serializers.ModelSerializer):
+class WorkoutDayExerciseSerializer(_MoveFieldsMixin, _ExerciseAmountValidationMixin, serializers.ModelSerializer):
     """A day's move. `superset` is the id of the superset it's done in, or
     null for a move done on its own; it can be given when a move is ADDED to
     an existing superset, but not changed afterwards — moving a move in or
@@ -69,8 +71,8 @@ class WorkoutDayExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMi
     class Meta:
         model = WorkoutDayExercise
         fields = [
-            "id", "move", "move_detail", "superset", "sets", "reps",
-            "duration_seconds", "rest_seconds", "order", "notes",
+            "id", "move", "move_detail", "superset", "sets", "reps", "reps_per_set",
+            "duration_seconds", "seconds_per_set", "rest_seconds", "order", "notes",
         ]
         read_only_fields = ["id"]
 
@@ -94,7 +96,7 @@ class WorkoutDayExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMi
         return attrs
 
 
-class SupersetMoveSerializer(_RepsOrDurationValidationMixin, serializers.ModelSerializer):
+class SupersetMoveSerializer(serializers.ModelSerializer):
     """One move as it's written when a superset is created: which move, and
     how many reps (or seconds) of it per round. The round's sets and rest
     are the superset's, not the move's."""
@@ -103,7 +105,7 @@ class SupersetMoveSerializer(_RepsOrDurationValidationMixin, serializers.ModelSe
 
     class Meta:
         model = WorkoutDayExercise
-        fields = ["move", "reps", "duration_seconds", "notes"]
+        fields = ["move", "reps", "reps_per_set", "duration_seconds", "seconds_per_set", "notes"]
 
 
 class SupersetSerializer(serializers.ModelSerializer):
@@ -128,10 +130,17 @@ class SupersetSerializer(serializers.ModelSerializer):
         if self.instance is None:
             if not moves or len(moves) < 2:
                 raise serializers.ValidationError({"exercises": "A superset needs at least two moves."})
+            for move in moves:
+                validate_exercise_amount(
+                    attrs["sets"], move.get("reps"), move.get("duration_seconds"),
+                    move.get("reps_per_set"), move.get("seconds_per_set"),
+                )
         elif moves is not None:
             raise serializers.ValidationError(
                 {"exercises": "Edit a superset's moves through the day's exercises endpoint."}
             )
+        elif "sets" in attrs and attrs["sets"] != self.instance.sets:
+            self.instance.validate_round_count(attrs["sets"])
         return attrs
 
     def create(self, validated_data):
@@ -149,10 +158,12 @@ class SupersetSerializer(serializers.ModelSerializer):
         return superset
 
 
-class DailyExerciseSerializer(_MoveFieldsMixin, _RepsOrDurationValidationMixin, serializers.ModelSerializer):
+class DailyExerciseSerializer(_MoveFieldsMixin, _ExerciseAmountValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = DailyExercise
-        fields = ["id", "move", "move_detail", "sets", "reps", "duration_seconds", "order", "notes"]
+        fields = [
+            "id", "move", "move_detail", "sets", "reps", "reps_per_set", "duration_seconds", "seconds_per_set", "order", "notes",
+        ]
         read_only_fields = ["id"]
 
 

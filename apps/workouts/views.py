@@ -96,6 +96,8 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
                     move_id=exercise.move_id,
                     sets=exercise.sets,
                     reps=exercise.reps,
+                    reps_per_set=exercise.reps_per_set,
+                    seconds_per_set=exercise.seconds_per_set,
                     duration_seconds=exercise.duration_seconds,
                     order=exercise.order,
                     notes=exercise.notes,
@@ -123,6 +125,8 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
                         move_id=exercise.move_id,
                         sets=exercise.sets,
                         reps=exercise.reps,
+                        reps_per_set=exercise.reps_per_set,
+                        seconds_per_set=exercise.seconds_per_set,
                         duration_seconds=exercise.duration_seconds,
                         rest_seconds=exercise.rest_seconds,
                         order=exercise.order,
@@ -136,6 +140,8 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
                     move_id=exercise.move_id,
                     sets=exercise.sets,
                     reps=exercise.reps,
+                    reps_per_set=exercise.reps_per_set,
+                    seconds_per_set=exercise.seconds_per_set,
                     duration_seconds=exercise.duration_seconds,
                     order=exercise.order,
                     notes=exercise.notes,
@@ -210,7 +216,25 @@ class WorkoutDayViewSet(viewsets.ModelViewSet):
         serializer.save(plan=plan)
 
 
-class WorkoutDayExerciseViewSet(viewsets.ModelViewSet):
+class _DayContentViewSet(viewsets.ModelViewSet):
+    """Serialize edits to rounds and their moves so their set counts agree."""
+
+    @transaction.atomic
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.method not in permissions.SAFE_METHODS:
+            self.day = get_object_or_404(
+                WorkoutDay.objects.select_for_update(), pk=kwargs["day_pk"], plan_id=kwargs["plan_pk"]
+            )
+
+    def perform_create(self, serializer):
+        serializer.save(day=self.day)
+
+
+class WorkoutDayExerciseViewSet(_DayContentViewSet):
     serializer_class = WorkoutDayExerciseSerializer
     permission_classes = [IsTrainerOrAdmin]
 
@@ -220,10 +244,6 @@ class WorkoutDayExerciseViewSet(viewsets.ModelViewSet):
         return WorkoutDayExercise.objects.filter(
             day_id=self.kwargs["day_pk"], day__plan_id=self.kwargs["plan_pk"]
         ).select_related("move")
-
-    def perform_create(self, serializer):
-        day = get_object_or_404(WorkoutDay, pk=self.kwargs["day_pk"], plan_id=self.kwargs["plan_pk"])
-        serializer.save(day=day)
 
     def perform_destroy(self, instance):
         # Taking a move out of a superset can leave it with only one, which
@@ -235,7 +255,7 @@ class WorkoutDayExerciseViewSet(viewsets.ModelViewSet):
                 superset.dissolve_if_alone()
 
 
-class SupersetViewSet(viewsets.ModelViewSet):
+class SupersetViewSet(_DayContentViewSet):
     """Supersets within a training day:
 
       GET/POST         /api/workout-plans/{plan_pk}/days/{day_pk}/supersets/
@@ -255,10 +275,6 @@ class SupersetViewSet(viewsets.ModelViewSet):
         # scoping by both plan_pk and day_pk means a mismatched URL 404s
         # instead of silently exposing another plan's day
         return Superset.objects.filter(day_id=self.kwargs["day_pk"], day__plan_id=self.kwargs["plan_pk"])
-
-    def perform_create(self, serializer):
-        day = get_object_or_404(WorkoutDay, pk=self.kwargs["day_pk"], plan_id=self.kwargs["plan_pk"])
-        serializer.save(day=day)
 
 
 # --- Section 3: daily items, nested under a plan ---

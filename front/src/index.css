@@ -1271,7 +1271,7 @@
     @apply flex items-start gap-2;
   }
   .superset-form-move-fields {
-    @apply grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,11rem)];
+    @apply grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2;
   }
   /* The move search fills its column, like the dropdown under it. */
   .superset-form-move-fields .move-combobox .input {
@@ -1358,6 +1358,15 @@
   }
   .exercise-add-numbers {
     @apply grid grid-cols-2 gap-2 sm:grid-cols-4;
+  }
+  .exercise-prescription-fields {
+    @apply flex flex-wrap items-start gap-2;
+  }
+  .exercise-prescription-fields > .input {
+    @apply min-w-0 flex-[1_1_5rem];
+  }
+  .exercise-prescription-fields > .exercise-amount-input {
+    @apply flex-[3_1_13rem];
   }
   /* One grid cell holding a value + its unit (reps/seconds) side by side. */
   .exercise-amount-field {

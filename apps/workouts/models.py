@@ -6,13 +6,27 @@ from django.db import models
 from apps.moves.models import Move
 
 
-class _RepsOrDurationMixin:
-    """A move is measured one way or the other — counted reps, or held for
-    a duration (e.g. a plank) — never both at once."""
-
-    def clean(self):
-        if self.reps is not None and self.duration_seconds is not None:
+def validate_exercise_amount(sets, reps=None, duration_seconds=None, reps_per_set=None, seconds_per_set=None):
+    if reps_per_set is None and seconds_per_set is None:
+        if reps is not None and duration_seconds is not None:
             raise ValidationError("Provide either reps or a duration, not both.")
+        return
+    field = "seconds_per_set" if seconds_per_set is not None else "reps_per_set"
+    targets = seconds_per_set if seconds_per_set is not None else reps_per_set
+    amounts = (reps, duration_seconds, reps_per_set, seconds_per_set)
+    if sum(value is not None for value in amounts) > 1:
+        raise ValidationError({field: "Choose a single target type for this exercise."})
+    if not isinstance(targets, list) or not targets or any(type(value) is not int or value < 1 for value in targets):
+        raise ValidationError({field: "Enter a list of positive whole numbers."})
+    if len(targets) != sets:
+        raise ValidationError({field: "Enter one target for each set."})
+
+
+class _ExerciseAmountMixin:
+    def clean(self):
+        super().clean()
+        sets = self.superset.sets if getattr(self, "superset_id", None) else self.sets
+        validate_exercise_amount(sets, self.reps, self.duration_seconds, self.reps_per_set, self.seconds_per_set)
 
 
 class WorkoutPlan(models.Model):
@@ -147,13 +161,15 @@ class WorkoutAssignment(models.Model):
         return next_day
 
 
-class WarmupExercise(_RepsOrDurationMixin, models.Model):
+class WarmupExercise(_ExerciseAmountMixin, models.Model):
     """Section 1: warmup — a flat, ordered list of moves for this plan."""
 
     plan = models.ForeignKey(WorkoutPlan, related_name="warmup_exercises", on_delete=models.CASCADE)
     move = models.ForeignKey(Move, on_delete=models.PROTECT, related_name="+")
     sets = models.PositiveIntegerField(null=True, blank=True)
     reps = models.PositiveIntegerField(null=True, blank=True)
+    reps_per_set = models.JSONField(null=True, blank=True)
+    seconds_per_set = models.JSONField(null=True, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)  # e.g. "jog 60s" instead of reps
     order = models.PositiveIntegerField(default=0)
     notes = models.CharField(max_length=255, blank=True)
@@ -211,6 +227,17 @@ class Superset(models.Model):
     def __str__(self):
         return f"{self.day}: superset {self.name or self.pk}"
 
+    def validate_round_count(self, sets):
+        for reps, seconds in self.exercises.values_list("reps_per_set", "seconds_per_set"):
+            targets = reps if reps is not None else seconds
+            if targets is not None and len(targets) != sets:
+                raise ValidationError({"sets": "The round count must match each move's per-set targets."})
+
+    def clean(self):
+        super().clean()
+        if self.pk:
+            self.validate_round_count(self.sets)
+
     def dissolve_if_alone(self):
         """Run after a move leaves. With one move left this isn't a superset
         any more, just that move — so it becomes an ordinary exercise again,
@@ -229,7 +256,7 @@ class Superset(models.Model):
         self.delete()
 
 
-class WorkoutDayExercise(_RepsOrDurationMixin, models.Model):
+class WorkoutDayExercise(_ExerciseAmountMixin, models.Model):
     """A single move within a specific day, with its own sets/reps/rest —
     or, inside a superset, its own reps/duration only (see Superset)."""
 
@@ -243,6 +270,8 @@ class WorkoutDayExercise(_RepsOrDurationMixin, models.Model):
     )
     sets = models.PositiveIntegerField(null=True, blank=True)
     reps = models.PositiveIntegerField(null=True, blank=True)
+    reps_per_set = models.JSONField(null=True, blank=True)
+    seconds_per_set = models.JSONField(null=True, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     rest_seconds = models.PositiveIntegerField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
@@ -263,7 +292,7 @@ class WorkoutDayExercise(_RepsOrDurationMixin, models.Model):
                 raise ValidationError("A move in a superset takes its sets from the superset.")
 
 
-class DailyExercise(_RepsOrDurationMixin, models.Model):
+class DailyExercise(_ExerciseAmountMixin, models.Model):
     """Section 3: things done every day regardless of the day split
     (e.g. planks). Attached straight to the plan, not to any one day."""
 
@@ -271,6 +300,8 @@ class DailyExercise(_RepsOrDurationMixin, models.Model):
     move = models.ForeignKey(Move, on_delete=models.PROTECT, related_name="+")
     sets = models.PositiveIntegerField(null=True, blank=True)
     reps = models.PositiveIntegerField(null=True, blank=True)
+    reps_per_set = models.JSONField(null=True, blank=True)
+    seconds_per_set = models.JSONField(null=True, blank=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
     notes = models.CharField(max_length=255, blank=True)

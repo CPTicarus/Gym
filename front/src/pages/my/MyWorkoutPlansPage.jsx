@@ -8,8 +8,8 @@ import PrintButton from "../../components/common/PrintButton.jsx";
 import PrintHeader from "../../components/common/PrintHeader.jsx";
 import PlanHistoryList from "../../components/plans/PlanHistoryList.jsx";
 import SupersetFrame from "../../components/plans/SupersetFrame.jsx";
+import ExerciseDetail from "../../components/plans/ExerciseDetail.jsx";
 import { WORKOUT_GOAL_LABELS } from "../../constants/planOptions.js";
-import { formatExerciseDetail } from "../../utils/planFormat.js";
 import { dayBlocks } from "../../utils/supersets.js";
 
 /** A move as a member reads it; tapping opens its description and media. */
@@ -17,7 +17,7 @@ function MoveViewButton({ exercise, onViewMove }) {
   return (
     <button type="button" className="exercise-row-view-btn" onClick={() => onViewMove(exercise.move)}>
       <span className="exercise-name">{exercise.move_detail?.name ?? "—"}</span>
-      <span className="muted exercise-detail">{formatExerciseDetail(exercise)}</span>
+      <ExerciseDetail exercise={exercise} />
       {exercise.notes && <span className="muted exercise-notes">{exercise.notes}</span>}
     </button>
   );

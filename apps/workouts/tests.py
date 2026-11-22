@@ -107,6 +107,32 @@ class SupersetTests(APITestCase):
         self.assertEqual(elsewhere.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("superset", elsewhere.data)
 
+    def test_per_set_targets_follow_the_superset_rounds(self):
+        targets = [18, 15, 13, 12]
+        moves = [{"move": self.bench.pk, "reps_per_set": targets}, {"move": self.curl.pk, "reps": 10}]
+        self.assertEqual(self._superset(moves=moves, sets=3).status_code, status.HTTP_400_BAD_REQUEST)
+        group = self._superset(moves=moves)
+        self.assertEqual(group.status_code, status.HTTP_201_CREATED)
+        group_url = f"{self.base}/supersets/{group.data['id']}/"
+        changed = self.client.patch(group_url, {"sets": 3}, format="json")
+        self.assertEqual(changed.status_code, status.HTTP_400_BAD_REQUEST)
+        join = {"move": self.fly.pk, "superset": group.data["id"], "reps_per_set": [5, 8]}
+        self.assertEqual(self.client.post(f"{self.base}/exercises/", join, format="json").status_code, 400)
+        curl = WorkoutDayExercise.objects.get(move=self.curl)
+        self.client.delete(f"{self.base}/exercises/{curl.pk}/")
+        bench = self._day()["exercises"][0]
+        self.assertEqual((bench["superset"], bench["sets"], bench["reps_per_set"]), (None, 4, targets))
+
+    def test_per_set_seconds_use_the_superset_round_count(self):
+        moves = [{"move": self.bench.pk, "seconds_per_set": [60, 45]}, {"move": self.curl.pk, "reps": 10}]
+        self.assertEqual(self._superset(moves=moves, sets=3).status_code, status.HTTP_400_BAD_REQUEST)
+        group = self._superset(moves=moves, sets=2)
+        self.assertEqual(group.status_code, status.HTTP_201_CREATED)
+        bench = self._day()["exercises"][0]
+        self.assertEqual((bench["sets"], bench["seconds_per_set"]), (None, [60, 45]))
+        group_url = f"{self.base}/supersets/{group.data['id']}/"
+        self.assertEqual(self.client.patch(group_url, {"sets": 3}, format="json").status_code, 400)
+
     def test_membership_is_fixed_but_the_move_is_editable(self):
         self._superset()
         member = WorkoutDayExercise.objects.filter(superset__isnull=False).first()
@@ -171,3 +197,69 @@ class SupersetTests(APITestCase):
         assignment = self.client.get("/api/my-workout-plans/").data["results"][0]
         self.assertEqual(len(assignment["active_day"]["supersets"]), 1)
         self.assertEqual(len(assignment["plan_detail"]["days"][0]["exercises"]), 3)
+
+
+class PerSetExerciseTests(APITestCase):
+    def setUp(self):
+        self.client.force_authenticate(make_user(User.Role.TRAINER, "trainer"))
+        plan = WorkoutPlan.objects.create(name="Push")
+        day = WorkoutDay.objects.create(plan=plan, name="Chest")
+        self.plan_url = f"/api/workout-plans/{plan.pk}/"
+        self.exercise_url = f"{self.plan_url}days/{day.pk}/exercises/"
+        self.move = Move.objects.create(name="Bench press")
+        self.targets = [18, 15, 13, 12]
+
+    @override_settings(MEMBER_SIGNUP="staff")
+    def test_all_sections_keep_targets_on_copy_and_assignment(self):
+        for url in [self.plan_url + "warmup/", self.exercise_url, self.plan_url + "daily/"]:
+            response = self.client.post(
+                url, {"move": self.move.pk, "sets": 4, "reps_per_set": self.targets}, format="json"
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            timed = self.client.post(
+                url, {"move": self.move.pk, "order": 1, "sets": 2, "seconds_per_set": [60, 45]}, format="json"
+            )
+            self.assertEqual(timed.status_code, status.HTTP_201_CREATED)
+        copied = self.client.post(self.plan_url + "duplicate/").data
+        member = make_user(User.Role.MEMBER, "member")
+        self.client.post(f"/api/workout-plans/{copied['id']}/assign/", {"user": member.pk})
+        self.client.force_authenticate(member)
+        assignment = self.client.get("/api/my-workout-plans/").data["results"][0]
+        plan = assignment["plan_detail"]
+        for section in [plan["warmup_exercises"], assignment["active_day"]["exercises"], plan["daily_exercises"]]:
+            self.assertEqual((section[0]["sets"], section[0]["reps_per_set"], section[0]["reps"]), (4, self.targets, None))
+            self.assertEqual((section[1]["sets"], section[1]["seconds_per_set"], section[1]["duration_seconds"]), (2, [60, 45], None))
+
+    def test_edit_a_fixed_plank_to_variable_seconds_and_back(self):
+        plank = Move.objects.create(name="Plank")
+        created = self.client.post(self.exercise_url, {"move": plank.pk, "sets": 2, "duration_seconds": 60})
+        url = f"{self.exercise_url}{created.data['id']}/"
+        patch = {"duration_seconds": None, "seconds_per_set": [60, 45]}
+        self.assertEqual(self.client.patch(url, patch, format="json").status_code, status.HTTP_200_OK)
+        for invalid in [
+            {"seconds_per_set": [60]}, {"seconds_per_set": [-1, 45]}, {"seconds_per_set": "60-45"},
+            {"reps_per_set": [20, 15]}, {"reps": 12}, {"duration_seconds": 30}, {"sets": 3},
+        ]:
+            with self.subTest(invalid=invalid):
+                self.assertEqual(self.client.patch(url, invalid, format="json").status_code, 400)
+        self.assertEqual(self.client.get(url).data["seconds_per_set"], [60, 45])
+        fixed = self.client.patch(url, {"seconds_per_set": None, "duration_seconds": 45}, format="json")
+        self.assertEqual((fixed.status_code, fixed.data["duration_seconds"], fixed.data["seconds_per_set"]), (200, 45, None))
+
+    def test_editing_targets_validates_the_resulting_exercise(self):
+        response = self.client.post(self.exercise_url, {"move": self.move.pk, "sets": 4, "reps": 10}, format="json")
+        url = f"{self.exercise_url}{response.data['id']}/"
+        self.assertEqual(self.client.patch(url, {"reps_per_set": self.targets}, format="json").status_code, 400)
+        response = self.client.patch(url, {"reps": None, "reps_per_set": self.targets}, format="json")
+        self.assertEqual(response.status_code, 200)
+        for patch in [{"sets": 3}, {"duration_seconds": 30}, {"reps_per_set": []}, {"reps_per_set": "18,15,13,12"}]:
+            with self.subTest(patch=patch):
+                self.assertEqual(self.client.patch(url, patch, format="json").status_code, 400)
+        for value in [0, -1, 1.5, True, None, "12"]:
+            with self.subTest(value=value):
+                patch = {"reps_per_set": [18, 15, 13, value]}
+                self.assertEqual(self.client.patch(url, patch, format="json").status_code, 400)
+        edited = self.client.patch(url, {"notes": "Controlled tempo"}, format="json")
+        self.assertEqual(edited.data["reps_per_set"], self.targets)
+        timed = self.client.patch(url, {"reps_per_set": None, "duration_seconds": 30}, format="json")
+        self.assertEqual((timed.status_code, timed.data["duration_seconds"], timed.data["reps_per_set"]), (200, 30, None))
