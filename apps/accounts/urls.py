@@ -13,6 +13,7 @@ from .views import (
     MeView,
     PublicConfigView,
     RegisterView,
+    SignupTrainerListView,
     StaffCreateView,
     UserViewSet,
 )
@@ -30,6 +31,7 @@ urlpatterns = [
     # Read by the app before anyone signs in — see PublicConfigView.
     path("config/", PublicConfigView.as_view(), name="public-config"),
     path("auth/register/", RegisterView.as_view(), name="auth-register"),
+    path("auth/signup-trainers/", SignupTrainerListView.as_view(), name="signup-trainers"),
     path("auth/login/", CustomTokenObtainPairView.as_view(), name="auth-login"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="auth-refresh"),
     path("auth/me/", MeView.as_view(), name="auth-me"),

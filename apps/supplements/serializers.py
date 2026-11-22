@@ -1,9 +1,8 @@
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import SupplementAssignment, SupplementItem, SupplementPlan
+from apps.plan_assignments import AssignableMemberField
 
-User = get_user_model()
+from .models import SupplementAssignment, SupplementItem, SupplementPlan
 
 
 class SupplementItemSerializer(serializers.ModelSerializer):
@@ -64,7 +63,7 @@ class SupplementAssignmentSerializer(serializers.ModelSerializer):
     """Used both to assign a protocol (POST {"user": <id>}) and to list a
     member's own via /api/my-supplement-plans/."""
 
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role=User.Role.MEMBER))
+    user = AssignableMemberField()
     assigned_by = serializers.StringRelatedField(read_only=True)
     plan_detail = SupplementPlanSerializer(source="plan", read_only=True)
 

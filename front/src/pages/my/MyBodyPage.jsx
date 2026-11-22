@@ -20,7 +20,7 @@ import {
 } from "../../constants/healthConditions.js";
 import { useAuth } from "../../hooks/useAuth.js";
 import { getBmiCategory, getWhrCategory, getWhtrCategory } from "../../utils/bmi.js";
-import { formatDate } from "../../utils/format.js";
+import { formatDate, trainerName } from "../../utils/format.js";
 import { toPersianDigits } from "../../utils/jalali.js";
 import { planLockStage } from "../../utils/planAccess.js";
 
@@ -207,8 +207,13 @@ export default function MyBodyPage() {
         <div>
           <h1 className="page-title">بدن من</h1>
           <p className="page-subtitle">
-            اندازه‌های خودتان را ثبت کنید تا روند پیشرفتتان را ببینید. این اطلاعات را فقط شما و مربی شما خواهند دید.
+            اندازه‌های خودتان را ثبت کنید تا روند پیشرفتتان را ببینید و مربی‌تان بتواند برنامه شما را تنظیم کند.
           </p>
+          {user && (
+            <p className="page-subtitle">
+              {user.trainer ? `مربی شما: ${trainerName(user.trainer)}` : "باشگاه هنوز مربی شما را تعیین نکرده است."}
+            </p>
+          )}
         </div>
       </div>
 

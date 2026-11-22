@@ -20,6 +20,10 @@ export function fullName(user) {
   return [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username || "";
 }
 
+export function trainerName(trainer) {
+  return trainer.name || `مربی ${toPersianDigits(trainer.id)}`;
+}
+
 /**
  * A running clock for the gym-session timer: mm:ss, growing to h:mm:ss only
  * once an hour is on the board so a 12-minute warmup doesn't read "00:12:۳۴".

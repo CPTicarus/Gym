@@ -17,6 +17,7 @@ import { PencilIcon, TrashIcon } from "../../components/common/icons.jsx";
 import JalaliDateInput from "../../components/common/JalaliDateInput.jsx";
 import EditUserModal from "../../components/users/EditUserModal.jsx";
 import ExtendMembershipButton, { extendedMessage } from "../../components/users/ExtendMembershipButton.jsx";
+import MemberTrainerForm from "../../components/users/MemberTrainerForm.jsx";
 import {
   ASSIGNMENT_STATUSES,
   assignmentBadgeClass,
@@ -203,6 +204,14 @@ export default function UserDetailPage() {
 
       {error && <p className="error-text">{error}</p>}
       {toast && <p className="success-text">{toast}</p>}
+
+      {isAdmin && user.role === "member" && (
+        <MemberTrainerForm
+          key={user.id}
+          member={user}
+          onSaved={(updated) => setUser((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev))}
+        />
+      )}
 
       {/* Profile summary — read-only here; people edit their own via Settings */}
       <section className="card plan-section">

@@ -117,8 +117,10 @@ class BodyPhotoExtrasTests(APITestCase):
     def test_extras_follow_the_same_who_may_look_rules(self):
         extra_id = self._add(note="زیربغل باز").data["id"]
         trainer = make_user(User.Role.TRAINER, "trainer")
+        other_trainer = make_user(User.Role.TRAINER, "other-trainer")
         accounting = make_user(User.Role.ACCOUNTING, "desk")
         stranger = make_user(User.Role.MEMBER, "stranger")
+        User.objects.filter(pk=self.member.pk).update(trainer=trainer)
 
         self.client.force_authenticate(trainer)
         photos = self.client.get(f"/api/users/{self.member.pk}/body-photos/").data
@@ -126,6 +128,11 @@ class BodyPhotoExtrasTests(APITestCase):
         response = self.client.get(f"/api/body-photos/{extra_id}/file/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(f"extra-{extra_id}.png", response["Content-Disposition"])
+        response.close()
+
+        self.client.force_authenticate(other_trainer)
+        self.assertEqual(self.client.get(f"/api/users/{self.member.pk}/body-photos/").status_code, 404)
+        self.assertEqual(self.client.get(f"/api/body-photos/{extra_id}/file/").status_code, 404)
 
         self.client.force_authenticate(accounting)
         self.assertEqual(
@@ -283,6 +290,7 @@ class StaffManagedGymTests(APITestCase):
         response = self.client.post("/api/auth/register/", SIGNUP, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(User.objects.filter(username="newbie").exists())
+        self.assertEqual(self.client.get("/api/auth/signup-trainers/").status_code, status.HTTP_403_FORBIDDEN)
 
     def test_closed_reads_as_403_even_with_a_stale_token(self):
         # A browser can still hold an old session's token. That mustn't
@@ -326,6 +334,39 @@ class SelfSignupTests(APITestCase):
     def test_nobody_signs_themselves_up_as_staff(self):
         self._signup(role="admin")
         self.assertEqual(User.objects.get(username="newbie").role, User.Role.MEMBER)
+
+    def test_signup_directory_exposes_only_active_trainers_and_their_names(self):
+        trainer = make_user(User.Role.TRAINER, "trainer")
+        User.objects.filter(pk=trainer.pk).update(first_name="Mina", last_name="Ahmadi", email="coach@example.com")
+        inactive = make_user(User.Role.TRAINER, "inactive")
+        User.objects.filter(pk=inactive.pk).update(is_active=False)
+        admin = make_user(User.Role.ADMIN, "admin")
+        accounting = make_user(User.Role.ACCOUNTING, "accounting")
+        member = make_user(User.Role.MEMBER, "member")
+
+        response = self.client.get("/api/auth/signup-trainers/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [{"id": trainer.pk, "name": "Mina Ahmadi"}])
+        for unavailable in [inactive, admin, accounting, member]:
+            with self.subTest(role=unavailable.role, active=unavailable.is_active):
+                invalid = self._signup(trainer_id=unavailable.pk)
+                self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn("trainer_id", invalid.data)
+
+        self.assertEqual(self._signup(trainer_id=trainer.pk).status_code, status.HTTP_201_CREATED)
+        newcomer = User.objects.get(username="newbie")
+        self.assertEqual(newcomer.trainer_id, trainer.pk)
+        self.client.force_authenticate(newcomer)
+        self.assertEqual(self.client.get("/api/auth/me/").data["trainer"], response.data[0])
+
+    def test_letting_the_gym_choose_leaves_the_member_unassigned(self):
+        trainer = make_user(User.Role.TRAINER, "trainer")
+        self.assertEqual(self._signup(trainer_id=None).status_code, status.HTTP_201_CREATED)
+        member = User.objects.get(username="newbie")
+        self.assertIsNone(member.trainer_id)
+        self.client.force_authenticate(trainer)
+        queue = self.client.get("/api/users/unassigned-members/").data["results"]
+        self.assertEqual(queue, [{"id": member.pk, "first_name": "Sara", "last_name": "Rahimi"}])
 
     def test_sex_and_birth_date_are_required(self):
         # The trainer writes the plan around both, and nobody else will ask.
@@ -441,7 +482,9 @@ class PlanLockTests(APITestCase):
         self.assertEqual(self.client.get("/api/moves/").status_code, 200)
 
     def test_staff_are_not_locked_and_can_see_who_is(self):
-        self.client.force_authenticate(make_user(User.Role.TRAINER, "coach"))
+        trainer = make_user(User.Role.TRAINER, "coach")
+        User.objects.filter(pk=self.member.pk).update(trainer=trainer)
+        self.client.force_authenticate(trainer)
         self.assertEqual(self._me(), (False, None))
         plan = self.client.get(f"/api/workout-plans/{self.assignment.plan_id}/")
         self.assertEqual(plan.status_code, status.HTTP_200_OK)
@@ -460,7 +503,9 @@ class WaitingForPlanTests(APITestCase):
         WorkoutAssignment.objects.create(plan=plan, user=self.planned)
         # A finished plan doesn't take someone out of the queue.
         WorkoutAssignment.objects.create(plan=plan, user=self.second, status="completed")
-        self.client.force_authenticate(make_user(User.Role.TRAINER, "coach"))
+        trainer = make_user(User.Role.TRAINER, "coach")
+        User.objects.filter(pk__in=[self.first.pk, self.second.pk, self.planned.pk]).update(trainer=trainer)
+        self.client.force_authenticate(trainer)
 
     def _usernames(self, **params):
         return [u["username"] for u in self.client.get("/api/users/", params).data["results"]]
@@ -474,6 +519,146 @@ class WaitingForPlanTests(APITestCase):
 
     def test_without_it_the_directory_is_unchanged(self):
         self.assertEqual(self._usernames(), ["planned", "second", "first"])
+
+
+class TrainerMemberAccessTests(APITestCase):
+    queue_url = "/api/users/unassigned-members/"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.trainer = make_user(User.Role.TRAINER, "coach")
+        cls.other_trainer = make_user(User.Role.TRAINER, "other-coach")
+        cls.admin = make_user(User.Role.ADMIN, "admin")
+        cls.accounting = make_user(User.Role.ACCOUNTING, "accounting")
+        cls.member = make_user(User.Role.MEMBER, "mine")
+        cls.other_member = make_user(User.Role.MEMBER, "other-member")
+        cls.unassigned = make_user(User.Role.MEMBER, "pending")
+        User.objects.filter(pk=cls.member.pk).update(trainer=cls.trainer)
+        User.objects.filter(pk=cls.other_member.pk).update(trainer=cls.other_trainer)
+
+    def test_trainers_can_only_list_search_and_open_their_members(self):
+        self.client.force_authenticate(self.trainer)
+        for filters in [{}, {"waiting_for_plan": "true"}, {"role": "member"}]:
+            with self.subTest(filters=filters):
+                users = self.client.get("/api/users/", filters).data["results"]
+                self.assertEqual([user["id"] for user in users], [self.member.pk])
+        self.assertEqual(self.client.get("/api/users/", {"search": "other-member"}).data["count"], 0)
+        self.assertEqual(self.client.get(f"/api/users/{self.member.pk}/").status_code, 200)
+        for hidden in [self.other_member, self.unassigned, self.other_trainer]:
+            self.assertEqual(self.client.get(f"/api/users/{hidden.pk}/").status_code, 404)
+
+    def test_queue_shows_only_names_of_active_unassigned_members(self):
+        User.objects.filter(pk=self.unassigned.pk).update(
+            first_name="Sara", last_name="Rahimi", email="private@example.com", phone_number="09121234567"
+        )
+        inactive = make_user(User.Role.MEMBER, "inactive-member")
+        User.objects.filter(pk=inactive.pk).update(is_active=False)
+        self.client.force_authenticate(self.trainer)
+
+        expected = [{"id": self.unassigned.pk, "first_name": "Sara", "last_name": "Rahimi"}]
+        self.assertEqual(self.client.get(self.queue_url).data["results"], expected)
+        self.assertEqual(self.client.get(self.queue_url, {"search": "Sara Rahimi"}).data["results"], expected)
+        for private in ["pending", "private@example.com", "09121234567"]:
+            with self.subTest(private=private):
+                self.assertEqual(self.client.get(self.queue_url, {"search": private}).data["count"], 0)
+        self.assertEqual(self.client.post(f"/api/users/{inactive.pk}/claim/").status_code, 404)
+
+    def test_only_active_trainers_can_list_or_claim_unassigned_members(self):
+        inactive = make_user(User.Role.TRAINER, "inactive-trainer")
+        inactive.is_active = False
+        inactive.save(update_fields=["is_active"])
+        for actor in [self.accounting, self.admin, self.member, inactive]:
+            with self.subTest(actor=actor):
+                self.client.force_authenticate(actor)
+                self.assertEqual(self.client.get(self.queue_url).status_code, 403)
+                self.assertEqual(self.client.post(f"/api/users/{self.unassigned.pk}/claim/").status_code, 403)
+        self.unassigned.refresh_from_db()
+        self.assertIsNone(self.unassigned.trainer_id)
+
+    def test_first_trainer_to_claim_gets_exclusive_access(self):
+        member_url = f"/api/users/{self.unassigned.pk}/"
+        claim_url = f"{member_url}claim/"
+        for trainer in [self.trainer, self.other_trainer]:
+            self.client.force_authenticate(trainer)
+            self.assertEqual(self.client.get(self.queue_url).data["count"], 1)
+            self.assertEqual(self.client.get(member_url).status_code, 404)
+            self.assertEqual(self.client.get(f"{member_url}body-photos/").status_code, 404)
+
+        self.client.force_authenticate(self.trainer)
+        self.assertEqual(self.client.post(claim_url, {"trainer_id": self.other_trainer.pk}).status_code, 204)
+        self.assertEqual(self.client.post(claim_url).status_code, 204)
+        self.assertEqual(self.client.get(member_url).status_code, 200)
+        self.assertEqual(self.client.get(f"{member_url}body-photos/").status_code, 200)
+        self.assertEqual(self.client.post(f"/api/users/{self.other_member.pk}/claim/").status_code, 404)
+        self.assertEqual(self.client.post("/api/users/invalid/claim/").status_code, 404)
+        self.unassigned.refresh_from_db()
+        self.assertEqual(self.unassigned.trainer_id, self.trainer.pk)
+
+        self.client.force_authenticate(self.other_trainer)
+        self.assertEqual(self.client.get(self.queue_url).data["count"], 0)
+        self.assertEqual(self.client.post(claim_url).status_code, 404)
+        self.assertEqual(self.client.get(member_url).status_code, 404)
+
+    def test_admin_can_fill_the_queue_and_reassign_or_clear_a_trainer(self):
+        url = f"/api/users/{self.unassigned.pk}/"
+        options_url = "/api/users/available-trainers/"
+        self.client.force_authenticate(self.accounting)
+        self.assertEqual(self.client.get(options_url).status_code, 403)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.client.patch(url, {"trainer_id": self.trainer.pk}, format="json")
+        self.unassigned.refresh_from_db()
+        self.assertIsNone(self.unassigned.trainer_id)
+
+        self.client.force_authenticate(self.admin)
+        queue = self.client.get("/api/users/", {"needs_trainer": "true"}).data["results"]
+        self.assertEqual([user["id"] for user in queue], [self.unassigned.pk])
+        self.assertEqual({item["id"] for item in self.client.get(options_url).data}, {self.trainer.pk, self.other_trainer.pk})
+        self.assertEqual(self.client.patch(url, {"trainer_id": self.admin.pk}, format="json").status_code, 400)
+        assigned = self.client.patch(url, {"trainer_id": self.trainer.pk}, format="json")
+        self.assertEqual(assigned.status_code, 200)
+        self.assertEqual(assigned.data["trainer"]["id"], self.trainer.pk)
+        self.assertEqual(self.client.get("/api/users/", {"needs_trainer": "true"}).data["count"], 0)
+
+        self.client.force_authenticate(self.unassigned)
+        own_profile = self.client.patch("/api/auth/me/", {"trainer_id": self.other_trainer.pk}, format="json")
+        self.assertEqual(own_profile.data["trainer"]["id"], self.trainer.pk)
+
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.patch(url, {"trainer_id": self.other_trainer.pk}, format="json").status_code, 200)
+        self.client.force_authenticate(self.trainer)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.client.force_authenticate(self.other_trainer)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+        self.client.force_authenticate(self.admin)
+        cleared = self.client.patch(url, {"trainer_id": None}, format="json")
+        self.assertEqual(cleared.status_code, 200)
+        self.assertIsNone(cleared.data["trainer"])
+
+    def test_all_plan_assignment_endpoints_respect_trainer_scope(self):
+        self.client.force_authenticate(self.trainer)
+        for kind, plan_model, assignment_model in [
+            ("workout", WorkoutPlan, WorkoutAssignment),
+            ("diet", DietPlan, DietAssignment),
+            ("supplement", SupplementPlan, SupplementAssignment),
+        ]:
+            with self.subTest(kind=kind):
+                plan = plan_model.objects.create(name="Shared plan")
+                # The current trainer scope governs even historically assigned plans.
+                hidden = assignment_model.objects.create(user=self.other_member, plan=plan, assigned_by=self.trainer)
+                assign_url = f"/api/{kind}-plans/{plan.pk}/assign/"
+                list_url = f"/api/{kind}-assignments/"
+                hidden_url = f"{list_url}{hidden.pk}/"
+                self.assertEqual(self.client.post(assign_url, {"user": self.other_member.pk}).status_code, 400)
+                self.assertEqual(self.client.post(assign_url, {"user": self.unassigned.pk}).status_code, 400)
+                created = self.client.post(assign_url, {"user": self.member.pk})
+                self.assertEqual(created.status_code, 201)
+                results = self.client.get(list_url, {"plan": plan.pk}).data["results"]
+                self.assertEqual([result["id"] for result in results], [created.data["id"]])
+                self.assertEqual(self.client.get(list_url, {"user": self.other_member.pk}).data["count"], 0)
+                self.assertEqual(self.client.get(hidden_url).status_code, 404)
+                self.assertEqual(self.client.patch(hidden_url, {"status": "completed"}).status_code, 404)
+                self.assertEqual(self.client.delete(hidden_url).status_code, 404)
 
 
 class EnsureAdminCommandTests(TestCase):

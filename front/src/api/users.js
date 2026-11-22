@@ -1,12 +1,26 @@
 import axiosClient from "./axiosClient.js";
 
-export async function listUsers(params = {}) {
-  const { data } = await axiosClient.get("/users/", { params });
+export async function listUsers(params = {}, signal) {
+  const { data } = await axiosClient.get("/users/", { params, signal });
   return data; // DRF paginated: { count, next, previous, results }
+}
+
+export async function listUnassignedMembers(params, signal) {
+  const { data } = await axiosClient.get("/users/unassigned-members/", { params, signal });
+  return data;
+}
+
+export async function claimMember(userId) {
+  await axiosClient.post(`/users/${userId}/claim/`);
 }
 
 export async function getUser(userId) {
   const { data } = await axiosClient.get(`/users/${userId}/`);
+  return data;
+}
+
+export async function listAvailableTrainers(signal) {
+  const { data } = await axiosClient.get("/users/available-trainers/", { signal });
   return data;
 }
 

@@ -142,6 +142,29 @@ class _BodyMetricsFieldsMixin(serializers.Serializer):
     bmi = serializers.FloatField(read_only=True)
 
 
+class TrainerSummarySerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="get_full_name", read_only=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "name"]
+
+
+class UnassignedMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "first_name", "last_name"]
+        read_only_fields = fields
+
+
+class TrainerChoiceField(serializers.PrimaryKeyRelatedField):
+    def get_queryset(self):
+        return User.available_trainers()
+
+    def display_value(self, instance):
+        return instance.get_full_name() or f"Trainer {instance.pk}"
+
+
 class UserSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
     """General-purpose read serializer — e.g. admin's user directory,
     or a member looking up a trainer's basic info."""
@@ -154,12 +177,13 @@ class UserSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
     # before writing a programme, but it's the member's own health record
     # and only they edit it (see HealthConditionViewSet).
     health_conditions = HealthConditionSerializer(many=True, read_only=True)
+    trainer = TrainerSummarySerializer(read_only=True)
 
     class Meta:
         model = User
         fields = [
             "id", "username", "national_id", "email", "first_name", "last_name",
-            "role", "phone_number", "date_of_birth", "gender",
+            "role", "trainer", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
             "is_membership_active", "plans_locked", "height_cm", "latest_weight_kg",
             "latest_waist_cm", "latest_hips_cm", "latest_chest_cm", "latest_arm_cm",
@@ -183,12 +207,14 @@ class UserAdminSerializer(_NationalIdFieldMixin, _BodyMetricsFieldsMixin, serial
     is_membership_active = serializers.BooleanField(read_only=True)
     plans_locked = serializers.BooleanField(read_only=True)
     health_conditions = HealthConditionSerializer(many=True, read_only=True)
+    trainer = TrainerSummarySerializer(read_only=True)
+    trainer_id = TrainerChoiceField(source="trainer", required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = User
         fields = [
             "id", "username", "national_id", "email", "first_name", "last_name",
-            "role", "phone_number", "date_of_birth", "gender",
+            "role", "trainer", "trainer_id", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
             "is_membership_active", "plans_locked", "height_cm", "latest_weight_kg",
             "latest_waist_cm", "latest_hips_cm", "latest_chest_cm", "latest_arm_cm",
@@ -197,6 +223,17 @@ class UserAdminSerializer(_NationalIdFieldMixin, _BodyMetricsFieldsMixin, serial
         read_only_fields = [
             "id", "username", "created_at", "is_membership_active", "plans_locked", "height_cm",
         ]
+
+    def validate(self, attrs):
+        trainer = attrs.get("trainer")
+        role = attrs.get("role", getattr(self.instance, "role", User.Role.MEMBER))
+        if role != User.Role.MEMBER:
+            if trainer is not None:
+                raise serializers.ValidationError({"trainer_id": "Only members can be assigned a trainer."})
+            attrs["trainer"] = None
+        elif trainer is not None and trainer.pk == getattr(self.instance, "pk", None):
+            raise serializers.ValidationError({"trainer_id": "A member cannot be their own trainer."})
+        return attrs
 
 
 class MemberEditSerializer(_NationalIdFieldMixin, serializers.ModelSerializer):
@@ -314,12 +351,13 @@ class RegisterSerializer(_RequiredIdentityFieldsMixin, serializers.ModelSerializ
     password_confirm = serializers.CharField(write_only=True)
     gender = serializers.ChoiceField(choices=User.Gender.choices)
     date_of_birth = serializers.DateField()
+    trainer_id = TrainerChoiceField(source="trainer", required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = User
         fields = [
             "username", "national_id", "email", "password", "password_confirm",
-            "first_name", "last_name", "phone_number", "gender", "date_of_birth",
+            "first_name", "last_name", "phone_number", "gender", "date_of_birth", "trainer_id",
         ]
 
     def validate_date_of_birth(self, value):
@@ -447,12 +485,13 @@ class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
     # trainer has assigned anything yet — see get_plan_ready.
     plans_locked = serializers.BooleanField(read_only=True)
     plan_ready = serializers.SerializerMethodField()
+    trainer = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             "id", "username", "national_id", "email", "first_name", "last_name",
-            "role", "phone_number", "date_of_birth", "gender",
+            "role", "trainer", "phone_number", "date_of_birth", "gender",
             "profile_picture", "membership_start_date", "membership_end_date",
             "is_membership_active", "plans_locked", "plan_ready", "height_cm",
             "latest_weight_kg", "latest_waist_cm", "latest_hips_cm", "latest_chest_cm",
@@ -465,6 +504,12 @@ class MeSerializer(_BodyMetricsFieldsMixin, serializers.ModelSerializer):
             "id", "username", "national_id", "role",
             "membership_start_date", "membership_end_date", "is_membership_active",
         ]
+
+    def get_trainer(self, user):
+        trainer = user.trainer
+        if trainer and trainer.is_trainer and trainer.is_active:
+            return TrainerSummarySerializer(trainer).data
+        return None
 
     def get_plan_ready(self, user):
         """While plans are locked, whether there's an active one of any kind

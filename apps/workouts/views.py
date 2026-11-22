@@ -7,7 +7,8 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin, PlansUnlocked
+from apps.accounts.permissions import IsTrainerOrAdmin, PlansUnlocked
+from apps.plan_assignments import StaffPlanAssignmentViewSet
 from apps.plan_copy import copy_name
 
 from .models import (
@@ -154,7 +155,7 @@ class WorkoutPlanViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, pk=None):
         plan = self.get_object()
-        serializer = WorkoutAssignmentSerializer(data=request.data)
+        serializer = WorkoutAssignmentSerializer(data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
 
         # A member has one active workout plan at a time (WorkoutAssignment.save
@@ -290,7 +291,7 @@ class DailyExerciseViewSet(viewsets.ModelViewSet):
         serializer.save(plan=plan)
 
 
-class WorkoutAssignmentViewSet(viewsets.ModelViewSet):
+class WorkoutAssignmentViewSet(StaffPlanAssignmentViewSet):
     """
     Staff view of who has which plan — the other direction from the
     /my-workout-plans/ endpoint members use.
@@ -307,14 +308,6 @@ class WorkoutAssignmentViewSet(viewsets.ModelViewSet):
 
     queryset = WorkoutAssignment.objects.all().select_related("plan", "user", "assigned_by")
     serializer_class = WorkoutAssignmentListSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["plan", "user", "status"]
-    http_method_names = ["get", "patch", "delete", "head", "options"]
-
-    def get_permissions(self):
-        if self.request.method in ("PATCH", "DELETE"):
-            return [IsTrainerOrAdmin()]
-        return [IsStaff()]
 
 
 class MyWorkoutPlansView(generics.ListAPIView):

@@ -1,10 +1,10 @@
-from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Max
 from rest_framework import serializers
 
 from apps.moves.models import Move
 from apps.moves.serializers import MoveListSerializer
+from apps.plan_assignments import AssignableMemberField
 
 from .models import (
     DailyExercise,
@@ -17,9 +17,6 @@ from .models import (
     WorkoutSession,
     validate_exercise_amount,
 )
-
-User = get_user_model()
-
 
 class _MoveFieldsMixin(serializers.Serializer):
     """Shared by every exercise-item serializer below: write with a move id,
@@ -248,7 +245,7 @@ class WorkoutAssignmentSerializer(serializers.ModelSerializer):
     """Used both to assign a plan (POST {"user": <id>}) and to list a
     member's assigned plans in full detail via /api/my-workout-plans/."""
 
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role=User.Role.MEMBER))
+    user = AssignableMemberField()
     assigned_by = serializers.StringRelatedField(read_only=True)
     plan_detail = WorkoutPlanSerializer(source="plan", read_only=True)
     # Which day the gym-session view should show right now — resolved

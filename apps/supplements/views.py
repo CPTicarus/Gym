@@ -6,7 +6,8 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin, PlansUnlocked
+from apps.accounts.permissions import IsTrainerOrAdmin, PlansUnlocked
+from apps.plan_assignments import StaffPlanAssignmentViewSet
 from apps.plan_copy import copy_name
 
 from .models import SupplementAssignment, SupplementItem, SupplementPlan
@@ -87,7 +88,7 @@ class SupplementPlanViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, pk=None):
         plan = self.get_object()
-        serializer = SupplementAssignmentSerializer(data=request.data)
+        serializer = SupplementAssignmentSerializer(data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
 
         # One active protocol per member (SupplementAssignment.save
@@ -122,7 +123,7 @@ class SupplementItemViewSet(viewsets.ModelViewSet):
         serializer.save(plan=plan)
 
 
-class SupplementAssignmentViewSet(viewsets.ModelViewSet):
+class SupplementAssignmentViewSet(StaffPlanAssignmentViewSet):
     """Staff view of who is on which protocol — mirrors the workout and
     diet assignment endpoints.
 
@@ -134,14 +135,6 @@ class SupplementAssignmentViewSet(viewsets.ModelViewSet):
 
     queryset = SupplementAssignment.objects.all().select_related("plan", "user", "assigned_by")
     serializer_class = SupplementAssignmentListSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["plan", "user", "status"]
-    http_method_names = ["get", "patch", "delete", "head", "options"]
-
-    def get_permissions(self):
-        if self.request.method in ("PATCH", "DELETE"):
-            return [IsTrainerOrAdmin()]
-        return [IsStaff()]
 
 
 class MySupplementPlansView(generics.ListAPIView):

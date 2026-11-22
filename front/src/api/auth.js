@@ -5,6 +5,11 @@ export async function loginRequest(username, password) {
   return data; // { access, refresh }
 }
 
+export async function listSignupTrainers(signal) {
+  const { data } = await axiosClient.get("/auth/signup-trainers/", { signal });
+  return data;
+}
+
 /** Self sign-up. Only open in a gym set up for it (the server answers 403
  *  otherwise), and it always makes a member. Returns the new account, not
  *  tokens: signing in afterwards is an ordinary login (see SignupPage). */

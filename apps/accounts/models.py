@@ -82,6 +82,14 @@ class User(AbstractUser):
         ACCOUNTING = "accounting", "Accounting"
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.MEMBER)
+    trainer = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="trainees",
+        limit_choices_to={"role": Role.TRAINER, "is_active": True},
+    )
 
     class Gender(models.TextChoices):
         MALE = "male", "Male"
@@ -114,6 +122,10 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.role})"
+
+    @classmethod
+    def available_trainers(cls):
+        return cls.objects.filter(role=cls.Role.TRAINER, is_active=True)
 
     @property
     def is_membership_active(self):
@@ -390,8 +402,8 @@ class BodyPhoto(models.Model):
 
     Trainers write better programmes when they can see posture and
     proportion -- where someone carries weight, how they stand -- which no
-    tape measure captures. The member uploads them; only they and a
-    trainer or admin can look at them.
+    tape measure captures. The member uploads them; only they, their
+    assigned trainer, and gym admins can look at them.
 
     The three main poses are one row each at most: this is "what does this
     person look like right now", the reference a trainer works from.

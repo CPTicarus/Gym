@@ -3,7 +3,9 @@ import mimetypes
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from django.http import FileResponse, Http404
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -23,8 +25,10 @@ from .permissions import (
     IsAdmin,
     IsAdminOrAccounting,
     IsStaff,
+    IsTrainer,
     IsTrainerOrAdmin,
     SelfSignupOpen,
+    visible_members,
 )
 from .throttling import LoginRateThrottle, PasswordChangeRateThrottle, RegisterRateThrottle
 from .serializers import (
@@ -40,6 +44,8 @@ from .serializers import (
     RegisterSerializer,
     SetPasswordSerializer,
     StaffCreateSerializer,
+    TrainerSummarySerializer,
+    UnassignedMemberSerializer,
     UserAdminSerializer,
     UserCreateSerializer,
     UserSerializer,
@@ -99,6 +105,20 @@ class RegisterView(generics.CreateAPIView):
     throttle_classes = [RegisterRateThrottle]
 
 
+def trainer_options():
+    return User.available_trainers().order_by("first_name", "last_name", "pk")
+
+
+class SignupTrainerListView(generics.ListAPIView):
+    serializer_class = TrainerSummarySerializer
+    authentication_classes = []
+    permission_classes = [SelfSignupOpen]
+    pagination_class = None
+
+    def get_queryset(self):
+        return trainer_options()
+
+
 class PublicConfigView(APIView):
     """What the app needs to know about this gym before anyone signs in.
 
@@ -132,7 +152,13 @@ class MeView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
+        if self.request.method in ("PATCH", "PUT"):
+            return get_object_or_404(User.objects.select_for_update(), pk=self.request.user.pk)
         return self.request.user
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
 
 
 class ChangePasswordView(APIView):
@@ -164,7 +190,8 @@ class UserViewSet(viewsets.ModelViewSet):
     but sees and can do different things:
 
       READ   admin: every user, any role
-             trainer / accounting: members only (their clients / billing scope)
+             trainer: full profiles for their assigned members, names in the unassigned queue
+             accounting: all members
       CREATE admin, accounting — front-desk member intake (always creates a
              MEMBER; staff accounts go through POST /auth/staff/ instead)
       UPDATE admin: full profile, role, membership, active flag — for
@@ -172,7 +199,7 @@ class UserViewSet(viewsets.ModelViewSet):
              can still edit their own record)
              accounting: members only, everything but role and active flag
              (see MemberEditSerializer)
-             trainer: not allowed — read-only
+             trainer: can take on an unassigned member through POST /claim/
              The per-object half of that lives in can_manage_user.
 
       POST /api/users/{id}/set-password/   {"password": "..."} — same rule
@@ -184,15 +211,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
       GET /api/users/?role=trainer   meaningful for admin; others are already scoped to members
       GET /api/users/?search=jane
-      GET /api/users/?waiting_for_plan=true   members with no active workout
-             plan, longest-waiting first: the trainer's queue in a self
-             sign-up gym, where nobody walks a new member over to them
+      GET /api/users/?waiting_for_plan=true   members with no active workout plan
+      GET /api/users/?needs_trainer=true      admin queue for members without an active trainer
+      GET /api/users/unassigned-members/     trainer queue with member names
+      POST /api/users/{id}/claim/            assign an unassigned member to the signed-in trainer
 
     Deliberately no DELETE: removing a user would cascade into their workout
     and diet assignments and lose history. Deactivate via `is_active` instead.
     """
 
     permission_classes = [IsStaff]
+    serializer_class = UserSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["role", "is_active"]
     search_fields = [
@@ -201,8 +230,23 @@ class UserViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "head", "options"]
 
     def get_queryset(self):
+        if self.action == "unassigned_members":
+            return (
+                self.active_members().filter(trainer__isnull=True)
+                .only("id", "first_name", "last_name").order_by("created_at", "pk")
+            )
         user = self.request.user
-        queryset = User.objects.all() if user.is_gym_admin else User.objects.filter(role=User.Role.MEMBER)
+        is_admin = getattr(user, "is_gym_admin", False)
+        queryset = User.objects.all() if is_admin else visible_members(user)
+        if self.action in ("partial_update", "update"):
+            return queryset.select_for_update()
+        queryset = queryset.select_related("trainer")
+        if self.action == "list" and is_admin and self.request.query_params.get("needs_trainer") == "true":
+            queryset = (
+                queryset.filter(role=User.Role.MEMBER)
+                .exclude(trainer__role=User.Role.TRAINER, trainer__is_active=True)
+                .order_by("created_at", "id")
+            )
         if self.action == "list" and self.request.query_params.get("waiting_for_plan") == "true":
             # Through the reverse relation's name rather than importing the
             # workouts app, which already depends on this one. `id` breaks
@@ -222,12 +266,20 @@ class UserViewSet(viewsets.ModelViewSet):
         # it silently falls through to the IsStaff default below.
         if self.action == "body_photos":
             return [IsTrainerOrAdmin()]
+        if self.action == "available_trainers":
+            return [IsAdmin()]
+        if self.action in ("unassigned_members", "claim"):
+            return [IsTrainer()]
         if self.action in ("create", "partial_update", "update", "set_password", "extend_membership"):
             # IsAdminOrAccounting is the coarse gate (who may write at all);
             # CanManageUser is the per-record one (whose record they may
             # touch), and only the second can see the target.
             return [IsAdminOrAccounting(), CanManageUser()]
         return [IsStaff()]
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -236,7 +288,7 @@ class UserViewSet(viewsets.ModelViewSet):
             # Admin edits everything including role; accounting edits a
             # member's details but can't touch role or the active flag.
             return UserAdminSerializer if self.request.user.is_gym_admin else MemberEditSerializer
-        return UserSerializer
+        return super().get_serializer_class()
 
     def perform_create(self, serializer):
         """Accounting runs the front desk, so it can sign up members — but
@@ -247,6 +299,40 @@ class UserViewSet(viewsets.ModelViewSet):
         if role != User.Role.MEMBER and not self.request.user.is_gym_admin:
             raise PermissionDenied("Only admins can create staff accounts.")
         serializer.save()
+
+    @action(detail=False, methods=["get"], url_path="available-trainers")
+    def available_trainers(self, request):
+        return Response(TrainerSummarySerializer(trainer_options(), many=True).data)
+
+    @staticmethod
+    def active_members():
+        return User.objects.filter(role=User.Role.MEMBER, is_active=True)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="unassigned-members",
+        serializer_class=UnassignedMemberSerializer,
+        filter_backends=[SearchFilter],
+        search_fields=["first_name", "last_name"],
+    )
+    def unassigned_members(self, request):
+        return self.list(request)
+
+    @action(detail=True, methods=["post"])
+    def claim(self, request, pk=None):
+        trainer = request.user
+        members = self.active_members()
+        available = members.filter(Q(trainer__isnull=True) | Q(trainer=trainer))
+        member = get_object_or_404(available.only("id"), pk=pk)
+        # Only the first claimant can update the row. A repeated request
+        # from the successful trainer can safely return the same result.
+        claimed = members.filter(pk=member.pk, trainer__isnull=True).update(
+            trainer=trainer, updated_at=timezone.now()
+        )
+        if not claimed and not members.filter(pk=member.pk, trainer=trainer).exists():
+            raise Http404
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="set-password")
     def set_password(self, request, pk=None):
@@ -407,7 +493,7 @@ class BodyPhotoFileView(APIView):
 
     Who may look:
       - the member whose body it is
-      - a trainer or an admin
+      - the member's assigned trainer or a gym admin
 
     Not accounting, and not another member. A 404 rather than a 403 for
     everyone else: "this photo exists but you may not see it" is itself
@@ -417,13 +503,13 @@ class BodyPhotoFileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
-        photo = get_object_or_404(BodyPhoto, pk=pk)
         viewer = request.user
-        may_view = (
-            photo.user_id == viewer.id or viewer.is_trainer or viewer.is_gym_admin
-        )
-        if not may_view:
-            raise Http404
+        photos = BodyPhoto.objects.all()
+        if viewer.is_trainer:
+            photos = photos.filter(Q(user=viewer) | Q(user__in=visible_members(viewer)))
+        elif not viewer.is_gym_admin:
+            photos = photos.filter(user=viewer)
+        photo = get_object_or_404(photos, pk=pk)
         if not photo.image:
             raise Http404
         # no-store: nothing keeps a copy of someone's body photo lying

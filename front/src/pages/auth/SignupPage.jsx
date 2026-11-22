@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
-import { registerRequest } from "../../api/auth.js";
+import { listSignupTrainers, registerRequest } from "../../api/auth.js";
 import AuthShell from "../../components/auth/AuthShell.jsx";
 import JalaliDateInput from "../../components/common/JalaliDateInput.jsx";
 import PasswordInput from "../../components/common/PasswordInput.jsx";
@@ -9,6 +9,7 @@ import { getRoleHome } from "../../constants/navigation.js";
 import { GENDERS } from "../../constants/userOptions.js";
 import { useAppConfig } from "../../hooks/useAppConfig.js";
 import { useAuth } from "../../hooks/useAuth.js";
+import { trainerName } from "../../utils/format.js";
 import { toEnglishDigits } from "../../utils/jalali.js";
 
 // The server names a problem field only by its key; this is what the
@@ -69,10 +70,32 @@ export default function SignupPage() {
     username: "",
     password: "",
     password_confirm: "",
+    trainer_id: "",
   });
   const [isUsernameTouched, setIsUsernameTouched] = useState(false);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [trainers, setTrainers] = useState(null);
+  const [trainerListError, setTrainerListError] = useState(false);
+  const [trainerLoadAttempt, setTrainerLoadAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!isLoaded || !isSelfSignup || isAuthenticated) return;
+    const controller = new AbortController();
+    listSignupTrainers(controller.signal).then(setTrainers).catch(() => {
+      if (!controller.signal.aborted) {
+        setTrainers([]);
+        setTrainerListError(true);
+      }
+    });
+    return () => controller.abort();
+  }, [isLoaded, isSelfSignup, isAuthenticated, trainerLoadAttempt]);
+
+  function reloadTrainers() {
+    setTrainers(null);
+    setTrainerListError(false);
+    setTrainerLoadAttempt((attempt) => attempt + 1);
+  }
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -93,6 +116,7 @@ export default function SignupPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (trainers === null) return;
     setError(null);
     if (!form.first_name.trim() || !form.last_name.trim() || !form.national_id.trim()) {
       setError("نام، نام خانوادگی و کد ملی الزامی است.");
@@ -120,7 +144,11 @@ export default function SignupPage() {
       return;
     }
     setIsSubmitting(true);
-    const payload = { ...form, username: form.username.trim() };
+    const payload = {
+      ...form,
+      username: form.username.trim(),
+      trainer_id: form.trainer_id ? Number(form.trainer_id) : null,
+    };
     try {
       await registerRequest(payload);
     } catch (err) {
@@ -129,6 +157,10 @@ export default function SignupPage() {
         setError("ثبت‌نام‌های زیادی از این شبکه انجام شده — کمی بعد دوباره امتحان کنید.");
       } else if (status === 403) {
         setError("ثبت‌نام در این باشگاه بسته است. برای ساخت حساب با باشگاه تماس بگیرید.");
+      } else if (err?.response?.data?.trainer_id) {
+        set("trainer_id", "");
+        reloadTrainers();
+        setError("مربی انتخاب‌شده دیگر در دسترس نیست. مربی دیگری انتخاب کنید یا انتخاب را به باشگاه بسپارید.");
       } else if (err?.response?.data) {
         setError(formatApiError(err.response.data));
       } else {
@@ -176,6 +208,34 @@ export default function SignupPage() {
           حساب بسازید و اندازه‌های بدنتان را ثبت کنید تا مربی برنامه‌تان را بنویسد. برنامه بعد از پرداخت
           باز می‌شود.
         </p>
+
+        <label className="field">
+          <span className="label">انتخاب مربی</span>
+          <select
+            className="select"
+            value={form.trainer_id}
+            onChange={(e) => set("trainer_id", e.target.value)}
+            disabled={trainers === null || isSubmitting}
+          >
+            <option value="">انتخاب مربی را به باشگاه می‌سپارم</option>
+            {trainers?.map((trainer) => (
+              <option key={trainer.id} value={trainer.id}>{trainerName(trainer)}</option>
+            ))}
+          </select>
+          {trainers === null && <span className="text-xs text-muted">در حال بارگذاری مربیان…</span>}
+          {!trainerListError && trainers?.length === 0 && (
+            <span className="text-xs text-muted">در حال حاضر مربی فعالی برای انتخاب وجود ندارد.</span>
+          )}
+          {!form.trainer_id && (
+            <span className="text-xs text-muted">اگر انتخاب را به باشگاه بسپارید، مربیان نام شما را برای پذیرش می‌بینند.</span>
+          )}
+        </label>
+        {trainerListError && (
+          <div>
+            <p className="error-text" role="alert">فهرست مربیان بارگذاری نشد.</p>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={reloadTrainers}>تلاش دوباره</button>
+          </div>
+        )}
 
         <div className="field-row">
           <label className="field">
@@ -276,9 +336,6 @@ export default function SignupPage() {
             onChange={(e) => setUsername(e.target.value)}
             required
           />
-          <span className="text-xs text-muted">
-            {isUsernameTouched ? "با همین نام وارد می‌شوید." : "از کد ملی پر می‌شود — می‌توانید عوضش کنید."}
-          </span>
         </label>
 
         <label className="field">
@@ -307,7 +364,7 @@ export default function SignupPage() {
           </p>
         )}
 
-        <button className="btn btn-primary btn-block" type="submit" disabled={isSubmitting}>
+        <button className="btn btn-primary btn-block" type="submit" disabled={isSubmitting || trainers === null}>
           {isSubmitting ? "در حال ثبت‌نام…" : "ثبت‌نام"}
         </button>
 

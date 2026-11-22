@@ -8,9 +8,10 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsStaff, IsTrainerOrAdmin, PlansUnlocked
+from apps.accounts.permissions import IsTrainerOrAdmin, PlansUnlocked
 from apps.moves.permissions import IsTrainerOrAdminOrReadOnly
 from apps.pagination import LibraryPagination
+from apps.plan_assignments import StaffPlanAssignmentViewSet
 from apps.plan_copy import copy_name
 
 from .models import AllowedFood, DietAssignment, DietDay, DietItem, DietPlan, Food, Meal
@@ -177,7 +178,7 @@ class DietPlanViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="assign")
     def assign(self, request, pk=None):
         plan = self.get_object()
-        serializer = DietAssignmentSerializer(data=request.data)
+        serializer = DietAssignmentSerializer(data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
 
         # A member has one active diet plan at a time (DietAssignment.save
@@ -249,7 +250,7 @@ class AllowedFoodViewSet(viewsets.ModelViewSet):
         serializer.save(plan=plan)
 
 
-class DietAssignmentViewSet(viewsets.ModelViewSet):
+class DietAssignmentViewSet(StaffPlanAssignmentViewSet):
     """Staff view of who has which diet plan — mirrors
     WorkoutAssignmentViewSet.
 
@@ -261,14 +262,6 @@ class DietAssignmentViewSet(viewsets.ModelViewSet):
 
     queryset = DietAssignment.objects.all().select_related("plan", "user", "assigned_by")
     serializer_class = DietAssignmentListSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["plan", "user", "status"]
-    http_method_names = ["get", "patch", "delete", "head", "options"]
-
-    def get_permissions(self):
-        if self.request.method in ("PATCH", "DELETE"):
-            return [IsTrainerOrAdmin()]
-        return [IsStaff()]
 
 
 class MyDietPlansView(generics.ListAPIView):

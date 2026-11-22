@@ -191,6 +191,7 @@ class SupersetTests(APITestCase):
     def test_member_sees_supersets_on_the_active_day(self):
         self._superset()
         member = make_user(User.Role.MEMBER, "member")
+        User.objects.filter(pk=member.pk).update(trainer=self.trainer)
         self.client.post(f"/api/workout-plans/{self.plan.pk}/assign/", {"user": member.pk})
 
         self.client.force_authenticate(member)
@@ -201,7 +202,8 @@ class SupersetTests(APITestCase):
 
 class PerSetExerciseTests(APITestCase):
     def setUp(self):
-        self.client.force_authenticate(make_user(User.Role.TRAINER, "trainer"))
+        self.trainer = make_user(User.Role.TRAINER, "trainer")
+        self.client.force_authenticate(self.trainer)
         plan = WorkoutPlan.objects.create(name="Push")
         day = WorkoutDay.objects.create(plan=plan, name="Chest")
         self.plan_url = f"/api/workout-plans/{plan.pk}/"
@@ -222,6 +224,7 @@ class PerSetExerciseTests(APITestCase):
             self.assertEqual(timed.status_code, status.HTTP_201_CREATED)
         copied = self.client.post(self.plan_url + "duplicate/").data
         member = make_user(User.Role.MEMBER, "member")
+        User.objects.filter(pk=member.pk).update(trainer=self.trainer)
         self.client.post(f"/api/workout-plans/{copied['id']}/assign/", {"user": member.pk})
         self.client.force_authenticate(member)
         assignment = self.client.get("/api/my-workout-plans/").data["results"][0]

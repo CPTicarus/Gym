@@ -28,7 +28,7 @@ function initials(user) {
  * HTML, and a tap on it would open the member's page as well.
  */
 export default function UserListItem({ user, to, actions, children }) {
-  const name = fullName(user);
+  const name = fullName(user) || "عضو";
 
   const inner = (
     <>
@@ -36,7 +36,7 @@ export default function UserListItem({ user, to, actions, children }) {
       <div className="user-row-body">
         <div className="user-row-main">
           <span className="user-row-name">{name}</span>
-          <span className="user-row-sub muted ltr">{user.username}</span>
+          {user.username && <span className="user-row-sub muted ltr">{user.username}</span>}
         </div>
         <div className="user-row-end">
           <span className="badge badge-neutral">{ROLE_LABELS[user.role] ?? user.role}</span>

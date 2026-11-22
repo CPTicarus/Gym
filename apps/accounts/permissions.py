@@ -2,7 +2,19 @@ from rest_framework import status
 from rest_framework.exceptions import APIException
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
+from .models import User
 from .signup import self_signup_enabled
+
+
+def visible_members(user):
+    """Members a staff account can access through the API."""
+    members = User.objects.filter(role=User.Role.MEMBER)
+    if user and user.is_authenticated and user.is_active:
+        if user.is_trainer:
+            return members.filter(trainer=user)
+        if user.is_gym_admin or user.is_accounting:
+            return members
+    return members.none()
 
 
 class IsAdmin(BasePermission):
@@ -10,6 +22,14 @@ class IsAdmin(BasePermission):
 
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.is_gym_admin)
+
+
+class IsTrainer(BasePermission):
+    message = "Only active trainers can perform this action."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and user.is_active and user.is_trainer)
 
 
 class IsTrainerOrAdmin(BasePermission):
@@ -61,7 +81,7 @@ class IsOwnerOrStaff(BasePermission):
     """
     Object-level permission for things like profiles, workout assignments, etc:
     - the owner can always read/edit their own object
-    - trainer/admin/accounting can READ any object (SAFE_METHODS)
+    - staff can read objects belonging to members in their scope
     - only admin can WRITE to someone else's object
 
     Combine with IsAuthenticated at the view level; this only checks the object.
@@ -77,7 +97,10 @@ class IsOwnerOrStaff(BasePermission):
             return True
 
         if request.method in SAFE_METHODS:
-            return user.is_trainer or user.is_gym_admin or user.is_accounting
+            target = obj if isinstance(obj, User) else getattr(obj, "user", None)
+            return user.is_gym_admin or (
+                isinstance(target, User) and visible_members(user).filter(pk=target.pk).exists()
+            )
 
         return user.is_gym_admin
 

@@ -185,6 +185,7 @@ class DietPlanKindTests(APITestCase):
     def test_member_sees_foods_nested_in_their_plan(self):
         allowed = DietPlan.objects.create(name="a", kind="allowed")
         AllowedFood.objects.create(plan=allowed, food=self.egg)
+        User.objects.filter(pk=self.member.pk).update(trainer=self.trainer)
         self.client.post(f"/api/diet-plans/{allowed.pk}/assign/", {"user": self.member.pk})
 
         self.client.force_authenticate(self.member)

@@ -1,9 +1,8 @@
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import AllowedFood, DietAssignment, DietDay, DietItem, DietPlan, Food, Meal
+from apps.plan_assignments import AssignableMemberField
 
-User = get_user_model()
+from .models import AllowedFood, DietAssignment, DietDay, DietItem, DietPlan, Food, Meal
 
 
 class FoodSerializer(serializers.ModelSerializer):
@@ -155,7 +154,7 @@ class DietAssignmentSerializer(serializers.ModelSerializer):
     """Used both to assign a plan (POST {"user": <id>}) and to list a
     member's assigned diet plans in full detail via /api/my-diet-plans/."""
 
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role=User.Role.MEMBER))
+    user = AssignableMemberField()
     assigned_by = serializers.StringRelatedField(read_only=True)
     plan_detail = DietPlanSerializer(source="plan", read_only=True)
 

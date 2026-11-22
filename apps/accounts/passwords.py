@@ -9,7 +9,7 @@ costs a phone call to the front desk every time someone forgets it. So
 members get a short minimum length and nothing else; a 4-digit PIN is a
 perfectly reasonable member password.
 
-Staff are a different matter. A trainer sees every member's data, an admin
+Staff are a different matter. A trainer sees their assigned members' data, an admin
 can change roles and memberships, accounting sees billing. Those accounts
 keep Django's full AUTH_PASSWORD_VALIDATORS.
 
