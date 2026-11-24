@@ -2,19 +2,23 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { getChatUnread } from "../api/chat.js";
+import { getSystemResources } from "../api/systemAdmin.js";
 import { LogOutIcon, MenuIcon, MoonIcon, SunIcon, XIcon } from "../components/common/icons.jsx";
+import StatusLight from "../components/common/StatusLight.jsx";
 import UnreadChatIndicator, { UNREAD_CHAT_LABEL } from "../components/common/UnreadChatIndicator.jsx";
 import { NAV_ITEMS } from "../constants/navigation.js";
 import { ROLE_LABELS } from "../constants/roles.js";
 import { ChatUnreadContext } from "../context/ChatUnreadContext.js";
+import { SystemResourcesContext } from "../context/SystemResourcesContext.js";
 import { useAppConfig } from "../hooks/useAppConfig.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { useChatPolling } from "../hooks/useChatPolling.js";
 import { useTheme } from "../hooks/useTheme.js";
+import { useVisiblePolling } from "../hooks/useVisiblePolling.js";
 
 // One size for every icon in the top bar — the mismatch between 20, 18
 // and 16 was most of why it looked uneven.
 const ICON_SIZE = 18;
+const LOW_DISK_LABEL = "فضای ذخیره‌سازی سرور کم است";
 
 export default function AppLayout() {
   const { role, user, greeting, logout } = useAuth();
@@ -23,6 +27,7 @@ export default function AppLayout() {
   const location = useLocation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [unreadStatus, setUnreadStatus] = useState(null);
+  const [resourceStatus, setResourceStatus] = useState(null);
 
   const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
   const canChat = items.some((item) => item.to === "/chat");
@@ -36,14 +41,38 @@ export default function AppLayout() {
       // Keep the last known status until polling succeeds again.
     }
   }, [userId]);
-  const refreshChatUnread = useChatPolling(loadChatUnread, canChat && userId != null);
+  const refreshChatUnread = useVisiblePolling(loadChatUnread, { enabled: canChat && userId != null });
   const chatUnreadContext = useMemo(() => ({ refreshChatUnread, isDrawerOpen }), [refreshChatUnread, isDrawerOpen]);
+
+  const isAdmin = role === "admin" && userId != null;
+  const loadResources = useCallback(async (signal) => {
+    try {
+      const resources = await getSystemResources(signal);
+      if (!signal.aborted) setResourceStatus({ userId, resources, error: false });
+    } catch {
+      if (!signal.aborted) setResourceStatus((current) => ({
+        userId,
+        resources: current?.userId === userId ? current.resources : null,
+        error: true,
+      }));
+    }
+  }, [userId]);
+  const refreshResources = useVisiblePolling(loadResources, { enabled: isAdmin, intervalMs: 60_000 });
+  const adminStatus = isAdmin && resourceStatus?.userId === userId ? resourceStatus : null;
+  const resources = adminStatus?.resources ?? null;
+  const resourceError = adminStatus?.error ?? false;
+  const systemResourcesContext = useMemo(() => ({ resources, resourceError, refreshResources }),
+    [resources, resourceError, refreshResources]);
+  const storageLow = resources?.storage_low === true;
+  const menuAlert = storageLow ? LOW_DISK_LABEL : hasUnread ? UNREAD_CHAT_LABEL : null;
+
   const navLinkClass = ({ isActive }) => `nav-link${isActive ? " is-active" : ""}`;
   const navLinks = items.map(({ to, label, Icon }) => (
     <NavLink key={to} to={to} className={navLinkClass} onClick={() => setIsDrawerOpen(false)}>
       <Icon size={18} />
       <span>{label}</span>
       {to === "/chat" && hasUnread && <UnreadChatIndicator className="ms-auto" />}
+      {to === "/system-settings" && storageLow && <StatusLight label={LOW_DISK_LABEL} tone="warning" className="ms-auto" />}
     </NavLink>
   ));
 
@@ -92,11 +121,11 @@ export default function AppLayout() {
               type="button"
               className="icon-btn topbar-menu-btn relative"
               onClick={() => setIsDrawerOpen(true)}
-              aria-label={hasUnread ? `باز کردن منو، ${UNREAD_CHAT_LABEL}` : "باز کردن منو"}
+              aria-label={menuAlert ? `باز کردن منو، ${menuAlert}` : "باز کردن منو"}
               aria-expanded={isDrawerOpen}
             >
               <MenuIcon size={ICON_SIZE} />
-              {hasUnread && <UnreadChatIndicator className="absolute end-0.5 top-0.5" />}
+              {menuAlert && <StatusLight label={menuAlert} tone={storageLow ? "warning" : "success"} className="absolute end-0.5 top-0.5" />}
             </button>
             <span className="brand-mark topbar-brand">{branding.name}</span>
           </div>
@@ -120,7 +149,9 @@ export default function AppLayout() {
 
         <main className="content">
           <ChatUnreadContext.Provider value={chatUnreadContext}>
-            <Outlet />
+            <SystemResourcesContext.Provider value={systemResourcesContext}>
+              <Outlet />
+            </SystemResourcesContext.Provider>
           </ChatUnreadContext.Provider>
         </main>
       </div>

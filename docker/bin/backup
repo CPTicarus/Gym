@@ -26,16 +26,21 @@ case "${1:-}" in
 esac
 
 work=$(mktemp -d)
-trap 'rm -rf "$work" "$out.part"' EXIT
+part=
+trap 'rm -rf "$work"; if [ -n "$part" ]; then rm -f -- "$part"; fi' EXIT
+part=$(mktemp --suffix=.part "$dir/.${out##*/}.XXXXXX")
 
 if [ "${1:-}" = --db-only ]; then
-    dump_database > "$out.part"
+    dump_database > "$part"
 else
     dump_database > "$work/database.dump"
-    tar --create --gzip --file="$out.part" \
+    tar --create --gzip --file="$part" \
         --directory="$work" database.dump \
         --directory=/data media private_media
 fi
 
-mv "$out.part" "$out"
+# Let the application and its download proxy read only published backups.
+chgrp gymbackup "$part"
+chmod 640 "$part"
+mv -T -- "$part" "$out"
 echo "$out"

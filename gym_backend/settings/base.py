@@ -117,6 +117,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Body photos and chat attachments live outside MEDIA_ROOT and are streamed
 # through views that check who is asking.
 PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"
+BACKUP_DIR = PRIVATE_MEDIA_ROOT / "backups"
+BACKUP_ACCEL_REDIRECT = None
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

@@ -5,7 +5,7 @@ import { listChatMessages, sendChatMessage } from "../../api/chat.js";
 import { PaperclipIcon, XIcon } from "../../components/common/icons.jsx";
 import UnreadChatIndicator from "../../components/common/UnreadChatIndicator.jsx";
 import { useAppConfig } from "../../hooks/useAppConfig.js";
-import { useChatPolling } from "../../hooks/useChatPolling.js";
+import { useVisiblePolling } from "../../hooks/useVisiblePolling.js";
 import { fullName } from "../../utils/format.js";
 import { toPersianDigits } from "../../utils/jalali.js";
 import ChatAttachmentPreview from "./ChatAttachmentPreview.jsx";
@@ -133,7 +133,7 @@ export default function ChatThread({ partner, userId, showBack, drawerOpen, onRe
       if (!signal.aborted) setIsLoading(false);
     }
   }, [partnerId]);
-  const refresh = useChatPolling(load);
+  const refresh = useVisiblePolling(load);
 
   async function loadOlder() {
     if (olderRequest.current || !messages.length) return;

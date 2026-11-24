@@ -79,6 +79,9 @@ CACHES = {
 
 MEDIA_ROOT = DATA_DIR / "media"
 PRIVATE_MEDIA_ROOT = DATA_DIR / "private_media"
+BACKUP_DIR = DATA_DIR / "backups"
+# Nginx serves this internal location from the image's standard data volume.
+BACKUP_ACCEL_REDIRECT = "/internal/gym-backups/" if DATA_DIR == Path("/data") else None
 # STATIC_ROOT stays as in base.py: collected into the image when it's built.
 
 # Nginx is the only way in, and it reports the scheme the browser used and

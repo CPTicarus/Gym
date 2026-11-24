@@ -145,6 +145,10 @@ first.
 | By hand | `docker exec gym backup`: database **and** all uploads, as `gym-full-*.tar.gz` |
 | Restore | `docker exec gym restore /data/backups/<file>` (stops the app while it runs) |
 
+Gym admins can download the latest completed database dump and full archive
+from **System Settings → Backups**. Full archives appear after the first full
+backup is created. Downloads use the existing archives in the data volume.
+
 Full backups can contain chat attachments that have since expired on the live server.
 After a database-only restore, files with no matching attachment record can remain in
 private storage. A full restore replaces the uploads together with the database.
@@ -161,6 +165,10 @@ To restore a backup made elsewhere, copy it in first
 that: install there as in step 2, then restore a full backup.
 
 ## 6. Day to day
+
+**System Settings → Server resources** shows available RAM and free space in
+the data volume. It flags RAM usage at 85% or higher and shows a flashing light
+in the admin's menu when free space drops below 5 GiB.
 
 ```bash
 docker compose logs -f                  # Nginx, Django, Postgres, all in one log

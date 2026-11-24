@@ -73,7 +73,8 @@ ENV PATH=/opt/gym/bin:/opt/venv/bin:/usr/lib/postgresql/17/bin:$PATH \
 RUN groupadd --system --gid 999 postgres \
  && useradd --system --uid 999 --gid postgres --home-dir /var/lib/postgresql --shell /bin/bash postgres \
  && groupadd --system --gid 10001 gym \
- && useradd --system --uid 10001 --gid gym --home-dir /app --no-create-home --shell /usr/sbin/nologin gym
+ && groupadd --system --gid 10002 gymbackup \
+ && useradd --system --uid 10001 --gid gym --groups gymbackup --home-dir /app --no-create-home --shell /usr/sbin/nologin gym
 
 # Postgres without Debian's own cluster -- the entrypoint makes one in the
 # data volume -- and without LLVM, which only its JIT uses (switched off in
@@ -89,6 +90,7 @@ RUN printf '%s\n' \
  && apt-get install -y --no-install-recommends postgresql-common \
  && sed -ri 's/^#?\s*create_main_cluster\s*=.*/create_main_cluster = false/' /etc/postgresql-common/createcluster.conf \
  && apt-get install -y --no-install-recommends postgresql-17 nginx tini curl file \
+ && usermod --append --groups gymbackup www-data \
  && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled /etc/nginx/sites-available /etc/nginx/conf.d/*
 
 COPY --from=backend /opt/venv /opt/venv

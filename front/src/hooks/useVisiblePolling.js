@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
-const POLL_INTERVAL_MS = 10_000;
-
-export function useChatPolling(load, enabled = true) {
+export function useVisiblePolling(load, { enabled = true, intervalMs = 10_000 } = {}) {
   const refreshRef = useRef(null);
 
   useEffect(() => {
@@ -33,7 +31,7 @@ export function useChatPolling(load, enabled = true) {
       return refresh();
     };
     refresh();
-    const interval = window.setInterval(refresh, POLL_INTERVAL_MS);
+    const interval = window.setInterval(refresh, intervalMs);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       refreshRef.current = null;
@@ -41,7 +39,7 @@ export function useChatPolling(load, enabled = true) {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [enabled, load]);
+  }, [enabled, intervalMs, load]);
 
   return useCallback(() => refreshRef.current?.(), []);
 }

@@ -40,7 +40,10 @@ own() {
 prepare_volume() {
     mkdir -p "$DATA" "$DATA/backups"
     chmod 755 "$DATA"
-    chmod 700 "$DATA/backups"
+    chown root:gymbackup "$DATA/backups"
+    chmod 750 "$DATA/backups"
+    find "$DATA/backups" -maxdepth 1 -type f \( -name 'gym-db-*.dump' -o -name 'gym-full-*.tar.gz' \) \
+        -exec chgrp gymbackup -- {} + -exec chmod 640 -- {} +
     own postgres 700 "$PGDATA"
     own "$APP_USER" 755 "$DATA/media"
     # Django checks who is asking before serving body photos or chat media.

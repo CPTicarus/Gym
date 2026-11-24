@@ -6,7 +6,7 @@ import { MessageIcon } from "../../components/common/icons.jsx";
 import UnreadChatIndicator from "../../components/common/UnreadChatIndicator.jsx";
 import { ChatUnreadContext } from "../../context/ChatUnreadContext.js";
 import { useAuth } from "../../hooks/useAuth.js";
-import { useChatPolling } from "../../hooks/useChatPolling.js";
+import { useVisiblePolling } from "../../hooks/useVisiblePolling.js";
 import { fullName } from "../../utils/format.js";
 import ChatThread from "./ChatThread.jsx";
 
@@ -27,7 +27,7 @@ export default function ChatPage() {
       if (!signal.aborted) setLoadError(true);
     }
   }, []);
-  const refresh = useChatPolling(load);
+  const refresh = useVisiblePolling(load);
   const handleRead = useCallback(() => {
     refresh();
     refreshChatUnread();

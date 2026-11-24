@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -32,3 +33,11 @@ class GymBranding(models.Model):
     @classmethod
     def chat_media_settings(cls):
         return cls.current().chat_media
+
+
+class BackupDownloadTicket(models.Model):
+    digest = models.CharField(primary_key=True, max_length=64, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    kind = models.CharField(max_length=8)
+    file_name = models.CharField(max_length=64)
+    expires_at = models.DateTimeField(db_index=True)
