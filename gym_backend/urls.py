@@ -3,11 +3,13 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from apps.branding.views import BrandingView
+from apps.branding.views import BrandingView, ChatMediaSettingsView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/config/branding/", BrandingView.as_view(), name="gym-branding"),
+    path("api/config/chat-media/", ChatMediaSettingsView.as_view(), name="gym-chat-media"),
+    path("api/chat/", include("apps.chat.urls")),
     path("api/", include("apps.accounts.urls")),
     path("api/", include("apps.moves.urls")),
     path("api/", include("apps.workouts.urls")),

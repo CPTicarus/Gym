@@ -122,7 +122,7 @@ class SignupTrainerListView(generics.ListAPIView):
 class PublicConfigView(APIView):
     """What the app needs to know about this gym before anyone signs in.
 
-      GET /api/config/   Sign-up workflow and public branding overrides.
+      GET /api/config/   Sign-up workflow, branding and chat media policy.
 
     MEMBER_SIGNUP is set in one place, here on the backend, which is also
     where it's enforced. The frontend asks instead of keeping its own copy,
@@ -134,7 +134,12 @@ class PublicConfigView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        return Response({"member_signup": settings.MEMBER_SIGNUP, "branding": GymBranding.current()})
+        gym = GymBranding.current()
+        return Response({
+            "member_signup": settings.MEMBER_SIGNUP,
+            "branding": gym.overrides,
+            "chat_media": gym.chat_media,
+        })
 
 
 class StaffCreateView(generics.CreateAPIView):

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "apps.accounting",
     "apps.blog",
     "apps.supplements",
+    "apps.chat",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -113,11 +114,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 # of someone's body: no login, no role check, just a URL that works forever
 # for whoever ends up holding it.
 #
-# So those live outside MEDIA_ROOT entirely, where no static handler can
-# reach them, and are streamed by a view that checks who is asking (see
-# apps/accounts/views.py BodyPhotoFileView). Keeping them in a separate
-# tree rather than a subfolder of MEDIA_ROOT is the point: a subfolder is
-# one careless `static()` line away from being public again.
+# Body photos and chat attachments live outside MEDIA_ROOT and are streamed
+# through views that check who is asking.
 PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

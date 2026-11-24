@@ -9,6 +9,7 @@ with one data volume:
 | **Django** under gunicorn | The backend, **compiled to native code**: no `.py` source of the app is in the image |
 | **PostgreSQL 17** | The database. Only reachable from inside the container (Unix socket, no password) |
 | **Backups** | A database dump every 24 hours, into the volume |
+| **Chat media cleanup** | Deletes expired chat attachments at startup and every 15 minutes, using the gym's retention setting |
 
 Everything that has to survive an upgrade lives in the volume, mounted at
 `/data`: the database, uploads, the generated secret key and backups. The
@@ -144,6 +145,10 @@ first.
 | By hand | `docker exec gym backup`: database **and** all uploads, as `gym-full-*.tar.gz` |
 | Restore | `docker exec gym restore /data/backups/<file>` (stops the app while it runs) |
 
+Full backups can contain chat attachments that have since expired on the live server.
+After a database-only restore, files with no matching attachment record can remain in
+private storage. A full restore replaces the uploads together with the database.
+
 A backup on the same disk goes down with that disk. Copy them off the
 server regularly:
 
@@ -164,6 +169,11 @@ docker exec -it gym manage shell        # Django shell, as the app's own user
 docker exec -it -u gym gym psql -h /run/postgresql gym    # the database
 docker exec gym cat /usr/share/gym/test-report.txt         # tests this build passed
 ```
+
+If you run Django outside the container, install the `file` utility for chat media
+type detection and schedule `python manage.py purge_chat_media` every 15 minutes
+alongside your Django service. On Windows, Django can also use the `file.exe`
+bundled with Git for Windows.
 
 ## Settings
 

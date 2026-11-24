@@ -48,6 +48,23 @@ export function PlusIcon(props) {
   );
 }
 
+export function MessageIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M20 4H4a2 2 0 0 0-2 2v14l4-4h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z" />
+      <path d="M7 8h10M7 12h7" />
+    </IconBase>
+  );
+}
+
+export function PaperclipIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="m21 11-8.3 8.3a5 5 0 0 1-7-7l8.6-8.6a3.5 3.5 0 0 1 5 5l-8.6 8.6a2 2 0 0 1-2.8-2.8l8-8" />
+    </IconBase>
+  );
+}
+
 export function LogOutIcon(props) {
   return (
     <IconBase {...props}>

@@ -9,6 +9,7 @@ import SignupPage from "../pages/auth/SignupPage.jsx";
 import BlogFormPage from "../pages/blog/BlogFormPage.jsx";
 import BlogListPage from "../pages/blog/BlogListPage.jsx";
 import BlogPostPage from "../pages/blog/BlogPostPage.jsx";
+import ChatPage from "../pages/chat/ChatPage.jsx";
 import DashboardPage from "../pages/dashboard/DashboardPage.jsx";
 import DietBuilderPage from "../pages/diet/DietBuilderPage.jsx";
 import DietListPage from "../pages/diet/DietListPage.jsx";
@@ -76,6 +77,10 @@ export default function AppRoutes() {
           {/* Admin + accounting only */}
           <Route element={<ProtectedRoute allowedRoles={["admin", "accounting"]} />}>
             <Route path="/accounting" element={<AccountingPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["member", "trainer"]} />}>
+            <Route path="/chat/:partnerId?" element={<ChatPage />} />
           </Route>
 
           {/* Member-facing read-only views of what's assigned to them */}

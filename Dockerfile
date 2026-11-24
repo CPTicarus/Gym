@@ -88,7 +88,7 @@ RUN printf '%s\n' \
  && apt-get update \
  && apt-get install -y --no-install-recommends postgresql-common \
  && sed -ri 's/^#?\s*create_main_cluster\s*=.*/create_main_cluster = false/' /etc/postgresql-common/createcluster.conf \
- && apt-get install -y --no-install-recommends postgresql-17 nginx tini curl \
+ && apt-get install -y --no-install-recommends postgresql-17 nginx tini curl file \
  && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled /etc/nginx/sites-available /etc/nginx/conf.d/*
 
 COPY --from=backend /opt/venv /opt/venv

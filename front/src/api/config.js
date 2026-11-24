@@ -9,3 +9,8 @@ export async function updateBranding(changes) {
   const { data } = await axiosClient.patch("/config/branding/", changes);
   return data;
 }
+
+export async function updateChatMediaSettings(changes) {
+  const { data } = await axiosClient.patch("/config/chat-media/", changes);
+  return data;
+}

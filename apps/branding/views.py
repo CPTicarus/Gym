@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from apps.accounts.permissions import IsAdmin
 
 from .models import GymBranding
-from .serializers import BrandingSerializer
+from .serializers import BrandingSerializer, ChatMediaSettingsSerializer
 
 
 class BrandingView(APIView):
@@ -28,3 +28,16 @@ class BrandingView(APIView):
                     overrides[key] = value
             settings.save(update_fields=["overrides"])
         return Response(overrides)
+
+
+class ChatMediaSettingsView(APIView):
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        return Response(GymBranding.chat_media_settings())
+
+    def patch(self, request):
+        serializer = ChatMediaSettingsSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        settings, _ = GymBranding.objects.update_or_create(pk=1, defaults=serializer.validated_data)
+        return Response(settings.chat_media)

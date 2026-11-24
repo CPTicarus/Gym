@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { COLOR_LABELS, DEFAULT_BRANDING } from "../../config/brand.js";
 import { useAppConfig } from "../../hooks/useAppConfig.js";
+import ChatMediaSettingsForm from "./ChatMediaSettingsForm.jsx";
 import PaletteEditor from "./PaletteEditor.jsx";
 
 const TEXT_FIELDS = [
@@ -121,12 +122,16 @@ function BrandingForm() {
 }
 
 export default function SystemSettingsPage() {
-  const { isLoaded, hasBranding, retryConfig } = useAppConfig();
+  const { isLoaded, hasBranding, chatMediaMaxSizeMb, retryConfig } = useAppConfig();
   return (
     <div className="form-page max-w-2xl">
       <h1 className="page-title">تنظیمات سیستم</h1>
-      <p className="page-subtitle">نام، پیام‌ها و رنگ‌بندی برنامه را برای همه کاربران باشگاه تنظیم کنید.</p>
-      {!isLoaded ? <p role="status">در حال بارگذاری…</p> : hasBranding ? <BrandingForm /> : (
+      {!isLoaded ? <p role="status">در حال بارگذاری…</p> : hasBranding ? (
+        <div className="mt-4 space-y-6">
+          {chatMediaMaxSizeMb !== undefined && <ChatMediaSettingsForm />}
+          <BrandingForm />
+        </div>
+      ) : (
         <div className="card">
           <p role="alert" className="error-text">دریافت تنظیمات باشگاه انجام نشد.</p>
           <button type="button" className="btn btn-ghost" onClick={retryConfig}>تلاش دوباره</button>

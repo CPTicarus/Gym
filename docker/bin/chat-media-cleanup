@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -u
+
+while true; do
+    if ! pg_isready --quiet --host=/run/postgresql; then
+        sleep 5
+        continue
+    fi
+
+    if manage purge_chat_media --verbosity 0; then
+        sleep 900
+    else
+        echo "[chat-media-cleanup] Cleanup failed. Retrying in one minute." >&2
+        sleep 60
+    fi
+done

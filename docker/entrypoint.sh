@@ -43,8 +43,8 @@ prepare_volume() {
     chmod 700 "$DATA/backups"
     own postgres 700 "$PGDATA"
     own "$APP_USER" 755 "$DATA/media"
-    # Members' body photos: nobody but the app's own user gets in, Nginx
-    # included -- only Django serves them, after checking who's asking.
+    # Django checks who is asking before serving body photos or chat media.
+    # Nginx has no access to this directory.
     own "$APP_USER" 700 "$DATA/private_media"
     install -d -m 2775 -o postgres -g postgres "$SOCKET_DIR"
 }
@@ -128,21 +128,26 @@ raise SystemExit(0 if User.objects.filter(role="admin").exists() else 1)'; then
     trap - EXIT
 }
 
-# Nginx must let through the largest upload Django accepts (MEDIA_MAX_*_MB,
-# settings/base.py), plus room for the rest of the form.
-upload_limit_mb() {
+# Nginx must let through the largest upload Django accepts in each API
+# location, plus room for the rest of the form.
+upload_limits_mb() {
     manage shell -c 'import math
 from django.conf import settings
-print(math.ceil(max(cap["max"] for cap in settings.MEDIA_SIZE_LIMITS_MB.values())) + 10)'
+from apps.chat.models import MAX_CHAT_ATTACHMENT_BYTES
+move_limit_mb = max(cap["max"] for cap in settings.MEDIA_SIZE_LIMITS_MB.values())
+chat_limit_mb = MAX_CHAT_ATTACHMENT_BYTES / (1024 * 1024)
+print(math.ceil(move_limit_mb) + 10, math.ceil(chat_limit_mb) + 10)'
 }
 
 # The server blocks are fixed files (docker/nginx/); what varies between
-# deployments goes in runtime.conf, which nginx.conf includes.
+# deployments goes in included files.
 configure_nginx() {
     local cert=${TLS_CERT:-/certs/fullchain.pem}
     local key=${TLS_KEY:-/certs/privkey.pem}
-    local site=http max_mb
-    max_mb=$(upload_limit_mb)
+    local site=http limits max_mb chat_max_mb
+    limits=$(upload_limits_mb)
+    read -r max_mb chat_max_mb <<< "$limits"
+    printf 'client_max_body_size %sm;\n' "$chat_max_mb" > /etc/nginx/gym/chat-upload.conf
 
     if [ -r "$cert" ] && [ -r "$key" ]; then
         site=https

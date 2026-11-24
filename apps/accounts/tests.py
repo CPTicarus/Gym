@@ -128,7 +128,7 @@ class BodyPhotoExtrasTests(APITestCase):
         response = self.client.get(f"/api/body-photos/{extra_id}/file/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(f"extra-{extra_id}.png", response["Content-Disposition"])
-        response.close()
+        self.assertEqual(b"".join(response.streaming_content), png().read())
 
         self.client.force_authenticate(other_trainer)
         self.assertEqual(self.client.get(f"/api/users/{self.member.pk}/body-photos/").status_code, 404)
@@ -302,7 +302,7 @@ class StaffManagedGymTests(APITestCase):
     def test_the_app_is_told_which_workflow_this_is(self):
         response = self.client.get("/api/config/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, {"member_signup": "staff", "branding": {}})
+        self.assertEqual(response.data["member_signup"], "staff")
 
     def test_a_member_without_a_membership_still_sees_their_plans(self):
         member = make_user(User.Role.MEMBER, "member")
@@ -398,7 +398,7 @@ class SelfSignupTests(APITestCase):
         self.assertEqual(self._signup().status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
     def test_the_app_is_told_which_workflow_this_is(self):
-        self.assertEqual(self.client.get("/api/config/").data, {"member_signup": "self", "branding": {}})
+        self.assertEqual(self.client.get("/api/config/").data["member_signup"], "self")
 
 
 @override_settings(MEMBER_SIGNUP="self")

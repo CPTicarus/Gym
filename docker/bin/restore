@@ -46,7 +46,13 @@ fi
 trap 'echo "Restore failed; the app is stopped. Fix the cause and run restore again." >&2' ERR
 
 echo "Stopping the app"
-supervisorctl stop gunicorn >/dev/null
+for service in gunicorn chat-media-cleanup; do
+    status=$(supervisorctl status "$service") || true
+    read -r _ state _ <<< "$status"
+    if [ "$state" != STOPPED ]; then
+        supervisorctl stop "$service" >/dev/null
+    fi
+done
 
 echo "Replacing the database"
 as postgres dropdb --host=/run/postgresql --force --if-exists gym
@@ -66,5 +72,5 @@ echo "Bringing the database up to this version"
 manage migrate --noinput
 manage createcachetable
 
-supervisorctl start gunicorn >/dev/null
+supervisorctl start gunicorn chat-media-cleanup >/dev/null
 echo "Restored $archive"

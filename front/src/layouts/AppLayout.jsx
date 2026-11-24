@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
+import { getChatUnread } from "../api/chat.js";
 import { LogOutIcon, MenuIcon, MoonIcon, SunIcon, XIcon } from "../components/common/icons.jsx";
-import { useAppConfig } from "../hooks/useAppConfig.js";
+import UnreadChatIndicator, { UNREAD_CHAT_LABEL } from "../components/common/UnreadChatIndicator.jsx";
 import { NAV_ITEMS } from "../constants/navigation.js";
 import { ROLE_LABELS } from "../constants/roles.js";
+import { ChatUnreadContext } from "../context/ChatUnreadContext.js";
+import { useAppConfig } from "../hooks/useAppConfig.js";
 import { useAuth } from "../hooks/useAuth.js";
+import { useChatPolling } from "../hooks/useChatPolling.js";
 import { useTheme } from "../hooks/useTheme.js";
 
 // One size for every icon in the top bar — the mismatch between 20, 18
@@ -13,28 +17,58 @@ import { useTheme } from "../hooks/useTheme.js";
 const ICON_SIZE = 18;
 
 export default function AppLayout() {
-  const { role, greeting, logout } = useAuth();
+  const { role, user, greeting, logout } = useAuth();
   const { branding } = useAppConfig();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [unreadStatus, setUnreadStatus] = useState(null);
 
   const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const canChat = items.some((item) => item.to === "/chat");
+  const userId = user?.id;
+  const hasUnread = canChat && unreadStatus?.userId === userId && unreadStatus?.unread === true;
+  const loadChatUnread = useCallback(async (signal) => {
+    try {
+      const unread = await getChatUnread(signal);
+      if (!signal.aborted) setUnreadStatus({ userId, unread });
+    } catch {
+      // Keep the last known status until polling succeeds again.
+    }
+  }, [userId]);
+  const refreshChatUnread = useChatPolling(loadChatUnread, canChat && userId != null);
+  const chatUnreadContext = useMemo(() => ({ refreshChatUnread, isDrawerOpen }), [refreshChatUnread, isDrawerOpen]);
   const navLinkClass = ({ isActive }) => `nav-link${isActive ? " is-active" : ""}`;
+  const navLinks = items.map(({ to, label, Icon }) => (
+    <NavLink key={to} to={to} className={navLinkClass} onClick={() => setIsDrawerOpen(false)}>
+      <Icon size={18} />
+      <span>{label}</span>
+      {to === "/chat" && hasUnread && <UnreadChatIndicator className="ms-auto" />}
+    </NavLink>
+  ));
 
   // Close the drawer whenever the route changes (e.g. after tapping a link).
   useEffect(() => {
     setIsDrawerOpen(false);
   }, [location.pathname]);
 
-  // Let Escape close the drawer too.
+  // Close the drawer on Escape or when the desktop sidebar takes over.
   useEffect(() => {
     if (!isDrawerOpen) return undefined;
+    const desktop = window.matchMedia("(min-width: 860px)");
     function handleKeyDown(e) {
       if (e.key === "Escape") setIsDrawerOpen(false);
     }
+    function closeOnDesktop(event) {
+      if (event.matches) setIsDrawerOpen(false);
+    }
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    desktop.addEventListener("change", closeOnDesktop);
+    closeOnDesktop(desktop);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      desktop.removeEventListener("change", closeOnDesktop);
+    };
   }, [isDrawerOpen]);
 
   return (
@@ -43,12 +77,7 @@ export default function AppLayout() {
       <aside className="sidebar">
         <span className="brand-mark">{branding.name}</span>
         <nav className="nav">
-          {items.map(({ to, label, Icon }) => (
-            <NavLink key={to} to={to} className={navLinkClass}>
-              <Icon size={18} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+          {navLinks}
         </nav>
         <div className="sidebar-footer muted">بخش‌های بیشتر به‌مرور تکمیل می‌شوند.</div>
       </aside>
@@ -61,11 +90,13 @@ export default function AppLayout() {
           <div className="topbar-start">
             <button
               type="button"
-              className="icon-btn topbar-menu-btn"
+              className="icon-btn topbar-menu-btn relative"
               onClick={() => setIsDrawerOpen(true)}
-              aria-label="باز کردن منو"
+              aria-label={hasUnread ? `باز کردن منو، ${UNREAD_CHAT_LABEL}` : "باز کردن منو"}
+              aria-expanded={isDrawerOpen}
             >
               <MenuIcon size={ICON_SIZE} />
+              {hasUnread && <UnreadChatIndicator className="absolute end-0.5 top-0.5" />}
             </button>
             <span className="brand-mark topbar-brand">{branding.name}</span>
           </div>
@@ -88,7 +119,9 @@ export default function AppLayout() {
         </header>
 
         <main className="content">
-          <Outlet />
+          <ChatUnreadContext.Provider value={chatUnreadContext}>
+            <Outlet />
+          </ChatUnreadContext.Provider>
         </main>
       </div>
 
@@ -109,12 +142,7 @@ export default function AppLayout() {
             </div>
 
             <div className="nav">
-              {items.map(({ to, label, Icon }) => (
-                <NavLink key={to} to={to} className={navLinkClass}>
-                  <Icon size={18} />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
+              {navLinks}
             </div>
 
             <div className="drawer-footer">

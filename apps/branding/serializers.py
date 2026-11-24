@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from .models import GymBranding
+
 
 COLOR_TOKENS = {
     "canvas", "surface", "ink", "muted", "line", "neutral-soft",
@@ -37,4 +39,15 @@ class BrandingSerializer(serializers.Serializer):
     def validate(self, attrs):
         if self.initial_data.keys() - self.fields.keys():
             raise serializers.ValidationError("Unknown branding setting.")
+        return attrs
+
+
+class ChatMediaSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GymBranding
+        fields = ["chat_media_max_size_mb", "chat_media_retention_days"]
+
+    def validate(self, attrs):
+        if self.initial_data.keys() - self.fields.keys():
+            raise serializers.ValidationError("Unknown chat media setting.")
         return attrs

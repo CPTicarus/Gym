@@ -4,6 +4,7 @@ import {
   DumbbellIcon,
   FlaskIcon,
   HeartPulseIcon,
+  MessageIcon,
   NewspaperIcon,
   SettingsIcon,
   UsersIcon,
@@ -26,6 +27,7 @@ export const NAV_ITEMS = [
   // silently appears only for the few who do.
   { to: "/my-supplements", label: "مکمل من", Icon: FlaskIcon, roles: ["member"] },
   { to: "/my-body", label: "بدن من", Icon: HeartPulseIcon, roles: ["member"] },
+  { to: "/chat", label: "گفت‌وگوها", Icon: MessageIcon, roles: ["member", "trainer"] },
 
   { to: "/moves", label: "حرکات", Icon: DumbbellIcon, roles: ["member", "trainer", "admin"] },
   { to: "/plans", label: "برنامه‌ها", Icon: ClipboardIcon, roles: ["trainer", "admin"] },

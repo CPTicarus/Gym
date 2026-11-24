@@ -1,6 +1,6 @@
 import { createContext, useEffect, useMemo, useState } from "react";
 
-import { fetchPublicConfig, updateBranding } from "../api/config.js";
+import { fetchPublicConfig, updateBranding, updateChatMediaSettings } from "../api/config.js";
 import { DEFAULT_BRANDING } from "../config/brand.js";
 
 export const ConfigContext = createContext(null);
@@ -50,6 +50,12 @@ export function ConfigProvider({ children }) {
     return { ...DEFAULT_BRANDING, ...overrides };
   }
 
+  async function saveChatMediaSettings(changes) {
+    const chatMedia = await updateChatMediaSettings(changes);
+    setConfig((current) => ({ ...current, chat_media: chatMedia }));
+    return chatMedia;
+  }
+
   function retryConfig() {
     setIsLoaded(false);
     setAttempt((n) => n + 1);
@@ -60,8 +66,11 @@ export function ConfigProvider({ children }) {
     isLoaded,
     branding,
     hasBranding: Boolean(config?.branding),
+    chatMediaMaxSizeMb: config?.chat_media?.chat_media_max_size_mb,
+    chatMediaRetentionDays: config?.chat_media?.chat_media_retention_days,
     retryConfig,
     saveBranding,
+    saveChatMediaSettings,
   };
   return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
 }
